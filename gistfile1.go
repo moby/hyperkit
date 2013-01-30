@@ -1,4 +1,4 @@
-HttpGet "https://gist.github.com/4668739.git" c5129558666c24a32c44298a986c3f3e945b56c4
+Dependency{Name: "HttpGet", URL: "https://gist.github.com/4668739.git", Commit: "c5129558666c24a32c44298a986c3f3e945b56c4"}
 
 import (
 	"strings"
