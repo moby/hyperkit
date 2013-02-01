@@ -1,4 +1,4 @@
-package main
+package gist4668739
 
 import (
 	"io/ioutil"
