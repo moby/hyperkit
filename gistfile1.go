@@ -1,8 +1,9 @@
-Dependency{Name: "HttpGet", URL: "https://gist.github.com/4668739.git", Commit: "c5129558666c24a32c44298a986c3f3e945b56c4"}
+package gist4670289
 
 import (
 	"strings"
 	//"fmt"
+	. "gist.github.com/4668739.git"
 )
 
 func GoKeywords() []string {
