@@ -1,4 +1,4 @@
-package main
+package gist4727543
 
 var content = map[string]string{
 	"fmt":       "var _ = fmt.Printf",
