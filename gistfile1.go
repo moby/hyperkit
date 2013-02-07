@@ -1,7 +1,7 @@
 package main
 
 var content = map[string]string{
-  "fmt":       "var _ = fmt.Printf",
+	"fmt":       "var _ = fmt.Printf",
 	"reflect":   "var _ = reflect.TypeOf",
 	"io/ioutil": "var _ = ioutil.ReadFile",
 	"os/exec":   "var _ = exec.Command",
