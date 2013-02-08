@@ -6,6 +6,10 @@ import (
 )
 
 func HttpGet(url string) string {
+	return string(HttpGetB(url))
+}
+
+func HttpGetB(url string) []byte {
 	r, err := http.Get(url)
 	if nil != err {
 		panic(err)
@@ -15,5 +19,5 @@ func HttpGet(url string) string {
 	if nil != err {
 		panic(err)
 	}
-	return string(b)
+	return b
 }
