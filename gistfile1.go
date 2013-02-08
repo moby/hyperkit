@@ -33,7 +33,7 @@ func GistIdToGistContents(gistId string) string {
 }
 
 func main() {
-	gistId := "4668739"
+	gistId := "4737109"
 
 	print(GistIdToGistContents(gistId))
 }
