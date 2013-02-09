@@ -9,9 +9,18 @@ import (
 
 // This assumes there's only one file in the gist
 func GistIdToGistContents(gistId string) string {
+	return GistIdCommitIdToGistContents(gistId, "")
+}
+
+// This assumes there's only one file in the gist
+func GistIdCommitIdToGistContents(gistId, commitId string) string {
 	var out string
 
-	b := HttpGetB("https://api.github.com/gists/" + gistId)
+	gistUrl := "https://api.github.com/gists/" + gistId
+	if ("" != commitId) {
+		gistUrl = "https://api.github.com/gists/" + gistId + "/" + commitId
+	}
+	b := HttpGetB(gistUrl)
 
 	type GistFile struct {
 		Raw_Url string
@@ -34,6 +43,8 @@ func GistIdToGistContents(gistId string) string {
 
 func main() {
 	gistId := "4737109"
+	commitId := "1b4e4b0e6f469d5e5a91b49028fbf2ab936bfcd4"
 
-	print(GistIdToGistContents(gistId))
+	println(GistIdCommitIdToGistContents(gistId, commitId))
+	println(GistIdToGistContents(gistId))
 }
