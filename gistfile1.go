@@ -18,7 +18,7 @@ func GistIdCommitIdToGistContents(gistId, commitId string) string {
 
 	gistUrl := "https://api.github.com/gists/" + gistId
 	if ("" != commitId) {
-		gistUrl = "https://api.github.com/gists/" + gistId + "/" + commitId
+		gistUrl += "/" + commitId
 	}
 	b := HttpGetB(gistUrl)
 
