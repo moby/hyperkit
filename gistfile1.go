@@ -7,6 +7,7 @@ var content = map[string]string{
 	"os/exec":   "var _ = exec.Command",
 	"net/http":  "var _ = http.Get",
 	"go/ast":    "var _ ast.Ident",
+	"github.com/davecgh/go-spew/spew": "var _ = spew.Dump",
 }
 
 func GetForcedUse(ImportPath string) string {
