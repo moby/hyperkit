@@ -1,4 +1,4 @@
-package main
+package gist5022726
 
 import "encoding/json"
 import . "gist.github.com/4668739.git"
