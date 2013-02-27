@@ -8,6 +8,8 @@ var content = map[string]string{
 	"net/http":  "var _ = http.Get",
 	"go/ast":    "var _ ast.Ident",
 	"github.com/davecgh/go-spew/spew": "var _ = spew.Dump",
+	"gist.github.com/4668739.git":     "var _ = gist4668739.HttpGet",
+	"gist.github.com/4727543.git":     "var _ = gist4727543.GetForcedUse",
 }
 
 func GetForcedUse(ImportPath string) string {
