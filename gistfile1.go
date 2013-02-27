@@ -10,6 +10,7 @@ var content = map[string]string{
 	"github.com/davecgh/go-spew/spew": "var _ = spew.Dump",
 	"gist.github.com/4668739.git":     "var _ = gist4668739.HttpGet",
 	"gist.github.com/4727543.git":     "var _ = gist4727543.GetForcedUse",
+	"gist.github.com/4670289.git":     "var _ = gist4670289.GoKeywords",
 }
 
 func GetForcedUse(ImportPath string) string {
