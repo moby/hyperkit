@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// TODO: Completely automate this so there's no need to manually add support for more packages
 var content = map[string]string{
 	"fmt":       "var _ = fmt.Printf",
 	"reflect":   "var _ = reflect.TypeOf",
@@ -28,7 +29,7 @@ func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 		return content[ImportPath]
 	}
 
-	filename := "./GoLand/src/" + ImportPath + "/gistfile1.go"
+	filename := "./GoLand/src/" + ImportPath + "/gistfile1.go"		// TODO: Remove the hardcoded path, use GOPATH
 	packageName := GetGoFilePackageName(filename)
 	if "." == LocalPackageName {
 		return strings.Replace(content[ImportPath], packageName+".", "", 1)
