@@ -3,6 +3,7 @@ package gist4727543
 import (
 	. "gist.github.com/5052956.git"
 	"strings"
+	"os"
 )
 
 // TODO: Completely automate this so there's no need to manually add support for more packages
@@ -29,7 +30,8 @@ func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 		return content[ImportPath]
 	}
 
-	filename := "./GoLand/src/" + ImportPath + "/gistfile1.go"		// TODO: Remove the hardcoded path, use GOPATH
+	// TODO: Handle cases if GOPATH is empty, or multiple paths...
+	filename := os.Getenv("GOPATH") + "/src/" + ImportPath + "/gistfile1.go"
 	packageName := GetGoFilePackageName(filename)
 	if "." == LocalPackageName {
 		return strings.Replace(content[ImportPath], packageName+".", "", 1)
