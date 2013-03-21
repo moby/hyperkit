@@ -1,11 +1,12 @@
 package main
 
 import (
-	
+	"strings"
 )
 
-// Woohoo: First gist created within
-//         Conception with 1 button!
+func TrimQuotes(str string) string {
+	return strings.Trim(str, "\"")
+}
+
 func main() {
-	
 }
