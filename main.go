@@ -9,4 +9,7 @@ func TrimQuotes(str string) string {
 }
 
 func main() {
+	str := `"Quoted text becomes..."`
+	print(str)
+	print(TrimQuotes(str))
 }
