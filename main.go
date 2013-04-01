@@ -5,15 +5,22 @@ import (
 )
 
 func GetLines(s string) []string {
-	return strings.FieldsFunc(s, func(r rune) bool { return r == '\n' })
+	return strings.Split(s, "\n")
 }
 
-func GetLine(s string, n int) string {
-	return GetLines(s)[n]
+func GetLine(s string, LineIndex int) string {
+	return GetLines(s)[LineIndex]
 }
 
 func main() {
-	str := "First Line,\n2nd Line.\nThird!"
+	str := `First Line,
+2nd Line.
 
-	print(GetLine(str, 1))
+This is actually 4th line (not 3rd)!
+The index of this line is 4 (aka it's the 5th line).`
+
+	// Test GetLines() and GetLine()
+	for i := range GetLines(str) {
+		println(i, GetLine(str, i))
+	}
 }
