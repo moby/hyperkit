@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Gets the full path of the Go source file where this function was called from
 func GetThisGoSourceFilepath() string {
 	x := GetLine(string(debug.Stack()), 2)
 	x = x[0:strings.Index(x, ":")]
