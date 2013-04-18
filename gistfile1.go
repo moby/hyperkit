@@ -30,6 +30,34 @@ func SortMapByValue(m map[string]int) PairList {
 	return p
 }
 
+// A data structure to hold a key/value pair.
+type RuneIntPair struct {
+	Key   rune
+	Value int
+}
+
+// A slice of Pairs that implements sort.Interface to sort by Value.
+type RuneIntPairList []RuneIntPair
+
+func (p RuneIntPairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p RuneIntPairList) Len() int           { return len(p) }
+func (p RuneIntPairList) Less(i, j int) bool { return p[i].Key < p[j].Key }
+
+func SortMapByKey(m map[rune]int, rev bool) RuneIntPairList {
+	sm := make(RuneIntPairList, len(m))
+	i := 0
+	for k, v := range m {
+		sm[i] = RuneIntPair{k, v}
+		i++
+	}
+	if !rev {
+		sort.Sort(sm)
+	} else {
+		sort.Sort(Reverse{sm})
+	}
+	return sm
+}
+
 func main() {
 	m := map[string]int{
 		"blah": 5,
