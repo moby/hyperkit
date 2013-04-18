@@ -1,7 +1,8 @@
-package gist5092053
+package main
 
 import (
 	"sort"
+	. "gist.github.com/5408860.git"
 )
 
 // A data structure to hold a key/value pair.
@@ -15,7 +16,7 @@ type PairList []Pair
 
 func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 func (p PairList) Len() int           { return len(p) }
-func (p PairList) Less(i, j int) bool { return p[i].Value > p[j].Value }
+func (p PairList) Less(i, j int) bool { return p[i].Value < p[j].Value }
 
 // A function to turn a map into a PairList, then sort and return it.
 func SortMapByValue(m map[string]int) PairList {
@@ -25,6 +26,20 @@ func SortMapByValue(m map[string]int) PairList {
 		p[i] = Pair{k, v}
 		i++
 	}
-	sort.Sort(p)
+	sort.Sort(Reverse{p})
 	return p
+}
+
+func main() {
+	m := map[string]int{
+		"blah": 5,
+		"boo": 9,
+		"yah": 1,
+	}
+
+	sm := SortMapByValue(m)
+
+	for _, v := range sm {
+		println(v.Value, v.Key)
+	}
 }
