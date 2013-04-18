@@ -20,6 +20,8 @@ func (r Reverse) Less(i, j int) bool {
 
 func main() {
 	s := []int{5, 2, 6, 3, 1, 4} // unsorted
+	sort.Sort(sort.IntSlice(s))
+	fmt.Println(s)
 	sort.Sort(Reverse{sort.IntSlice(s)})
 	fmt.Println(s)
 }
