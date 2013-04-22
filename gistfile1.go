@@ -3,6 +3,7 @@ package gist4668739
 import (
 	"io/ioutil"
 	"net/http"
+	. "gist.github.com/5286084.git"
 )
 
 func HttpGet(url string) string {
@@ -11,13 +12,9 @@ func HttpGet(url string) string {
 
 func HttpGetB(url string) []byte {
 	r, err := http.Get(url)
-	if nil != err {
-		panic(err)
-	}
+	CheckError(err)
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
-	if nil != err {
-		panic(err)
-	}
+	CheckError(err)
 	return b
 }
