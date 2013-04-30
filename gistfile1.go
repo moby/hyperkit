@@ -30,5 +30,5 @@ func GoKeywords() []string {
 	o := strings.Fields(s)
 	//fmt.Printf("%v\n", o)
 	//fmt.Printf("%v", strings.Join(o, ", "))
-	return o[0:3] //Messed up for testing purposes
+	return o
 }
