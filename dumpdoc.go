@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-	log.SetFlags(0)
 	if len(os.Args) != 2 {
 		log.Fatalf("%s importPath", os.Args[0])
 	}
