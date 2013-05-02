@@ -1,7 +1,7 @@
 package main
 
 import (
-  "github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"go/ast"
 	"go/build"
 	"go/doc"
