@@ -1,4 +1,4 @@
-package gist4727543
+package main
 
 import (
 	"testing"
