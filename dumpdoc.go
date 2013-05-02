@@ -1,13 +1,13 @@
 package main
 
 import (
+	. "gist.github.com/5286084.git"
 	"go/ast"
 	"go/build"
 	"go/doc"
 	"go/parser"
 	"go/token"
 	"path/filepath"
-	. "gist.github.com/5286084.git"
 	//"github.com/davecgh/go-spew/spew"
 )
 
