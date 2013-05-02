@@ -18,4 +18,5 @@ func ReadAllStdin() string {
 }
 
 func main() {
+	print(ReadAllStdin())
 }
