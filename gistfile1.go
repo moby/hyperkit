@@ -4,12 +4,19 @@ import (
 	. "gist.github.com/5504644.git"
 	"strings"
 	. "gist.github.com/5210270.git"
+	"fmt"
 )
 
 // Generates an anonymous usage for the given import statement to avoid "imported and not used" errors
 //
 // e.g. `. "io/ioutil"` -> `var _ = NopCloser`
-func GetForcedUseFromImport(Import string) string {
+func GetForcedUseFromImport(Import string) (out string) {
+	defer func() {
+		e := recover()
+		if nil != e {
+			out = fmt.Sprint(e)
+		}
+	}()
 	ImportParts := strings.Split(Import, " ")
 	if 1 == len(ImportParts) {
 		return GetForcedUse(TrimQuotes(ImportParts[0]))
@@ -72,4 +79,6 @@ func main() {
 	println(GetForcedUseFromImport(`gist.github.com/5210270.git`))
 	println(GetForcedUseFromImport(`"gist.github.com/5210270.git"`))
 	println(GetForcedUseFromImport(`. "gist.github.com/5210270.git"`))
+	println(GetForcedUseFromImport(`bad bad bad`))
+	println(GetForcedUseFromImport(`bad`))
 }
