@@ -69,6 +69,7 @@ func main() {
 	println(GetForcedUseRenamed("io/ioutil", "RenamedPkg"))
 	println(GetForcedUseRenamed("io/ioutil", "."))
 	println()
+	println(GetForcedUseFromImport(`gist.github.com/5210270.git`))
 	println(GetForcedUseFromImport(`"gist.github.com/5210270.git"`))
 	println(GetForcedUseFromImport(`. "gist.github.com/5210270.git"`))
 }
