@@ -1,4 +1,4 @@
-package main
+package gist5286084
 
 import (
 )
@@ -8,7 +8,4 @@ func CheckError(err error) {
 	if nil != err {
 		panic(err)
 	}
-}
-
-func main() {
 }
