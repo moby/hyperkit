@@ -2,13 +2,14 @@ package main
 
 import (
 	"io/ioutil"
-	. "gist.github.com/5286084.git"
+	//. "gist.github.com/5286084.git"
 	"path/filepath"
 	. "gist.github.com/5504644.git"
 	. "gist.github.com/5639599.git"
 	"fmt"
 	"os"
 	"go/doc"
+	"strings"
 )
 
 func printPackageSummary(dpkg *doc.Package) {
@@ -31,15 +32,21 @@ func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 }
 
 func PrintPackageSummariesInDir(dirname string) {
-	path0 := filepath.Join(os.Getenv("GOPATH"), "src")
-	entries, err := ioutil.ReadDir(filepath.Join(path0, dirname))
-	CheckError(err)
-	//for _, v := range entries {
-	for i := len(entries)-1; i >= 0; i-- {
-		v := entries[i]
-		if v.IsDir() {
-			PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
-			//PrintPackageSummary(filepath.Join(dirname, v.Name()))
+	gopathEntries := strings.Split(os.Getenv("GOPATH"), ":")	// TODO: Make ":" platform-agnostic
+	for _, gopathEntry := range gopathEntries {
+		path0 := filepath.Join(gopathEntry, "src")
+		entries, err := ioutil.ReadDir(filepath.Join(path0, dirname))
+		//CheckError(err)
+		if nil != err {
+			continue
+		}
+		//for _, v := range entries {
+		for i := len(entries)-1; i >= 0; i-- {
+			v := entries[i]
+			if v.IsDir() {
+				PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
+				//PrintPackageSummary(filepath.Join(dirname, v.Name()))
+			}
 		}
 	}
 }
