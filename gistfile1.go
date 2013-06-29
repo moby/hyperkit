@@ -67,7 +67,6 @@ func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 	} else {
 		return Prefix + LocalPackageName + "." + Usage
 	}
-	return "" // TODO: Remove in go1.1
 }
 
 func main() {
