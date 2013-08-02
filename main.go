@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"go/doc"
-	"strings"
 )
 
 func printPackageSummary(dpkg *doc.Package) {
@@ -32,7 +31,7 @@ func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 }
 
 func PrintPackageSummariesInDir(dirname string) {
-	gopathEntries := strings.Split(os.Getenv("GOPATH"), ":")	// TODO: Make ":" platform-agnostic
+	gopathEntries := filepath.SplitList(os.Getenv("GOPATH"))
 	for _, gopathEntry := range gopathEntries {
 		path0 := filepath.Join(gopathEntry, "src")
 		entries, err := ioutil.ReadDir(filepath.Join(path0, dirname))
