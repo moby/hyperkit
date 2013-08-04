@@ -14,8 +14,8 @@ import (
 func GetDocPackage(ImportPath string) *doc.Package {
 	bpkg, err := build.Import(ImportPath, "", 0)
 	CheckError(err)
-	fset := token.NewFileSet()
 	files := make(map[string]*ast.File)
+	fset := token.NewFileSet()
 	for _, name := range append(bpkg.GoFiles, bpkg.CgoFiles...) {
 		file, err := parser.ParseFile(fset, filepath.Join(bpkg.Dir, name), nil, parser.ParseComments)
 		CheckError(err)
