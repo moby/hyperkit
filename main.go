@@ -1,8 +1,8 @@
-package main
+package gist5571468
 
 import (
-	"io/ioutil"
 	. "gist.github.com/5286084.git"
+	"io/ioutil"
 )
 
 func MustReadFile(filename string) string {
@@ -15,5 +15,14 @@ func MustReadFileB(filename string) []byte {
 	return b
 }
 
-func main() {
+func TryReadFile(filename string) string {
+	return string(TryReadFileB(filename))
+}
+
+func TryReadFileB(filename string) []byte {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return []byte{}
+	}
+	return b
 }
