@@ -1,11 +1,14 @@
-package main
+package gist5639599
 
 import (
-	"go/token"
-	"go/printer"
 	"bytes"
 	"fmt"
+	"go/printer"
+	"go/token"
 )
+
+// Consistent with the default gofmt behavior
+var config = &printer.Config{Mode: printer.UseSpaces | printer.TabIndent}
 
 func SprintAst(fset *token.FileSet, node interface{}) string {
 	var buf bytes.Buffer
