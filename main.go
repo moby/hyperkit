@@ -8,11 +8,11 @@ import (
 )
 
 // Consistent with the default gofmt behavior
-var config = &printer.Config{Mode: printer.UseSpaces | printer.TabIndent}
+var config = &printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
 
 func SprintAst(fset *token.FileSet, node interface{}) string {
 	var buf bytes.Buffer
-	printer.Fprint(&buf, fset, node)
+	config.Fprint(&buf, fset, node)
 	return buf.String()
 }
 
