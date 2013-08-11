@@ -29,6 +29,3 @@ func PrintlnAstBare(node interface{}) {
 	fset := token.NewFileSet()
 	PrintlnAst(fset, node)
 }
-
-func main() {
-}
