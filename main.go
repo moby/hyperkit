@@ -3,18 +3,18 @@ package main
 import (
 	"io/ioutil"
 	//. "gist.github.com/5286084.git"
-	"path/filepath"
+	"fmt"
 	. "gist.github.com/5504644.git"
 	. "gist.github.com/5639599.git"
-	"fmt"
-	"os"
 	"go/doc"
+	"os"
+	"path/filepath"
 )
 
 func printPackageSummary(dpkg *doc.Package) {
 	fmt.Println(`import . "` + dpkg.ImportPath + `"`)
 	for _, f := range dpkg.Funcs {
-		fmt.Print("  ")
+		fmt.Print("\t")
 		PrintlnAstBare(f.Decl)
 	}
 	fmt.Println()
@@ -40,7 +40,7 @@ func PrintPackageSummariesInDir(dirname string) {
 			continue
 		}
 		//for _, v := range entries {
-		for i := len(entries)-1; i >= 0; i-- {
+		for i := len(entries) - 1; i >= 0; i-- {
 			v := entries[i]
 			if v.IsDir() {
 				PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
