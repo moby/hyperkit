@@ -1,6 +1,7 @@
 package gist6096872
 
 import (
+	"bufio"
 	"io"
 )
 
@@ -27,6 +28,27 @@ func ByteReader(r io.Reader) (<-chan []byte, <-chan error) {
 				if s >= len(buf) {
 					break inner
 				}
+			}
+		}
+	}()
+
+	return ch, errCh
+}
+
+func LineReader(r io.Reader) (<-chan []byte, <-chan error) {
+	ch := make(chan []byte)
+	errCh := make(chan error)
+
+	go func() {
+		br := bufio.NewReader(r)
+		for {
+			line, err := br.ReadBytes('\n')
+			if err == nil {
+				ch <- line[:len(line)-1] // Trim newline
+			} else {
+				ch <- line
+				errCh <- err
+				return
 			}
 		}
 	}()
