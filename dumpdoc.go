@@ -1,4 +1,4 @@
-package main
+package gist5504644
 
 import (
 	. "gist.github.com/5286084.git"
@@ -11,7 +11,7 @@ import (
 	//"github.com/davecgh/go-spew/spew"
 )
 
-func GetDocPackage(ImportPath string) *doc.Package {
+func getAstPackage(ImportPath string) (*ast.Package, string) {
 	bpkg, err := build.Import(ImportPath, "", 0)
 	CheckError(err)
 	files := make(map[string]*ast.File)
@@ -21,8 +21,17 @@ func GetDocPackage(ImportPath string) *doc.Package {
 		CheckError(err)
 		files[name] = file
 	}
-	apkg := &ast.Package{Name: bpkg.Name, Files: files}
-	return doc.New(apkg, bpkg.ImportPath, 0)
+	return &ast.Package{Name: bpkg.Name, Files: files}, bpkg.ImportPath
+}
+
+func GetDocPackage(ImportPath string) *doc.Package {
+	apkg, ImportPath := getAstPackage(ImportPath)
+	return doc.New(apkg, ImportPath, 0)
+}
+
+func GetDocPackageAll(ImportPath string) *doc.Package {
+	apkg, ImportPath := getAstPackage(ImportPath)
+	return doc.New(apkg, ImportPath, doc.AllDecls) // TODO: Is doc.AllMethods needed also?
 }
 
 func main() {
