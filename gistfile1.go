@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
+	. "gist.github.com/5210270.git"
 	. "gist.github.com/5504644.git"
 	"strings"
-	. "gist.github.com/5210270.git"
-	"fmt"
 )
 
 // Generates an anonymous usage for the given import statement to avoid "imported and not used" errors
@@ -37,7 +37,7 @@ func GetForcedUse(ImportPath string) string {
 //
 // e.g. `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`
 func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
-	dpkg := GetDocPackage(ImportPath)
+	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
 
 	// Uncomment only for testing purposes
 	//dpkg.Funcs = dpkg.Funcs[0:0]
