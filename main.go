@@ -1,4 +1,4 @@
-package main
+package gist5645828
 
 import (
 	"io/ioutil"
@@ -21,11 +21,11 @@ func printPackageSummary(dpkg *doc.Package) {
 }
 
 func PrintPackageSummary(ImportPath string) {
-	printPackageSummary(GetDocPackage(ImportPath))
+	printPackageSummary(GetDocPackage(BuildPackageFromImportPath(ImportPath)))
 }
 
 func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
-	dpkg := GetDocPackage(ImportPath)
+	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
 	fmt.Println(filepath.Join(fullPath, dpkg.Filenames[0]))
 	printPackageSummary(dpkg)
 }
