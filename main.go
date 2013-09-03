@@ -1,26 +1,22 @@
 package gist5259939
 
 import (
-	. "gist.github.com/5258650.git"
 	"path/filepath"
-	"runtime/debug"
-	"strings"
+	"runtime"
 	//. "gist.github.com/5504644.git"
 )
 
 // Gets the full path of the Go source file where this function was called from
 func GetThisGoSourceFilepath() string {
-	path := GetLine(string(debug.Stack()), 2)
-	path = path[0:strings.Index(path, ":")]
-	return path
+	_, file, _, _ := runtime.Caller(1)
+	return file
 }
 
 // Gets the parent directory of the Go source file where this function was called from
 func GetThisGoSourceDir() string {
-	path := GetLine(string(debug.Stack()), 2)
-	path = path[0:strings.Index(path, ":")]
-	path, _ = filepath.Split(path)
-	return path
+	_, file, _, _ := runtime.Caller(1)
+	dir, _ := filepath.Split(file)
+	return dir
 }
 
 func main() {
