@@ -1,4 +1,4 @@
-package main
+package gist6433744
 
 import (
 	"bytes"
