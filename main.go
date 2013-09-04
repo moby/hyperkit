@@ -57,3 +57,44 @@ func main() {
 
 	println(GetSourceAsString(f))
 }
+
+/* Need to find v of type (*ast.FuncLit) with startIndex <= v.(*ast.FuncLit).Type.Func-1 <= endIndex
+
+Rhs: ([]ast.Expr)([]ast.Expr{
+	(*ast.FuncLit)(&ast.FuncLit{
+		Type: (*ast.FuncType)(&ast.FuncType{
+			Func: (token.Pos)(1112),
+			Params: (*ast.FieldList)(&ast.FieldList{
+				Opening: (token.Pos)(1116),
+				List:    ([]*ast.Field)([]*ast.Field{}),
+				Closing: (token.Pos)(1117),
+			}),
+			Results: (*ast.FieldList)(nil),
+		}),
+		Body: (*ast.BlockStmt)(&ast.BlockStmt{
+			Lbrace: (token.Pos)(1119),
+			List: ([]ast.Stmt)([]ast.Stmt{
+				(*ast.ExprStmt)(&ast.ExprStmt{
+					X: (*ast.CallExpr)(&ast.CallExpr{
+						Fun: (*ast.Ident)(&ast.Ident{
+							NamePos: (token.Pos)(1123),
+							Name:    (string)("println"),
+							Obj:     (*ast.Object)(nil),
+						}),
+						Lparen: (token.Pos)(1130),
+						Args: ([]ast.Expr)([]ast.Expr{
+							(*ast.BasicLit)(&ast.BasicLit{
+								ValuePos: (token.Pos)(1131),
+								Kind:     (token.Token)(9),
+								Value:    (string)("\"Hello from anon func!\""),
+							}),
+						}),
+						Ellipsis: (token.Pos)(0),
+						Rparen:   (token.Pos)(1154),
+					}),
+				}),
+			}),
+			Rbrace: (token.Pos)(1157),
+		}),
+	}),
+}),*/
