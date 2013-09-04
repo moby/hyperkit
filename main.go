@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
 	. "gist.github.com/5258650.git"
 	. "gist.github.com/5259939.git"
 	. "gist.github.com/5286084.git"
 	. "gist.github.com/5504644.git"
 	. "gist.github.com/5707298.git"
-	"gist.github.com/6418290.git"
+	. "gist.github.com/6433744.git"
 	"github.com/shurcooL/go-goon"
 	"go/parser"
 	"go/token"
+	"io/ioutil"
 	"reflect"
 	"runtime"
 	"runtime/debug"
@@ -28,42 +30,30 @@ var _ = GetLine
 // Returns source of anon func string.
 // TODO: Finish...
 func GetSourceAsString(f interface{}) string {
+	pc := reflect.ValueOf(f).Pointer()
+	file, line := runtime.FuncForPC(pc).FileLine(pc)
+
+	var startIndex, endIndex int
 	{
-		println(string(debug.Stack()))
-		buf := make([]byte, 1024)
-		runtime.Stack(buf, true)
-		println(string(buf))
+		b, err := ioutil.ReadFile(file)
+		CheckError(err)
+		startIndex, endIndex = GetLineStartEndIndicies(b, line-1)
 	}
 
-	{
-		val := reflect.ValueOf(f)
-		println(val.Type().Kind().String())
+	fs := token.NewFileSet()
+	a, err := parser.ParseFile(fs, file, nil, 0)
+	CheckError(err)
+	if 0 == 1 {
+		goon.Dump(a)
 	}
 
-	return "???"
+	return fmt.Sprintf("%s: %d -> [%d, %d]", file, line, startIndex, endIndex)
 }
 
 func main() {
-	f := func() { println("Hello from anon func!") }
-	f()
-
-	{
-		doc := GetDocPackageAll(BuildPackageFromSrcDir(GetThisGoSourceDir()))
-
-		println(doc.Filenames[0])
-		//goon.Dump(doc)
-	}
-
-	{
-		fs := token.NewFileSet()
-		f, err := parser.ParseFile(fs, GetThisGoSourceFilepath(), nil, 0)
-		CheckError(err)
-
-		println(f.Name.String())
+	f := func() {
+		println("Hello from anon func!")
 	}
 
 	println(GetSourceAsString(f))
-	var thisIsAFunkyVarName int
-	//var name string = (GetVarName)    (thisIsAFunkyVarName)
-	println("Name of var:", (gist6418290.GetVarName)(thisIsAFunkyVarName))
 }
