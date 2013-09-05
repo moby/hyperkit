@@ -9,34 +9,27 @@ type state struct {
 }
 
 func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) interface{} {
-	// TODO: Should I check v.CanInterface()? Maybe I can get away without it...
+	// TODO: Should I check v.CanInterface()? It seems like I might be able to get away without it...
 	if query(v.Interface()) {
 		return v.Interface()
-	}
-
-	if v.Kind() == reflect.Interface && !v.IsNil() {
-		v = v.Elem()
 	}
 
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			q := s.findFirst(v.Field(i), query)
-			if q != nil {
+			if q := s.findFirst(v.Field(i), query); q != nil {
 				return q
 			}
 		}
 	case reflect.Map:
 		for _, key := range v.MapKeys() {
-			q := s.findFirst(v.MapIndex(key), query)
-			if q != nil {
+			if q := s.findFirst(v.MapIndex(key), query); q != nil {
 				return q
 			}
 		}
 	case reflect.Array, reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
-			q := s.findFirst(v.Index(i), query)
-			if q != nil {
+			if q := s.findFirst(v.Index(i), query); q != nil {
 				return q
 			}
 		}
@@ -44,10 +37,15 @@ func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) inter
 		if !v.IsNil() {
 			if !s.Visited[v.Pointer()] {
 				s.Visited[v.Pointer()] = true
-				q := s.findFirst(v.Elem(), query)
-				if q != nil {
+				if q := s.findFirst(v.Elem(), query); q != nil {
 					return q
 				}
+			}
+		}
+	case reflect.Interface:
+		if !v.IsNil() {
+			if q := s.findFirst(v.Elem(), query); q != nil {
+				return q
 			}
 		}
 	}
