@@ -46,7 +46,7 @@ func GetSourceAsString(f interface{}) string {
 	}
 
 	fs := token.NewFileSet()
-	fileAst, err := parser.ParseFile(fs, file, nil, 0*parser.ParseComments)
+	fileAst, err := parser.ParseFile(fs, file, nil, 1*parser.ParseComments)
 	CheckError(err)
 	if 0 == 1 {
 		goon.Dump(fileAst)
@@ -69,7 +69,7 @@ var f2 = func() { panic(1337) }
 
 func main() {
 	f := func() {
-		println("Hello from anon func!")
+		println("Hello from anon func!") // Comments are currently not preserved
 	}
 	if 5*5 > 26 {
 		f = f2
