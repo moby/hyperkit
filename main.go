@@ -8,38 +8,34 @@ type state struct {
 	Visited map[uintptr]bool
 }
 
-func unpackValue(v reflect.Value) reflect.Value {
-	if v.Kind() == reflect.Interface && !v.IsNil() {
-		return v.Elem()
-	} else {
-		return v
-	}
-}
-
 func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) interface{} {
 	// TODO: Should I check v.CanInterface()? Maybe I can get away without it...
 	if query(v.Interface()) {
 		return v.Interface()
 	}
 
+	if v.Kind() == reflect.Interface && !v.IsNil() {
+		v = v.Elem()
+	}
+
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			q := s.findFirst(unpackValue(v.Field(i)), query)
+			q := s.findFirst(v.Field(i), query)
 			if q != nil {
 				return q
 			}
 		}
 	case reflect.Map:
 		for _, key := range v.MapKeys() {
-			q := s.findFirst(unpackValue(v.MapIndex(key)), query)
+			q := s.findFirst(v.MapIndex(key), query)
 			if q != nil {
 				return q
 			}
 		}
 	case reflect.Array, reflect.Slice:
 		for i := 0; i < v.Len(); i++ {
-			q := s.findFirst(unpackValue(v.Index(i)), query)
+			q := s.findFirst(v.Index(i), query)
 			if q != nil {
 				return q
 			}
@@ -61,7 +57,7 @@ func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) inter
 
 func FindFirst(d interface{}, query func(i interface{}) bool) interface{} {
 	s := state{Visited: make(map[uintptr]bool)}
-	return s.findFirst(unpackValue(reflect.ValueOf(d)), query)
+	return s.findFirst(reflect.ValueOf(d), query)
 }
 
 func main() {
