@@ -35,9 +35,9 @@ func GetSourceAsString(f interface{}) string {
 		}
 		return false
 	}
-	flit := FindFirst(fileAst, query)
+	funcLit := FindFirst(fileAst, query)
 
-	return SprintAst(fs, flit)
+	return SprintAst(fs, funcLit)
 }
 
 var f2 = func() { panic(1337) }
