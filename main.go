@@ -26,7 +26,7 @@ func GetSourceAsString(f interface{}) string {
 	}
 
 	fs := token.NewFileSet()
-	fileAst, err := parser.ParseFile(fs, file, nil, 1*parser.ParseComments)
+	fileAst, err := parser.ParseFile(fs, file, nil, 0*parser.ParseComments)
 	CheckError(err)
 
 	query := func(i interface{}) bool {
