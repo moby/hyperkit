@@ -6,9 +6,8 @@ import (
 )
 
 // Credit to Tarmigan
-func ByteReader(r io.Reader) (<-chan []byte, <-chan error) {
+func ByteReader(r io.Reader) <-chan []byte {
 	ch := make(chan []byte)
-	errCh := make(chan error)
 
 	go func() {
 		for {
@@ -22,7 +21,7 @@ func ByteReader(r io.Reader) (<-chan []byte, <-chan error) {
 					s += n
 				}
 				if err != nil {
-					errCh <- err
+					close(ch)
 					return
 				}
 				if s >= len(buf) {
@@ -32,12 +31,11 @@ func ByteReader(r io.Reader) (<-chan []byte, <-chan error) {
 		}
 	}()
 
-	return ch, errCh
+	return ch
 }
 
-func LineReader(r io.Reader) (<-chan []byte, <-chan error) {
+func LineReader(r io.Reader) <-chan []byte {
 	ch := make(chan []byte)
-	errCh := make(chan error)
 
 	go func() {
 		br := bufio.NewReader(r)
@@ -47,11 +45,11 @@ func LineReader(r io.Reader) (<-chan []byte, <-chan error) {
 				ch <- line[:len(line)-1] // Trim newline
 			} else {
 				ch <- line
-				errCh <- err
+				close(ch)
 				return
 			}
 		}
 	}()
 
-	return ch, errCh
+	return ch
 }
