@@ -9,22 +9,20 @@ import (
 // First line has index 0.
 // Returns (-1, -1) if line is not found.
 func GetLineStartEndIndicies(b []byte, lineIndex int) (startIndex, endIndex int) {
-	n := 0
-	line := 0
-	for {
-		o := bytes.IndexByte(b[n:], '\n')
+	index := 0
+	for line := 0; ; line++ {
+		lineLength := bytes.IndexByte(b[index:], '\n')
 		if line == lineIndex {
-			if o == -1 {
-				return n, len(b)
+			if lineLength == -1 {
+				return index, len(b)
 			} else {
-				return n, n + o
+				return index, index + lineLength
 			}
 		}
-		if o == -1 {
+		if lineLength == -1 {
 			break
 		}
-		n += o + 1
-		line++
+		index += lineLength + 1
 	}
 
 	return -1, -1
@@ -44,6 +42,5 @@ last`)
 		if s == -1 {
 			break
 		}
-
 	}
 }
