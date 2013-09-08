@@ -51,4 +51,9 @@ func main() {
 	}
 
 	print(GetSourceAsString(f))
+
+	// Output:
+	// func() {
+	// 	println("Hello from anon func!")
+	// }
 }
