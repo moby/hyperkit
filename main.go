@@ -30,7 +30,8 @@ func GetSourceAsString(f interface{}) string {
 	CheckError(err)
 
 	query := func(i interface{}) bool {
-		if f, ok := i.(*ast.FuncLit); ok && startIndex <= int(f.Type.Func)-1 && int(f.Type.Func)-1 <= endIndex {
+		// TODO: Abstract-out the overlap check
+		if f, ok := i.(*ast.FuncLit); ok && ((startIndex <= int(f.Pos())-1 && int(f.Pos())-1 <= endIndex) || (int(f.Pos())-1 <= startIndex && endIndex <= int(f.End())-1)) {
 			return true
 		}
 		return false
