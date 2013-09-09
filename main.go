@@ -38,6 +38,10 @@ func GetSourceAsString(f interface{}) string {
 	}
 	funcLit := FindFirst(fileAst, query)
 
+	if funcLit == nil {
+		return "<func src not found>"
+	}
+
 	return SprintAst(fs, funcLit)
 }
 
@@ -51,10 +55,23 @@ func main() {
 		f = f2
 	}
 
-	print(GetSourceAsString(f))
+	println(GetSourceAsString(f))
 
 	// Output:
 	// func() {
 	// 	println("Hello from anon func!")
+	// }
+
+	f2 := func(a int, b int) int {
+		c := a + b
+		return c
+	}
+
+	println(GetSourceAsString(f2))
+
+	// Output:
+	// func(a int, b int) int {
+	// 	c := a + b
+	// 	return c
 	// }
 }
