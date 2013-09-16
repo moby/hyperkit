@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"reflect"
 	"runtime"
+
+	"fmt"
 )
 
 // Returns the source of the func f.
@@ -39,7 +41,7 @@ func GetSourceAsString(f interface{}) string {
 	funcLit := FindFirst(fileAst, query)
 
 	if funcLit == nil {
-		return "<func src not found>"
+		return fmt.Sprintf("<func src not found at %v:%v>", file, line)
 	}
 
 	return SprintAst(fs, funcLit)
