@@ -35,16 +35,18 @@ func GetSourceAsString(f interface{}) string {
 		// TODO: Factor-out the unusual overlap check
 		if f, ok := i.(*ast.FuncLit); ok && ((startIndex <= int(f.Pos())-1 && int(f.Pos())-1 <= endIndex) || (int(f.Pos())-1 <= startIndex && startIndex <= int(f.End())-1)) {
 			return true
+		} else if f, ok := i.(*ast.FuncDecl); ok && ((startIndex <= int(f.Pos())-1 && int(f.Pos())-1 <= endIndex) || (int(f.Pos())-1 <= startIndex && startIndex <= int(f.End())-1)) {
+			return true
 		}
 		return false
 	}
-	funcLit := FindFirst(fileAst, query)
+	funcAst := FindFirst(fileAst, query)
 
-	if funcLit == nil {
+	if funcAst == nil {
 		return fmt.Sprintf("<func src not found at %v:%v>", file, line)
 	}
 
-	return SprintAst(fs, funcLit)
+	return SprintAst(fs, funcAst)
 }
 
 var f2 = func() { panic(1337) }
@@ -76,4 +78,6 @@ func main() {
 	// 	c := a + b
 	// 	return c
 	// }
+
+	println(GetSourceAsString(GetSourceAsString))
 }
