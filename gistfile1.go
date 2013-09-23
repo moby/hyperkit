@@ -1,4 +1,4 @@
-package main
+package gist4727543
 
 import (
 	"fmt"
@@ -18,12 +18,14 @@ func GetForcedUseFromImport(Import string) (out string) {
 		}
 	}()
 	ImportParts := strings.Split(Import, " ")
-	if 1 == len(ImportParts) {
+	switch len(ImportParts) {
+	case 1:
 		return GetForcedUse(TrimQuotes(ImportParts[0]))
-	} else if 2 == len(ImportParts) {
+	case 2:
 		return GetForcedUseRenamed(TrimQuotes(ImportParts[1]), ImportParts[0])
+	default:
+		panic("Invalid import string.")
 	}
-	panic("Invalid import string.")
 }
 
 // Generates an anonymous usage of the package to avoid "imported and not used" errors
