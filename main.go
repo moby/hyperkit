@@ -11,6 +11,47 @@ import (
 	"path/filepath"
 )
 
+/*
+$ doc doc.Package
+http://golang.org/pkg/go/doc/#Package
+/usr/local/go/src/pkg/go/doc/doc.go:14:
+// Package is the documentation for an entire package.
+type Package struct {
+	Doc		string
+	Name		string
+	ImportPath	string
+	Imports		[]string
+	Filenames	[]string
+	Notes		map[string][]*Note
+	// DEPRECATED. For backward compatibility Bugs is still populated,
+	// but all new code should use Notes instead.
+	Bugs	[]string
+
+	// declarations
+	Consts	[]*Value
+	Types	[]*Type
+	Vars	[]*Value
+	Funcs	[]*Func
+}
+*/
+func PrintPackageFullSummary(dpkg *doc.Package) {
+	for _, v := range dpkg.Vars {
+		PrintlnAstBare(v.Decl)
+	}
+	fmt.Println()
+	for _, f := range dpkg.Funcs {
+		PrintlnAstBare(f.Decl)
+	}
+	fmt.Println()
+	for _, c := range dpkg.Consts {
+		PrintlnAstBare(c.Decl)
+	}
+	fmt.Println()
+	for _, t := range dpkg.Types {
+		PrintlnAstBare(t.Decl)
+	}
+}
+
 func printPackageSummary(dpkg *doc.Package) {
 	fmt.Println(`import . "` + dpkg.ImportPath + `"`)
 	for _, f := range dpkg.Funcs {
@@ -52,5 +93,6 @@ func PrintPackageSummariesInDir(dirname string) {
 
 func main() {
 	//PrintPackageSummary("gist.github.com/5639599.git"); return
-	PrintPackageSummariesInDir("gist.github.com")
+	//PrintPackageSummariesInDir("gist.github.com")
+	PrintPackageFullSummary(GetDocPackageAll(BuildPackageFromImportPath("gist.github.com/5694308.git")))
 }
