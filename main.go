@@ -58,31 +58,54 @@ func FindFirst(d interface{}, query func(i interface{}) bool) interface{} {
 	return s.findFirst(reflect.ValueOf(d), query)
 }
 
-func main() {
-	type Inner struct {
-		Field1 string
-		Field2 int
-		Field3 *Inner
-	}
-	type Lang struct {
-		Name  string
-		Year  int
-		URL   string
-		Inner *Inner
-	}
+type state2 struct {
+	state
+	Found map[interface{}]bool
+}
 
-	x := Lang{
-		Name:  "Go",
-		Year:  2009,
-		URL:   "http",
-		Inner: &Inner{},
+func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		// TODO: Instead of skipping nil values, maybe pass the info as a bool parameter to query?
+		if v.IsNil() {
+			return
+		}
 	}
 
-	//x.Inner.Field3 = &Inner{}
-	x.Inner.Field3 = x.Inner
+	// TODO: Should I check v.CanInterface()? It seems like I might be able to get away without it...
+	if query(v.Interface()) {
+		s.Found[v.Interface()] = true
+	}
 
-	//goon.Dump(x)
-	println("\n---\n")
-	//Dump(x)
-	// ... unfinished test
+	switch v.Kind() {
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			s.findAll(v.Field(i), query)
+		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			s.findAll(v.MapIndex(key), query)
+		}
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			s.findAll(v.Index(i), query)
+		}
+	case reflect.Ptr:
+		if !v.IsNil() {
+			if !s.Visited[v.Pointer()] {
+				s.Visited[v.Pointer()] = true
+				s.findAll(v.Elem(), query)
+			}
+		}
+	case reflect.Interface:
+		if !v.IsNil() {
+			s.findAll(v.Elem(), query)
+		}
+	}
+}
+
+func FindAll(d interface{}, query func(i interface{}) bool) map[interface{}]bool {
+	s := state2{state: state{Visited: make(map[uintptr]bool)}, Found: make(map[interface{}]bool)}
+	s.findAll(reflect.ValueOf(d), query)
+	return s.Found
 }
