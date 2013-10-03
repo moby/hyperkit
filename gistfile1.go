@@ -1,8 +1,8 @@
 package gist5092053
 
 import (
-	"sort"
 	. "gist.github.com/5408860.git"
+	"sort"
 )
 
 // A data structure to hold a key/value pair.
@@ -61,8 +61,8 @@ func SortMapByKey(m map[rune]int, rev bool) RuneIntPairList {
 func main() {
 	m := map[string]int{
 		"blah": 5,
-		"boo": 9,
-		"yah": 1,
+		"boo":  9,
+		"yah":  1,
 	}
 
 	sm := SortMapByValue(m)
