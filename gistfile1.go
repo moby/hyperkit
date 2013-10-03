@@ -1,4 +1,4 @@
-package main
+package gist5092053
 
 import (
 	"sort"
