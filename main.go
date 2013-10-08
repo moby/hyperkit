@@ -17,7 +17,11 @@ import (
 
 // Returns the source of the func f.
 func GetSourceAsString(f interface{}) string {
-	pc := reflect.ValueOf(f).Pointer()
+	v := reflect.ValueOf(f)
+	if v.IsNil() {
+		return "<nil>"
+	}
+	pc := v.Pointer()
 	file, line := runtime.FuncForPC(pc).FileLine(pc)
 
 	var startIndex, endIndex int
