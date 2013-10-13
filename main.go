@@ -12,7 +12,7 @@ import (
 )
 
 // Gets the expression as a string.
-func ExprToString(interface{}) string {
+func GetExprAsString(interface{}) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	str := GetLine(string(debug.Stack()), 3)
 	str = str[strings.Index(str, ": ")+len(": "):]
@@ -20,7 +20,7 @@ func ExprToString(interface{}) string {
 	CheckError(err)
 
 	innerQuery := func(i interface{}) bool {
-		if ident, ok := i.(*ast.Ident); ok && ident.Name == "ExprToString" {
+		if ident, ok := i.(*ast.Ident); ok && ident.Name == "GetExprAsString" {
 			return true
 		}
 		return false
@@ -43,8 +43,8 @@ func ExprToString(interface{}) string {
 
 func main() {
 	var thisIsAFunkyVarName int
-	println("Name of var:", ExprToString(thisIsAFunkyVarName))
-	var name string = ExprToString(thisIsAFunkyVarName)
+	println("Name of var:", GetExprAsString(thisIsAFunkyVarName))
+	var name string = GetExprAsString(thisIsAFunkyVarName)
 	println("Name of var:", name)
-	println("Some func name:", ExprToString(strings.HasPrefix))
+	println("Some func name:", GetExprAsString(strings.HasPrefix))
 }
