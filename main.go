@@ -2,30 +2,17 @@ package gist6418290
 
 import (
 	. "gist.github.com/5258650.git"
-	//. "gist.github.com/5259939.git"
 	. "gist.github.com/5286084.git"
-	//. "gist.github.com/5504644.git"
+	. "gist.github.com/5639599.git"
 	. "gist.github.com/5707298.git"
 	. "gist.github.com/6445065.git"
-	//"github.com/shurcooL/go-goon"
 	"go/ast"
-	//"reflect"
-	//"runtime"
 	"runtime/debug"
 	"strings"
 )
 
-/*var _ = GetThisGoSourceDir
-var _ = BuildPackageFromImportPath
-var _ = CheckError
-var _ = debug.FreeOSMemory
-var _ = reflect.Copy
-var _ = goon.Dump
-var _ = ParseDecl
-var _ = runtime.BlockProfile*/
-
-// Gets the name of the variable.
-func GetVarName(interface{}) string {
+// Gets the expression as a string.
+func ExprToString(interface{}) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	str := GetLine(string(debug.Stack()), 3)
 	str = str[strings.Index(str, ": ")+len(": "):]
@@ -33,7 +20,7 @@ func GetVarName(interface{}) string {
 	CheckError(err)
 
 	innerQuery := func(i interface{}) bool {
-		if ident, ok := i.(*ast.Ident); ok && ident.Name == "GetVarName" {
+		if ident, ok := i.(*ast.Ident); ok && ident.Name == "ExprToString" {
 			return true
 		}
 		return false
@@ -48,15 +35,16 @@ func GetVarName(interface{}) string {
 	callExpr, _ := FindFirst(p, query).(*ast.CallExpr)
 
 	if callExpr == nil {
-		return "<var name not found>"
+		return "<expr not found>"
 	}
 
-	return callExpr.Args[0].(*ast.Ident).Name
+	return SprintAstBare(callExpr.Args[0])
 }
 
 func main() {
 	var thisIsAFunkyVarName int
-	println("Name of var:", GetVarName(thisIsAFunkyVarName))
-	var name string = GetVarName(thisIsAFunkyVarName)
+	println("Name of var:", ExprToString(thisIsAFunkyVarName))
+	var name string = ExprToString(thisIsAFunkyVarName)
 	println("Name of var:", name)
+	println("Some func name:", ExprToString(strings.HasPrefix))
 }
