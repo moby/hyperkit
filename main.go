@@ -22,6 +22,7 @@ func ReadGpcFile(path string) Polygon {
 
 	file, err := os.Open(path)
 	CheckError(err)
+	defer file.Close()
 
 	var numContours uint64
 	fmt.Fscan(file, &numContours)
