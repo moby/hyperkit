@@ -21,6 +21,9 @@ func GetParentArgExprAsString(argIndex uint32) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	parentName := GetLine(string(debug.Stack()), 3)
 	parentName = parentName[1:strings.Index(parentName, ": ")]
+	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix
+		parentName = parentName[dotPos+1:]
+	}
 
 	str := GetLine(string(debug.Stack()), 5)
 	str = str[strings.Index(str, ": ")+len(": "):]
