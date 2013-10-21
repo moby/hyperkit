@@ -13,34 +13,10 @@ import (
 
 // Gets the expression as a string.
 func GetExprAsString(interface{}) string {
-	// TODO: Replace use of debug.Stack() with direct use of runtime package...
-	str := GetLine(string(debug.Stack()), 3)
-	str = str[strings.Index(str, ": ")+len(": "):]
-	p, err := ParseStmt(str)
-	CheckError(err)
-
-	innerQuery := func(i interface{}) bool {
-		if ident, ok := i.(*ast.Ident); ok && ident.Name == "GetExprAsString" {
-			return true
-		}
-		return false
-	}
-
-	query := func(i interface{}) bool {
-		if c, ok := i.(*ast.CallExpr); ok && nil != FindFirst(c.Fun, innerQuery) {
-			return true
-		}
-		return false
-	}
-	callExpr, _ := FindFirst(p, query).(*ast.CallExpr)
-
-	if callExpr == nil {
-		return "<expr not found>"
-	}
-
-	return SprintAstBare(callExpr.Args[0])
+	return GetParentArgExprAsString(0)
 }
 
+// Gets the argIndex argument expression of parent func call as a string.
 func GetParentArgExprAsString(argIndex uint32) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	parentName := GetLine(string(debug.Stack()), 3)
