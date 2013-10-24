@@ -19,13 +19,15 @@ func GetExprAsString(interface{}) string {
 // Gets the argIndex argument expression of parent func call as a string.
 func GetParentArgExprAsString(argIndex uint32) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
-	parentName := GetLine(string(debug.Stack()), 3)
+	stack := string(debug.Stack())
+
+	parentName := GetLine(stack, 3)
 	parentName = parentName[1:strings.Index(parentName, ": ")]
 	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix
 		parentName = parentName[dotPos+1:]
 	}
 
-	str := GetLine(string(debug.Stack()), 5)
+	str := GetLine(stack, 5)
 	str = str[strings.Index(str, ": ")+len(": "):]
 	p, err := ParseStmt(str)
 	CheckError(err)
