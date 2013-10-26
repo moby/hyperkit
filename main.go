@@ -16,18 +16,17 @@ func GetExprAsString(interface{}) string {
 	return GetParentArgExprAsString(0)
 }
 
-// Gets the argIndex argument expression of parent func call as a string.
-func GetParentArgExprAsString(argIndex uint32) string {
+func getParent2ArgExprAllAsAst() []ast.Expr {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	stack := string(debug.Stack())
 
-	parentName := GetLine(stack, 3)
+	parentName := GetLine(stack, 5)
 	parentName = parentName[1:strings.Index(parentName, ": ")]
 	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix
 		parentName = parentName[dotPos+1:]
 	}
 
-	str := GetLine(stack, 5)
+	str := GetLine(stack, 7)
 	str = str[strings.Index(str, ": ")+len(": "):]
 	p, err := ParseStmt(str)
 	CheckError(err)
@@ -48,10 +47,36 @@ func GetParentArgExprAsString(argIndex uint32) string {
 	callExpr, _ := FindFirst(p, query).(*ast.CallExpr)
 
 	if callExpr == nil {
+		return nil
+	}
+	return callExpr.Args
+}
+
+// Gets the argIndex argument expression of parent func call as a string.
+func GetParentArgExprAsString(argIndex uint32) string {
+	args := getParent2ArgExprAllAsAst()
+	if args == nil {
 		return "<expr not found>"
 	}
+	if argIndex >= uint32(len(args)) {
+		return "<out of range>"
+	}
 
-	return SprintAstBare(callExpr.Args[argIndex])
+	return SprintAstBare(args[argIndex])
+}
+
+// Gets all argument expressions of parent func call as a string.
+func GetParentArgExprAllAsString() []string {
+	args := getParent2ArgExprAllAsAst()
+	if args == nil {
+		return nil
+	}
+
+	out := make([]string, len(args))
+	for i := range args {
+		out[i] = SprintAstBare(args[i])
+	}
+	return out
 }
 
 func getMySecondArgExprAsString(int, int) string {
