@@ -35,6 +35,7 @@ func GetSourceAsString(f interface{}) string {
 	fileAst, err := parser.ParseFile(fs, file, nil, 0*parser.ParseComments)
 	CheckError(err)
 
+	// TODO: Consider using ast.Walk() instead of custom FindFirst()
 	query := func(i interface{}) bool {
 		// TODO: Factor-out the unusual overlap check
 		if f, ok := i.(*ast.FuncLit); ok && ((startIndex <= int(f.Pos())-1 && int(f.Pos())-1 <= endIndex) || (int(f.Pos())-1 <= startIndex && startIndex <= int(f.End())-1)) {
