@@ -64,6 +64,7 @@ type state2 struct {
 }
 
 func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
+	//if !v.IsValid() { return }
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 		// TODO: Instead of skipping nil values, maybe pass the info as a bool parameter to query?
