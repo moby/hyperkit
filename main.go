@@ -48,7 +48,8 @@ func PrintPackageFullSummary(dpkg *doc.Package) {
 	}
 	fmt.Println()
 	for _, t := range dpkg.Types {
-		PrintlnAstBare(t.Decl)
+		fmt.Println(t.Name)
+		//PrintlnAstBare(t.Decl)
 	}
 }
 
