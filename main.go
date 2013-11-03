@@ -1,14 +1,14 @@
 package gist6418290
 
 import (
-	. "gist.github.com/5258650.git"
-	. "gist.github.com/5286084.git"
-	. "gist.github.com/5639599.git"
-	. "gist.github.com/5707298.git"
-	. "gist.github.com/6445065.git"
 	"go/ast"
 	"runtime/debug"
 	"strings"
+
+	. "gist.github.com/5258650.git"
+	. "gist.github.com/5639599.git"
+	. "gist.github.com/5707298.git"
+	. "gist.github.com/6445065.git"
 )
 
 // Gets the expression as a string.
@@ -29,7 +29,9 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 	str := GetLine(stack, 7)
 	str = str[strings.Index(str, ": ")+len(": "):]
 	p, err := ParseStmt(str)
-	CheckError(err)
+	if err != nil {
+		return nil
+	}
 
 	innerQuery := func(i interface{}) bool {
 		if ident, ok := i.(*ast.Ident); ok && ident.Name == parentName {
