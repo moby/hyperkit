@@ -63,11 +63,18 @@ func printPackageSummary(dpkg *doc.Package) {
 }
 
 func PrintPackageSummary(ImportPath string) {
-	printPackageSummary(GetDocPackage(BuildPackageFromImportPath(ImportPath)))
+	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	if len(dpkg.Funcs) == 0 {
+		return
+	}
+	printPackageSummary(dpkg)
 }
 
 func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	if len(dpkg.Funcs) == 0 {
+		return
+	}
 	fmt.Println(filepath.Join(fullPath, dpkg.Filenames[0]))
 	printPackageSummary(dpkg)
 }
@@ -85,8 +92,8 @@ func PrintPackageSummariesInDir(dirname string) {
 		for i := len(entries) - 1; i >= 0; i-- {
 			v := entries[i]
 			if v.IsDir() {
-				PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
-				//PrintPackageSummary(filepath.Join(dirname, v.Name()))
+				//PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
+				PrintPackageSummary(filepath.Join(dirname, v.Name()))
 			}
 		}
 	}
