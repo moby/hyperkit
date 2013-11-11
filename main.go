@@ -1,11 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	. "gist.github.com/4668739.git"
 	. "gist.github.com/5286084.git"
-	"encoding/json"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/shurcooL/go-goon"
 )
 
 func GetTweet(id string) map[string]interface{} {
@@ -22,6 +22,6 @@ func GetTweetHtml(id string) string {
 }
 
 func main() {
-	spew.Dump(GetTweet("289608996225171456"))
-	spew.Dump(GetTweetHtml("289608996225171456"))
+	goon.Dump(GetTweet("289608996225171456"))
+	goon.Dump(GetTweetHtml("289608996225171456"))
 }
