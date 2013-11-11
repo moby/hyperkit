@@ -9,11 +9,11 @@ import (
 )
 
 func GetTweet(id string) map[string]interface{} {
-	jsonb := HttpGetB("https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true")
-	var f map[string]interface{}
-	err := json.Unmarshal(jsonb, &f)
+	tweetBytes := HttpGetB("https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true")
+	var tweetJson map[string]interface{}
+	err := json.Unmarshal(tweetBytes, &tweetJson)
 	CheckError(err)
-	return f
+	return tweetJson
 }
 
 func GetTweetHtml(id string) string {
