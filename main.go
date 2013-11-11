@@ -1,4 +1,4 @@
-package main
+package gist5439318
 
 import (
 	"encoding/json"
