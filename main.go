@@ -22,7 +22,7 @@ func TryReadFile(filename string) string {
 func TryReadFileB(filename string) []byte {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return []byte{}
+		return nil
 	}
 	return b
 }
