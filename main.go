@@ -1,4 +1,4 @@
-package gist
+package gist7576804
 
 import (
 	"code.google.com/p/go.tools/go/types"
