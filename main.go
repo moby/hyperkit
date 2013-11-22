@@ -38,13 +38,31 @@ func PrintPackageFullSummary(dpkg *doc.Package) {
 	for _, v := range dpkg.Vars {
 		PrintlnAstBare(v.Decl)
 	}
+	for _, t := range dpkg.Types {
+		for _, v := range t.Vars {
+			PrintlnAstBare(v.Decl)
+		}
+	}
 	fmt.Println()
 	for _, f := range dpkg.Funcs {
 		PrintlnAstBare(f.Decl)
 	}
+	for _, t := range dpkg.Types {
+		for _, f := range t.Funcs {
+			PrintlnAstBare(f.Decl)
+		}
+		for _, m := range t.Methods {
+			PrintlnAstBare(m.Decl)
+		}
+	}
 	fmt.Println()
 	for _, c := range dpkg.Consts {
 		PrintlnAstBare(c.Decl)
+	}
+	for _, t := range dpkg.Types {
+		for _, c := range t.Consts {
+			PrintlnAstBare(c.Decl)
+		}
 	}
 	fmt.Println()
 	for _, t := range dpkg.Types {
@@ -91,7 +109,7 @@ func PrintPackageSummariesInDir(dirname string) {
 		//for _, v := range entries {
 		for i := len(entries) - 1; i >= 0; i-- {
 			v := entries[i]
-			if v.IsDir() {
+			if v.IsDir() { // TODO: Build a build.Package to figure out if this is a valid Go package; rather than assuming all dirs are
 				//PrintPackageSummaryWithPath(filepath.Join(dirname, v.Name()), filepath.Join(path0, dirname, v.Name()))
 				PrintPackageSummary(filepath.Join(dirname, v.Name()))
 			}
