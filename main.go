@@ -7,67 +7,52 @@ import (
 	. "gist.github.com/5504644.git"
 	. "gist.github.com/5639599.git"
 	"go/doc"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-/*
-$ doc doc.Package
-http://golang.org/pkg/go/doc/#Package
-/usr/local/go/src/pkg/go/doc/doc.go:14:
-// Package is the documentation for an entire package.
-type Package struct {
-	Doc		string
-	Name		string
-	ImportPath	string
-	Imports		[]string
-	Filenames	[]string
-	Notes		map[string][]*Note
-	// DEPRECATED. For backward compatibility Bugs is still populated,
-	// but all new code should use Notes instead.
-	Bugs	[]string
-
-	// declarations
-	Consts	[]*Value
-	Types	[]*Type
-	Vars	[]*Value
-	Funcs	[]*Func
-}
-*/
 func PrintPackageFullSummary(dpkg *doc.Package) {
+	FprintPackageFullSummary(os.Stdout, dpkg)
+}
+
+func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 	for _, v := range dpkg.Vars {
-		PrintlnAstBare(v.Decl)
+		fmt.Fprintln(w, SprintAstBare(v.Decl))
 	}
 	for _, t := range dpkg.Types {
 		for _, v := range t.Vars {
-			PrintlnAstBare(v.Decl)
+			fmt.Fprintln(w, SprintAstBare(v.Decl))
 		}
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 	for _, f := range dpkg.Funcs {
-		PrintlnAstBare(f.Decl)
+		fmt.Fprintln(w, SprintAstBare(f.Decl))
 	}
 	for _, t := range dpkg.Types {
 		for _, f := range t.Funcs {
-			PrintlnAstBare(f.Decl)
+			fmt.Fprintln(w, SprintAstBare(f.Decl))
 		}
 		for _, m := range t.Methods {
-			PrintlnAstBare(m.Decl)
+			fmt.Fprintln(w, SprintAstBare(m.Decl))
 		}
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 	for _, c := range dpkg.Consts {
-		PrintlnAstBare(c.Decl)
+		//fmt.Fprintln(w, SprintAstBare(c.Decl))
+		fmt.Fprintln(w, strings.Join(c.Names, "\n"))
 	}
 	for _, t := range dpkg.Types {
 		for _, c := range t.Consts {
-			PrintlnAstBare(c.Decl)
+			//fmt.Fprintln(w, SprintAstBare(c.Decl))
+			fmt.Fprintln(w, strings.Join(c.Names, "\n"))
 		}
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 	for _, t := range dpkg.Types {
-		fmt.Println(t.Name)
-		//PrintlnAstBare(t.Decl)
+		//fmt.Fprintln(w, SprintAstBare(t.Decl))
+		fmt.Fprintln(w, t.Name)
 	}
 }
 
