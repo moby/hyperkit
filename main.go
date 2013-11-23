@@ -1,7 +1,6 @@
 package gist5286084
 
-import (
-)
+import ()
 
 // Panics on error
 func CheckError(err error) {
