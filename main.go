@@ -42,7 +42,6 @@ func GoReduceLinesFromReader(r io.Reader, numWorkers int, reduceFunc func(string
 
 		ProcessLinesFromReader(r, func(in string) { inChan <- in })
 		close(inChan)
-
 		wg.Wait()
 		close(outChan)
 	}()
