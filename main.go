@@ -25,12 +25,12 @@ func AstPackageFromBuildPackage(bpkg *build.Package) (apkg *ast.Package, err err
 	return &ast.Package{Name: bpkg.Name, Files: files}, nil
 }
 
-func BuildPackageFromImportPath(ImportPath string) (bpkg *build.Package, err error) {
-	return build.Import(ImportPath, "", 0)
+func BuildPackageFromImportPath(importPath string) (bpkg *build.Package, err error) {
+	return build.Import(importPath, "", 0)
 }
 
-func BuildPackageFromSrcDir(SrcDir string) (bpkg *build.Package, err error) {
-	return build.Import(".", SrcDir, 0)
+func BuildPackageFromSrcDir(srcDir string) (bpkg *build.Package, err error) {
+	return build.ImportDir(srcDir, 0)
 }
 
 func GetDocPackage(bpkg *build.Package, err error) *doc.Package {
