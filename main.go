@@ -125,7 +125,7 @@ func main() {
 		case <-tick:
 			nodeT.Value++
 			nodeT.MarkAsNeedToUpdate()
-			nodeT.Update()
+			nodeT.Update() // Debug
 		default:
 		}
 
