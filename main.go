@@ -10,19 +10,19 @@ type DepNode2I interface {
 	MarkAsNeedToUpdate()
 	Update()
 	AddSink(*DepNode2)
-	MakeUpdated()
+	GetNeedToUpdate() bool
+	MarkAsNotNeedToUpdate()
+	GetSources() []DepNode2I
 }
 
 type DepNode2 struct {
 	NeedToUpdate bool
-	Self         DepNode2I
 	Sources      []DepNode2I
 	Sinks        []*DepNode2
 }
 
-func (this *DepNode2) InitDepNode2(self DepNode2I, sources []DepNode2I) {
+func (this *DepNode2) InitDepNode2(sources ...DepNode2I) {
 	this.NeedToUpdate = true
-	this.Self = self
 	this.Sources = sources
 	for _, source := range sources {
 		source.AddSink(this)
@@ -33,15 +33,20 @@ func (this *DepNode2) AddSink(sink *DepNode2) {
 	this.Sinks = append(this.Sinks, sink)
 }
 
-func (this *DepNode2) MakeUpdated() {
-	if !this.NeedToUpdate || this.Self == nil {
+func ForceUpdate(this DepNode2I) {
+	this.MarkAsNeedToUpdate()
+	MakeUpdated(this)
+}
+
+func MakeUpdated(this DepNode2I) {
+	if !this.GetNeedToUpdate() {
 		return
 	}
-	for _, source := range this.Sources {
-		source.MakeUpdated()
+	for _, source := range this.GetSources() {
+		MakeUpdated(source)
 	}
-	this.Self.Update()
-	this.NeedToUpdate = false
+	this.Update()
+	this.MarkAsNotNeedToUpdate()
 }
 
 func (this *DepNode2) MarkAsNeedToUpdate() {
@@ -49,6 +54,18 @@ func (this *DepNode2) MarkAsNeedToUpdate() {
 	for _, sink := range this.Sinks {
 		sink.MarkAsNeedToUpdate()
 	}
+}
+
+func (this *DepNode2) GetNeedToUpdate() bool {
+	return this.NeedToUpdate
+}
+
+func (this *DepNode2) MarkAsNotNeedToUpdate() {
+	this.NeedToUpdate = false
+}
+
+func (this *DepNode2) GetSources() []DepNode2I {
+	return this.Sources
 }
 
 // ---
@@ -60,7 +77,8 @@ type Node struct {
 }
 
 func (n *Node) Update() {
-	fmt.Println("Updated", string(n.name), n.Value) // Debug
+	n.Value++
+	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
 type NodeAdder Node
@@ -70,7 +88,7 @@ func (n *NodeAdder) Update() {
 	for _, source := range n.Sources {
 		n.Value += source.(*Node).Value
 	}
-	fmt.Println("Updated", string(n.name), n.Value) // Debug
+	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
 type NodeMultiplier Node
@@ -80,7 +98,7 @@ func (n *NodeMultiplier) Update() {
 	for _, source := range n.Sources {
 		n.Value *= source.(*NodeAdder).Value
 	}
-	fmt.Println("Updated", string(n.name), n.Value) // Debug
+	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
 var nodeA = &Node{name: 'A'}
@@ -92,9 +110,9 @@ var nodeZ = &NodeMultiplier{name: 'Z'}
 var Zlive = false
 
 func main() {
-	nodeX.InitDepNode2(nodeX, []DepNode2I{nodeA, nodeB})
-	nodeY.InitDepNode2(nodeY, []DepNode2I{nodeB, nodeT})
-	nodeZ.InitDepNode2(nodeZ, []DepNode2I{nodeX, nodeY})
+	nodeX.InitDepNode2(nodeA, nodeB)
+	nodeY.InitDepNode2(nodeB, nodeT)
+	nodeZ.InitDepNode2(nodeX, nodeY)
 
 	user := make(chan byte)
 	go func() {
@@ -112,26 +130,20 @@ func main() {
 		case c := <-user:
 			switch c {
 			case 'a':
-				nodeA.Value++
-				nodeA.MarkAsNeedToUpdate()
-				nodeA.Update() // Debug
+				ForceUpdate(nodeA)
 			case 'b':
-				nodeB.Value++
-				nodeB.MarkAsNeedToUpdate()
-				nodeB.Update() // Debug
+				ForceUpdate(nodeB)
 			case 'z':
 				Zlive = !Zlive
 				fmt.Println("Zlive changed to", Zlive) // Debug
 			}
 		case <-tick:
-			nodeT.Value++
-			nodeT.MarkAsNeedToUpdate()
-			nodeT.Update() // Debug
+			ForceUpdate(nodeT)
 		default:
 		}
 
 		if Zlive {
-			nodeZ.MakeUpdated()
+			MakeUpdated(nodeZ)
 		}
 
 		time.Sleep(5 * time.Millisecond)
