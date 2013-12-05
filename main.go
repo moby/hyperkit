@@ -9,7 +9,7 @@ import (
 type DepNode2I interface {
 	MarkAsNeedToUpdate()
 	Update()
-	AddSink(DepNode2I)
+	AddSink(*DepNode2)
 	MakeUpdated()
 }
 
@@ -17,7 +17,7 @@ type DepNode2 struct {
 	NeedToUpdate bool
 	Self         DepNode2I
 	Sources      []DepNode2I
-	Sinks        []DepNode2I
+	Sinks        []*DepNode2
 }
 
 func (this *DepNode2) InitDepNode2(self DepNode2I, sources []DepNode2I) {
@@ -25,11 +25,11 @@ func (this *DepNode2) InitDepNode2(self DepNode2I, sources []DepNode2I) {
 	this.Self = self
 	this.Sources = sources
 	for _, source := range sources {
-		source.AddSink(self)
+		source.AddSink(this)
 	}
 }
 
-func (this *DepNode2) AddSink(sink DepNode2I) {
+func (this *DepNode2) AddSink(sink *DepNode2) {
 	this.Sinks = append(this.Sinks, sink)
 }
 
@@ -121,6 +121,7 @@ func main() {
 				nodeB.Update() // Debug
 			case 'z':
 				Zlive = !Zlive
+				fmt.Println("Zlive changed to", Zlive) // Debug
 			}
 		case <-tick:
 			nodeT.Value++
