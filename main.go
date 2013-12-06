@@ -8,11 +8,11 @@ import (
 
 type DepNode2I interface {
 	Update()
-	markAsNeedToUpdate()
+	GetSources() []DepNode2I
 	addSink(*DepNode2)
 	getNeedToUpdate() bool
+	markAllAsNeedToUpdate()
 	markAsNotNeedToUpdate()
-	getSources() []DepNode2I
 }
 
 type DepNode2 struct {
@@ -34,7 +34,7 @@ func (this *DepNode2) addSink(sink *DepNode2) {
 }
 
 func ForceUpdate(this DepNode2I) {
-	this.markAsNeedToUpdate()
+	this.markAllAsNeedToUpdate()
 	MakeUpdated(this)
 }
 
@@ -42,17 +42,17 @@ func MakeUpdated(this DepNode2I) {
 	if !this.getNeedToUpdate() {
 		return
 	}
-	for _, source := range this.getSources() {
+	for _, source := range this.GetSources() {
 		MakeUpdated(source)
 	}
 	this.Update()
 	this.markAsNotNeedToUpdate()
 }
 
-func (this *DepNode2) markAsNeedToUpdate() {
+func (this *DepNode2) markAllAsNeedToUpdate() {
 	this.needToUpdate = true
 	for _, sink := range this.sinks {
-		sink.markAsNeedToUpdate()
+		sink.markAllAsNeedToUpdate()
 	}
 }
 
@@ -64,50 +64,50 @@ func (this *DepNode2) markAsNotNeedToUpdate() {
 	this.needToUpdate = false
 }
 
-func (this *DepNode2) getSources() []DepNode2I {
+func (this *DepNode2) GetSources() []DepNode2I {
 	return this.sources
 }
 
 // ---
 
-type Node struct {
+type node struct {
 	Value int
 	DepNode2
 	name byte // Debug
 }
 
-func (n *Node) Update() {
+func (n *node) Update() {
 	n.Value++
 	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
-type NodeAdder Node
+type nodeAdder node
 
-func (n *NodeAdder) Update() {
+func (n *nodeAdder) Update() {
 	n.Value = 0
 	for _, source := range n.sources {
-		n.Value += source.(*Node).Value
+		n.Value += source.(*node).Value
 	}
 	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
-type NodeMultiplier Node
+type nodeMultiplier node
 
-func (n *NodeMultiplier) Update() {
+func (n *nodeMultiplier) Update() {
 	n.Value = 1
 	for _, source := range n.sources {
-		n.Value *= source.(*NodeAdder).Value
+		n.Value *= source.(*nodeAdder).Value
 	}
 	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
 }
 
-var nodeA = &Node{name: 'A'}
-var nodeB = &Node{name: 'B'}
-var nodeT = &Node{name: 'T'}
-var nodeX = &NodeAdder{name: 'X'}
-var nodeY = &NodeAdder{name: 'Y'}
-var nodeZ = &NodeMultiplier{name: 'Z'}
-var Zlive = false
+var nodeA = &node{name: 'A'}
+var nodeB = &node{name: 'B'}
+var nodeT = &node{name: 'T'}
+var nodeX = &nodeAdder{name: 'X'}
+var nodeY = &nodeAdder{name: 'Y'}
+var nodeZ = &nodeMultiplier{name: 'Z'}
+var zLive = false
 
 func main() {
 	nodeX.InitDepNode2(nodeA, nodeB)
@@ -134,15 +134,15 @@ func main() {
 			case 'b':
 				ForceUpdate(nodeB)
 			case 'z':
-				Zlive = !Zlive
-				fmt.Println("Zlive changed to", Zlive) // Debug
+				zLive = !zLive
+				fmt.Println("Zlive changed to", zLive) // Debug
 			}
 		case <-tick:
 			ForceUpdate(nodeT)
 		default:
 		}
 
-		if Zlive {
+		if zLive {
 			MakeUpdated(nodeZ)
 		}
 
