@@ -7,65 +7,65 @@ import (
 )
 
 type DepNode2I interface {
-	MarkAsNeedToUpdate()
 	Update()
-	AddSink(*DepNode2)
-	GetNeedToUpdate() bool
-	MarkAsNotNeedToUpdate()
-	GetSources() []DepNode2I
+	markAsNeedToUpdate()
+	addSink(*DepNode2)
+	getNeedToUpdate() bool
+	markAsNotNeedToUpdate()
+	getSources() []DepNode2I
 }
 
 type DepNode2 struct {
-	NeedToUpdate bool
-	Sources      []DepNode2I
-	Sinks        []*DepNode2
+	needToUpdate bool
+	sources      []DepNode2I
+	sinks        []*DepNode2
 }
 
 func (this *DepNode2) InitDepNode2(sources ...DepNode2I) {
-	this.NeedToUpdate = true
-	this.Sources = sources
+	this.needToUpdate = true
+	this.sources = sources
 	for _, source := range sources {
-		source.AddSink(this)
+		source.addSink(this)
 	}
 }
 
-func (this *DepNode2) AddSink(sink *DepNode2) {
-	this.Sinks = append(this.Sinks, sink)
+func (this *DepNode2) addSink(sink *DepNode2) {
+	this.sinks = append(this.sinks, sink)
 }
 
 func ForceUpdate(this DepNode2I) {
-	this.MarkAsNeedToUpdate()
+	this.markAsNeedToUpdate()
 	MakeUpdated(this)
 }
 
 func MakeUpdated(this DepNode2I) {
-	if !this.GetNeedToUpdate() {
+	if !this.getNeedToUpdate() {
 		return
 	}
-	for _, source := range this.GetSources() {
+	for _, source := range this.getSources() {
 		MakeUpdated(source)
 	}
 	this.Update()
-	this.MarkAsNotNeedToUpdate()
+	this.markAsNotNeedToUpdate()
 }
 
-func (this *DepNode2) MarkAsNeedToUpdate() {
-	this.NeedToUpdate = true
-	for _, sink := range this.Sinks {
-		sink.MarkAsNeedToUpdate()
+func (this *DepNode2) markAsNeedToUpdate() {
+	this.needToUpdate = true
+	for _, sink := range this.sinks {
+		sink.markAsNeedToUpdate()
 	}
 }
 
-func (this *DepNode2) GetNeedToUpdate() bool {
-	return this.NeedToUpdate
+func (this *DepNode2) getNeedToUpdate() bool {
+	return this.needToUpdate
 }
 
-func (this *DepNode2) MarkAsNotNeedToUpdate() {
-	this.NeedToUpdate = false
+func (this *DepNode2) markAsNotNeedToUpdate() {
+	this.needToUpdate = false
 }
 
-func (this *DepNode2) GetSources() []DepNode2I {
-	return this.Sources
+func (this *DepNode2) getSources() []DepNode2I {
+	return this.sources
 }
 
 // ---
@@ -85,7 +85,7 @@ type NodeAdder Node
 
 func (n *NodeAdder) Update() {
 	n.Value = 0
-	for _, source := range n.Sources {
+	for _, source := range n.sources {
 		n.Value += source.(*Node).Value
 	}
 	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
@@ -95,7 +95,7 @@ type NodeMultiplier Node
 
 func (n *NodeMultiplier) Update() {
 	n.Value = 1
-	for _, source := range n.Sources {
+	for _, source := range n.sources {
 		n.Value *= source.(*NodeAdder).Value
 	}
 	fmt.Println("Updated", string(n.name), "to", n.Value) // Debug
