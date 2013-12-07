@@ -52,6 +52,7 @@ func MakeUpdated(this DepNode2I) {
 func (this *DepNode2) markAllAsNeedToUpdate() {
 	this.needToUpdate = true
 	for _, sink := range this.sinks {
+		// TODO: See if this can be optimized away...
 		sink.markAllAsNeedToUpdate()
 	}
 }
