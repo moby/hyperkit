@@ -9,36 +9,21 @@ import (
 type DepNode2I interface {
 	Update()
 	GetSources() []DepNode2I
+
 	addSink(*DepNode2)
 	getNeedToUpdate() bool
 	markAllAsNeedToUpdate()
 	markAsNotNeedToUpdate()
+
+	Debug()
 }
 
-type DepNode2Blank struct {
-	DepNode2
+type DepNode2ManualI interface {
+	DepNode2I
+	manual() // Noop, just to separate it from automatic DepNode2I
 }
 
-func (*DepNode2Blank) Update() {}
-
-type DepNode2 struct {
-	needToUpdate bool
-	sources      []DepNode2I
-	sinks        []*DepNode2
-}
-
-func (this *DepNode2) GetSources() []DepNode2I {
-	return this.sources
-}
-
-func (this *DepNode2) AddSources(sources ...DepNode2I) {
-	this.needToUpdate = true
-	this.sources = sources
-	for _, source := range sources {
-		source.addSink(this)
-	}
-}
-
+// Updates dependencies and itself, only if its dependencies have changed.
 func MakeUpdated(this DepNode2I) {
 	if !this.getNeedToUpdate() {
 		return
@@ -50,37 +35,100 @@ func MakeUpdated(this DepNode2I) {
 	this.markAsNotNeedToUpdate()
 }
 
-func ExternallyUpdated(this DepNode2I) {
+// Updates dependencies and itself, regardless.
+/*func ForceUpdated(this DepNode2I) {
 	this.markAllAsNeedToUpdate()
-	//MakeUpdated(this)
-	this.markAsNotNeedToUpdate()
+	MakeUpdated(this)
+}*/
+
+// Updates only itself, regardless (skipping Update()).
+func ExternallyUpdated(this DepNode2ManualI) {
+	this.markAllAsNeedToUpdate()
+	//this.markAsNotNeedToUpdate()
+}
+
+// ---
+
+type DepNode2 struct {
+	updated bool
+	sources []DepNode2I
+	sinks   []*DepNode2
+}
+
+func (this *DepNode2) GetSources() []DepNode2I {
+	return this.sources
+}
+
+func (this *DepNode2) AddSources(sources ...DepNode2I) {
+	this.updated = false
+	this.sources = append(this.sources, sources...)
+	for _, source := range sources {
+		source.addSink(this)
+	}
 }
 
 func (this *DepNode2) addSink(sink *DepNode2) {
 	this.sinks = append(this.sinks, sink)
 }
 
+func (this *DepNode2) getNeedToUpdate() bool {
+	return !this.updated
+}
+
 func (this *DepNode2) markAllAsNeedToUpdate() {
-	this.needToUpdate = true
+	this.updated = false
 	for _, sink := range this.sinks {
 		// TODO: See if this can be optimized away...
 		sink.markAllAsNeedToUpdate()
 	}
 }
 
-func (this *DepNode2) getNeedToUpdate() bool {
-	return this.needToUpdate
+func (this *DepNode2) markAsNotNeedToUpdate() {
+	this.updated = true
 }
 
-func (this *DepNode2) markAsNotNeedToUpdate() {
-	this.needToUpdate = false
+func (this *DepNode2) Debug() {
+	fmt.Printf("%#v\n", this)
+}
+
+// ---
+
+type DepNode2Manual struct {
+	sinks []*DepNode2
+}
+
+func (this *DepNode2Manual) Update()                 { panic("") }
+func (this *DepNode2Manual) GetSources() []DepNode2I { panic("") }
+func (this *DepNode2Manual) addSink(sink *DepNode2) {
+	this.sinks = append(this.sinks, sink)
+}
+func (this *DepNode2Manual) getNeedToUpdate() bool { return false }
+func (this *DepNode2Manual) markAllAsNeedToUpdate() {
+	for _, sink := range this.sinks {
+		// TODO: See if this can be optimized away...
+		sink.markAllAsNeedToUpdate()
+	}
+}
+func (this *DepNode2Manual) markAsNotNeedToUpdate() { panic("") }
+func (this *DepNode2Manual) manual()                { panic("") }
+func (this *DepNode2Manual) Debug()                 { fmt.Printf("%#v\n", this) }
+
+// ---
+
+type DepNode2Func struct {
+	UpdaterFunc func()
+	DepNode2
+}
+
+func (this *DepNode2Func) Update() {
+	this.UpdaterFunc()
 }
 
 // ---
 
 type node struct {
 	Value int
-	DepNode2
+	DepNode2Manual
 	name byte // Debug
 }
 
@@ -89,12 +137,15 @@ func (n *node) String() string {
 	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
 }
 
-func (n *node) Update() {
-	fmt.Println("Auto Updated", n) // Debug
+type nodeAdder struct {
+	Value int
+	DepNode2
+	name byte // Debug
 }
 
-type nodeAdder struct {
-	node
+// Debug
+func (n *nodeAdder) String() string {
+	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
 }
 
 func (n *nodeAdder) Update() {
@@ -106,7 +157,14 @@ func (n *nodeAdder) Update() {
 }
 
 type nodeMultiplier struct {
-	node
+	Value int
+	DepNode2
+	name byte // Debug
+}
+
+// Debug
+func (n *nodeMultiplier) String() string {
+	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
 }
 
 func (n *nodeMultiplier) Update() {
@@ -120,9 +178,9 @@ func (n *nodeMultiplier) Update() {
 var nodeA = &node{name: 'A'}
 var nodeB = &node{name: 'B'}
 var nodeT = &node{name: 'T'}
-var nodeX = &nodeAdder{node{name: 'X'}}
-var nodeY = &nodeAdder{node{name: 'Y'}}
-var nodeZ = &nodeMultiplier{node{name: 'Z'}}
+var nodeX = &nodeAdder{name: 'X'}
+var nodeY = &nodeAdder{name: 'Y'}
+var nodeZ = &nodeMultiplier{name: 'Z'}
 var zLive = false
 
 func main() {
@@ -147,11 +205,11 @@ func main() {
 			switch c {
 			case 'a':
 				nodeA.Value++
-				ExternallyUpdated(nodeA)
+				ExternallyUpdated(&nodeA.DepNode2Manual)
 				fmt.Println("User Updated", nodeA) // Debug
 			case 'b':
 				nodeB.Value++
-				ExternallyUpdated(nodeB)
+				ExternallyUpdated(&nodeB.DepNode2Manual)
 				fmt.Println("User Updated", nodeB) // Debug
 			case 'z':
 				zLive = !zLive
@@ -159,7 +217,7 @@ func main() {
 			}
 		case <-tick:
 			nodeT.Value++
-			ExternallyUpdated(nodeT)
+			ExternallyUpdated(&nodeT.DepNode2Manual)
 			fmt.Println("Timer Updated", nodeT) // Debug
 		default:
 		}
