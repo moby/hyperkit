@@ -1,13 +1,24 @@
-package gist
+package gist7480523
 
 import (
-	. "gist.github.com/5504644.git"
-	. "gist.github.com/7519227.git"
 	"go/build"
 	"os/exec"
 
+	. "gist.github.com/5504644.git"
 	. "gist.github.com/5892738.git"
+	. "gist.github.com/7519227.git"
 )
+
+func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	cmd.Dir = path
+
+	if out, err := cmd.CombinedOutput(); err == nil {
+		return true, MustTrimLastNewline(string(out))
+	} else {
+		return false, ""
+	}
+}
 
 func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
 	// Alternative: git rev-parse
@@ -15,8 +26,7 @@ func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = path
 
-	out, err := cmd.CombinedOutput()
-	if err == nil {
+	if out, err := cmd.CombinedOutput(); err == nil {
 		return true, string(out)
 	} else {
 		return false, ""
@@ -27,9 +37,8 @@ func CheckGitRepoLocalBranch(path string) string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = path
 
-	out, err := cmd.CombinedOutput()
-	if err == nil {
-		return TrimLastNewline(string(out))
+	if out, err := cmd.CombinedOutput(); err == nil {
+		return MustTrimLastNewline(string(out))
 	} else {
 		return ""
 	}
@@ -39,8 +48,7 @@ func CheckGitRepoLocal(path string) string {
 	cmd := exec.Command("git", "rev-parse", "master")
 	cmd.Dir = path
 
-	out, err := cmd.CombinedOutput()
-	if err == nil {
+	if out, err := cmd.CombinedOutput(); err == nil {
 		return string(out[:40]) // HACK: What if hash isn't 40 chars?
 	} else {
 		return ""
@@ -51,8 +59,7 @@ func CheckGitRepoRemote(path string) string {
 	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
 	cmd.Dir = path
 
-	out, err := cmd.CombinedOutput()
-	if err == nil {
+	if out, err := cmd.CombinedOutput(); err == nil {
 		return string(out[:40]) // HACK: What if hash isn't 40 chars?
 	} else {
 		return ""
