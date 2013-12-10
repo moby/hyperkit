@@ -3,6 +3,7 @@ package gist5498057
 import (
 	"io/ioutil"
 	"os"
+
 	. "gist.github.com/5286084.git"
 )
 
