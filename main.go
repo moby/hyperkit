@@ -5,7 +5,7 @@ import (
 )
 
 func UnderscoreSepToCamelCase(s string) string {
-	return strings.Replace(strings.Title(strings.Replace(s, "_", " ", -1)), " ", "", -1)
+	return strings.Replace(strings.Title(strings.Replace(strings.ToLower(s), "_", " ", -1)), " ", "", -1)
 }
 
 func main() {
