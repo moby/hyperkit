@@ -1,10 +1,7 @@
 package gist6418462
 
 import (
-	. "gist.github.com/5286084.git"
-	. "gist.github.com/5639599.git"
-	. "gist.github.com/6433744.git"
-	. "gist.github.com/6445065.git"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -12,14 +9,17 @@ import (
 	"reflect"
 	"runtime"
 
-	"fmt"
+	. "gist.github.com/5286084.git"
+	. "gist.github.com/5639599.git"
+	. "gist.github.com/6433744.git"
+	. "gist.github.com/6445065.git"
 )
 
 // Returns the source of the func f.
 func GetSourceAsString(f interface{}) string {
 	v := reflect.ValueOf(f)
 	if v.IsNil() {
-		return "<nil>"
+		return "nil"
 	}
 	pc := v.Pointer()
 	file, line := runtime.FuncForPC(pc).FileLine(pc)
