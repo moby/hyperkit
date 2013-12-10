@@ -5,6 +5,13 @@ import (
 	"io"
 )
 
+type ChanWriter chan []byte
+
+func (cw ChanWriter) Write(p []byte) (n int, err error) {
+	cw <- p
+	return len(p), nil
+}
+
 // Credit to Tarmigan
 func ByteReader(r io.Reader) <-chan []byte {
 	ch := make(chan []byte)
