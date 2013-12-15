@@ -11,6 +11,18 @@ import (
 	. "gist.github.com/6445065.git"
 )
 
+// Gets the parent func as a string.
+func GetParentFuncAsString() string {
+	// TODO: Replace use of debug.Stack() with direct use of runtime package...
+	stack := string(debug.Stack())
+	funcName := GetLine(stack, 3)
+	funcName = funcName[1:strings.Index(funcName, ": ")]
+	funcArgs := GetLine(stack, 5)
+	funcArgs = funcArgs[strings.Index(funcArgs, ": ")+len(": "):]
+	funcArgs = funcArgs[strings.Index(funcArgs, "("):]
+	return funcName + funcArgs
+}
+
 // Gets the expression as a string.
 func GetExprAsString(interface{}) string {
 	return GetParentArgExprAsString(0)
