@@ -1,10 +1,6 @@
-package main
+package gist7802150
 
-import (
-	"fmt"
-	"os"
-	"time"
-)
+import ()
 
 type DepNode2I interface {
 	Update()
@@ -14,8 +10,6 @@ type DepNode2I interface {
 	getNeedToUpdate() bool
 	markAllAsNeedToUpdate()
 	markAsNotNeedToUpdate()
-
-	Debug()
 }
 
 type DepNode2ManualI interface {
@@ -87,10 +81,6 @@ func (this *DepNode2) markAsNotNeedToUpdate() {
 	this.updated = true
 }
 
-func (this *DepNode2) Debug() {
-	fmt.Printf("%#v\n", this)
-}
-
 // ---
 
 type DepNode2Manual struct {
@@ -111,7 +101,6 @@ func (this *DepNode2Manual) markAllAsNeedToUpdate() {
 }
 func (this *DepNode2Manual) markAsNotNeedToUpdate() { panic("") }
 func (this *DepNode2Manual) manual()                { panic("") }
-func (this *DepNode2Manual) Debug()                 { fmt.Printf("%#v\n", this) }
 
 // ---
 
@@ -124,108 +113,61 @@ func (this *DepNode2Func) Update() {
 	this.UpdaterFunc()
 }
 
-// ---
+// =====
 
-type node struct {
-	Value int
-	DepNode2Manual
-	name byte // Debug
+type ViewGroupI interface {
+	SetSelf(string)
+
+	getViewGroup() *ViewGroup
+
+	DepNode2ManualI
 }
 
-// Debug
-func (n *node) String() string {
-	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
+type ViewGroup struct {
+	all *map[ViewGroupI]bool
+
+	*DepNode2Manual
 }
 
-type nodeAdder struct {
-	Value int
-	DepNode2
-	name byte // Debug
+func (this *ViewGroup) getViewGroup() *ViewGroup {
+	return this
 }
 
-// Debug
-func (n *nodeAdder) String() string {
-	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
+func (this *ViewGroup) InitViewGroup(self ViewGroupI) {
+	this.all = &map[ViewGroupI]bool{self: true}
+	this.DepNode2Manual = &DepNode2Manual{}
 }
 
-func (n *nodeAdder) Update() {
-	n.Value = 0
-	for _, source := range n.sources {
-		n.Value += source.(*node).Value
-	}
-	fmt.Println("Auto Updated", n) // Debug
+// TODO: Change to func JoinViewGroups(a, b ViewGroupI) to better match its symmetrical nature
+func (this *ViewGroup) AddView(other ViewGroupI) {
+	(*this.all)[other] = true
+	other.getViewGroup().all = this.all
+	other.getViewGroup().DepNode2Manual = this.DepNode2Manual
 }
 
-type nodeMultiplier struct {
-	Value int
-	DepNode2
-	name byte // Debug
+func (this *ViewGroup) RemoveView(other ViewGroupI) {
+	delete(*this.all, other)
+	other.getViewGroup().InitViewGroup(other)
 }
 
-// Debug
-func (n *nodeMultiplier) String() string {
-	return fmt.Sprintf("%s -> %d", string(n.name), n.Value)
-}
-
-func (n *nodeMultiplier) Update() {
-	n.Value = 1
-	for _, source := range n.sources {
-		n.Value *= source.(*nodeAdder).Value
-	}
-	fmt.Println("Auto Updated", n) // Debug
-}
-
-var nodeA = &node{name: 'A'}
-var nodeB = &node{name: 'B'}
-var nodeT = &node{name: 'T'}
-var nodeX = &nodeAdder{name: 'X'}
-var nodeY = &nodeAdder{name: 'Y'}
-var nodeZ = &nodeMultiplier{name: 'Z'}
-var zLive = false
-
-func main() {
-	nodeX.AddSources(nodeA, nodeB)
-	nodeY.AddSources(nodeB, nodeT)
-	nodeZ.AddSources(nodeX, nodeY)
-
-	user := make(chan byte)
-	go func() {
-		b := make([]byte, 1024)
-		for {
-			os.Stdin.Read(b)
-			user <- b[0]
+func SetViewGroup(this ViewGroupI, s string) {
+	if this.getViewGroup().all != nil {
+		for v := range *this.getViewGroup().all {
+			v.SetSelf(s)
 		}
-	}()
+	}
 
-	tick := time.Tick(10 * time.Second)
+	ExternallyUpdated(this)
+}
 
-	for {
-		select {
-		case c := <-user:
-			switch c {
-			case 'a':
-				nodeA.Value++
-				ExternallyUpdated(&nodeA.DepNode2Manual)
-				fmt.Println("User Updated", nodeA) // Debug
-			case 'b':
-				nodeB.Value++
-				ExternallyUpdated(&nodeB.DepNode2Manual)
-				fmt.Println("User Updated", nodeB) // Debug
-			case 'z':
-				zLive = !zLive
-				fmt.Println("Zlive changed to", zLive) // Debug
+func SetViewGroupOther(this ViewGroupI, s string) {
+	if this.getViewGroup().all != nil {
+		for v := range *this.getViewGroup().all {
+			if v != this {
+				v.SetSelf(s)
 			}
-		case <-tick:
-			nodeT.Value++
-			ExternallyUpdated(&nodeT.DepNode2Manual)
-			fmt.Println("Timer Updated", nodeT) // Debug
-		default:
 		}
-
-		if zLive {
-			MakeUpdated(nodeZ)
-		}
-
-		time.Sleep(5 * time.Millisecond)
 	}
+
+	ExternallyUpdated(this)
 }
