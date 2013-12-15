@@ -41,8 +41,10 @@ func main() {
 	m := memory{}
 	m.InitViewGroup(&m)
 
-	f.AddView(&w)
-	f.AddView(&m)
+	f.AddAndSetViewGroup(&w, "")
+	f.AddAndSetViewGroup(&m, "")
+
+	fmt.Println("---")
 
 	SetViewGroupOther(&m, "hey")
 

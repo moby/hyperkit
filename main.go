@@ -133,39 +133,43 @@ func (this *ViewGroup) getViewGroup() *ViewGroup {
 	return this
 }
 
+// InitViewGroup must be called after creating a new ViewGroupI,
+// before any other ViewGroup method or ViewGroupI func.
 func (this *ViewGroup) InitViewGroup(self ViewGroupI) {
 	this.all = &map[ViewGroupI]bool{self: true}
 	this.DepNode2Manual = &DepNode2Manual{}
 }
 
-// TODO: Change to func JoinViewGroups(a, b ViewGroupI) to better match its symmetrical nature
-func (this *ViewGroup) AddView(other ViewGroupI) {
+// AddAndSetViewGroup adds another ViewGroupI and sets it to thisCurrent value, the current state of this ViewGroup.
+func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) {
+	// Set other ViewGroup to thisCurrent
+	for v := range *other.getViewGroup().all {
+		v.SetSelf(thisCurrent)
+	}
+
 	(*this.all)[other] = true
 	other.getViewGroup().all = this.all
 	other.getViewGroup().DepNode2Manual = this.DepNode2Manual
 }
 
+// RemoveView removes a single view from the ViewGroup.
 func (this *ViewGroup) RemoveView(other ViewGroupI) {
 	delete(*this.all, other)
 	other.getViewGroup().InitViewGroup(other)
 }
 
 func SetViewGroup(this ViewGroupI, s string) {
-	if this.getViewGroup().all != nil {
-		for v := range *this.getViewGroup().all {
-			v.SetSelf(s)
-		}
+	for v := range *this.getViewGroup().all {
+		v.SetSelf(s)
 	}
 
 	ExternallyUpdated(this)
 }
 
 func SetViewGroupOther(this ViewGroupI, s string) {
-	if this.getViewGroup().all != nil {
-		for v := range *this.getViewGroup().all {
-			if v != this {
-				v.SetSelf(s)
-			}
+	for v := range *this.getViewGroup().all {
+		if v != this {
+			v.SetSelf(s)
 		}
 	}
 
