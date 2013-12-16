@@ -124,12 +124,12 @@ func (this *DepNode2Manual) merge(other **DepNode2Manual) {
 // ---
 
 type DepNode2Func struct {
-	UpdaterFunc func()
+	UpdateFunc func()
 	DepNode2
 }
 
 func (this *DepNode2Func) Update() {
-	this.UpdaterFunc()
+	this.UpdateFunc()
 }
 
 // =====
