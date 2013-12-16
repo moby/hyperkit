@@ -168,6 +168,7 @@ func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) 
 	for v := range *other.getViewGroup().all {
 		v.SetSelf(thisCurrent)
 	}
+	ExternallyUpdated(other.getViewGroup().DepNode2Manual) // Notify whatever depended on the other ViewGroupI that it's been updated
 
 	(*this.all)[other] = true
 	other.getViewGroup().all = this.all
