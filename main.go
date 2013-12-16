@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	. "gist.github.com/7729255.git"
+	. "gist.github.com/7802150.git"
 )
 
 // CmdTemplater is the interface for command templates.
@@ -40,7 +41,7 @@ func (ct CmdTemplate) NewCommand() *exec.Cmd {
 
 type CmdTemplateDynamic struct {
 	NameArgs Strings
-	Dir      string
+	Dir      String
 	Stdin    func() io.Reader
 }
 
@@ -53,9 +54,26 @@ func NewCmdTemplateDynamic(nameArgs Strings) CmdTemplateDynamic {
 func (ct CmdTemplateDynamic) NewCommand() *exec.Cmd {
 	nameArgs := ct.NameArgs.Get()
 	cmd := exec.Command(nameArgs[0], nameArgs[1:]...)
-	cmd.Dir = ct.Dir
+	cmd.Dir = ct.Dir.Get()
 	if ct.Stdin != nil {
 		cmd.Stdin = ct.Stdin()
 	}
 	return cmd
+}
+
+// ---
+
+type CmdTemplateDynamic2 struct {
+	Template CmdTemplate
+
+	DepNode2Func
+}
+
+func NewCmdTemplateDynamic2() *CmdTemplateDynamic2 {
+	return &CmdTemplateDynamic2{}
+}
+
+func (this *CmdTemplateDynamic2) NewCommand() *exec.Cmd {
+	MakeUpdated(this)
+	return this.Template.NewCommand()
 }
