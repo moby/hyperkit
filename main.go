@@ -4,6 +4,7 @@ import ()
 
 type DepNode2I interface {
 	Update()
+
 	GetSources() []DepNode2I
 
 	addSink(*DepNode2)
@@ -102,6 +103,24 @@ func (this *DepNode2Manual) markAllAsNeedToUpdate() {
 func (this *DepNode2Manual) markAsNotNeedToUpdate() { panic("") }
 func (this *DepNode2Manual) manual()                { panic("") }
 
+// Given there are two distinct DepNode2Manual structs, each having a pointer,
+// merge takes other and merges it (along with its current sinks) into this.
+// Afterwards, both pointers point to a single unified DepNode2Manual struct.
+func (this *DepNode2Manual) merge(other **DepNode2Manual) {
+	presentSinks := map[*DepNode2]bool{}
+	for _, sink := range this.sinks {
+		presentSinks[sink] = true
+	}
+
+	for _, sink := range (*other).sinks {
+		if !presentSinks[sink] {
+			this.sinks = append(this.sinks, sink)
+		}
+	}
+
+	*other = this
+}
+
 // ---
 
 type DepNode2Func struct {
@@ -117,6 +136,9 @@ func (this *DepNode2Func) Update() {
 
 type ViewGroupI interface {
 	SetSelf(string)
+
+	AddAndSetViewGroup(ViewGroupI, string)
+	RemoveView(ViewGroupI)
 
 	getViewGroup() *ViewGroup
 
@@ -149,7 +171,7 @@ func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) 
 
 	(*this.all)[other] = true
 	other.getViewGroup().all = this.all
-	other.getViewGroup().DepNode2Manual = this.DepNode2Manual
+	this.DepNode2Manual.merge(&other.getViewGroup().DepNode2Manual)
 }
 
 // RemoveView removes a single view from the ViewGroup.
