@@ -32,9 +32,9 @@ func rec(out chan<- ImportPathFound, importPathFound ImportPathFound) {
 	}
 }
 
-var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": true}
+var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": false}
 
-func DoAll(out chan<- ImportPathFound) {
+func GetGoPackages(out chan<- ImportPathFound) {
 	gopathEntries := filepath.SplitList(os.Getenv("GOPATH"))
 	//goon.DumpExpr(gopathEntries)
 	//goon.DumpExpr(build.Default.SrcDirs())
@@ -44,7 +44,7 @@ func DoAll(out chan<- ImportPathFound) {
 			continue
 		}
 
-		println("---", gopathEntry, "---\n")
+		//println("---", gopathEntry, "---\n")
 		rec(out, NewImportPathFound(".", gopathEntry))
 	}
 	close(out)
@@ -52,7 +52,7 @@ func DoAll(out chan<- ImportPathFound) {
 
 func main() {
 	out := make(chan ImportPathFound)
-	go DoAll(out)
+	go GetGoPackages(out)
 
 	for importPathFound := range out {
 		println(importPathFound.ImportPath())
