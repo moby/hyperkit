@@ -48,8 +48,8 @@ func CheckGitRepoLocal(path string) string {
 	cmd := exec.Command("git", "rev-parse", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return string(out[:40]) // HACK: What if hash isn't 40 chars?
+	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
+		return string(out[:40])
 	} else {
 		return ""
 	}
@@ -59,8 +59,8 @@ func CheckGitRepoRemote(path string) string {
 	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return string(out[:40]) // HACK: What if hash isn't 40 chars?
+	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
+		return string(out[:40])
 	} else {
 		return ""
 	}
