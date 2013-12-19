@@ -54,7 +54,9 @@ func NewCmdTemplateDynamic(nameArgs Strings) CmdTemplateDynamic {
 func (ct CmdTemplateDynamic) NewCommand() *exec.Cmd {
 	nameArgs := ct.NameArgs.Get()
 	cmd := exec.Command(nameArgs[0], nameArgs[1:]...)
-	cmd.Dir = ct.Dir.Get()
+	if ct.Dir != nil {
+		cmd.Dir = ct.Dir.Get()
+	}
 	if ct.Stdin != nil {
 		cmd.Stdin = ct.Stdin()
 	}
