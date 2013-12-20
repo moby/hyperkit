@@ -8,8 +8,8 @@ import (
 	. "gist.github.com/7802150.git"
 )
 
-// CmdTemplater is the interface for command templates.
-type CmdTemplater interface {
+// CmdFactory is an interface to create new commands.
+type CmdFactory interface {
 	NewCommand() *exec.Cmd
 }
 
@@ -71,6 +71,7 @@ type CmdTemplateDynamic2 struct {
 	DepNode2Func
 }
 
+// TODO: See if there's some way to initialize DepNode2Func.UpdateFunc through NewCmdTemplateDynamic2().
 func NewCmdTemplateDynamic2() *CmdTemplateDynamic2 {
 	return &CmdTemplateDynamic2{}
 }
