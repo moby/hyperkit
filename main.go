@@ -14,6 +14,7 @@ import (
 // Gets the parent func as a string.
 func GetParentFuncAsString() string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
+	// TODO: Use runtime.FuncForPC(runtime.Caller()).Name() to get func name if source code not found.
 	stack := string(debug.Stack())
 	funcName := GetLine(stack, 3)
 	funcName = funcName[1:strings.Index(funcName, ": ")]
