@@ -1,7 +1,5 @@
 package gist7802150
 
-import ()
-
 type DepNode2I interface {
 	Update()
 
@@ -124,12 +122,12 @@ func (this *DepNode2Manual) merge(other **DepNode2Manual) {
 // ---
 
 type DepNode2Func struct {
-	UpdateFunc func()
+	UpdateFunc func(DepNode2I)
 	DepNode2
 }
 
 func (this *DepNode2Func) Update() {
-	this.UpdateFunc()
+	this.UpdateFunc(this)
 }
 
 // =====
@@ -140,6 +138,10 @@ type ViewGroupI interface {
 	AddAndSetViewGroup(ViewGroupI, string)
 	RemoveView(ViewGroupI)
 
+	GetUri() string
+	GetAllUris() []string
+	ContainsUri(string) bool
+
 	getViewGroup() *ViewGroup
 
 	DepNode2ManualI
@@ -147,6 +149,7 @@ type ViewGroupI interface {
 
 type ViewGroup struct {
 	all *map[ViewGroupI]bool
+	uri string // TODO: Give this a named type
 
 	*DepNode2Manual
 }
@@ -157,8 +160,9 @@ func (this *ViewGroup) getViewGroup() *ViewGroup {
 
 // InitViewGroup must be called after creating a new ViewGroupI,
 // before any other ViewGroup method or ViewGroupI func.
-func (this *ViewGroup) InitViewGroup(self ViewGroupI) {
+func (this *ViewGroup) InitViewGroup(self ViewGroupI, uri string) {
 	this.all = &map[ViewGroupI]bool{self: true}
+	this.uri = uri
 	this.DepNode2Manual = &DepNode2Manual{}
 }
 
@@ -178,7 +182,26 @@ func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) 
 // RemoveView removes a single view from the ViewGroup.
 func (this *ViewGroup) RemoveView(other ViewGroupI) {
 	delete(*this.all, other)
-	other.getViewGroup().InitViewGroup(other)
+	other.getViewGroup().InitViewGroup(other, other.GetUri())
+}
+
+func (this *ViewGroup) GetUri() string {
+	return this.uri
+}
+func (this *ViewGroup) GetAllUris() []string {
+	var uris []string
+	for v := range *this.all {
+		uris = append(uris, v.GetUri())
+	}
+	return uris
+}
+func (this *ViewGroup) ContainsUri(uri string) bool {
+	for v := range *this.all {
+		if uri == v.GetUri() {
+			return true
+		}
+	}
+	return false
 }
 
 func SetViewGroup(this ViewGroupI, s string) {
