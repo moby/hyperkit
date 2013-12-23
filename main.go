@@ -16,7 +16,7 @@ var reflectValue struct {
 // data or a pointer to the data.
 const flagIndir = 1 << 1
 
-// unsafeReflectValue converts the passed reflect.Value into a one that bypasses
+// UnsafeReflectValue converts the passed reflect.Value into a one that bypasses
 // the typical safety restrictions preventing access to unaddressable and
 // unexported data.  It works by digging the raw pointer to the underlying
 // value out of the protected value and generating a new unprotected (unsafe)
