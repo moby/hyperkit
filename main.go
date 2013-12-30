@@ -1,5 +1,7 @@
 package gist7802150
 
+import "strings"
+
 type DepNode2I interface {
 	Update()
 
@@ -140,6 +142,7 @@ type ViewGroupI interface {
 
 	GetUri() string
 	GetAllUris() []string
+	GetUriForProtocol(protocol string) (uri string, ok bool)
 	ContainsUri(string) bool
 
 	getViewGroup() *ViewGroup
@@ -194,6 +197,14 @@ func (this *ViewGroup) GetAllUris() []string {
 		uris = append(uris, v.GetUri())
 	}
 	return uris
+}
+func (this *ViewGroup) GetUriForProtocol(protocol string) (uri string, ok bool) {
+	for v := range *this.all {
+		if strings.HasPrefix(v.GetUri(), protocol) {
+			return v.GetUri(), true
+		}
+	}
+	return "", false
 }
 func (this *ViewGroup) ContainsUri(uri string) bool {
 	for v := range *this.all {
