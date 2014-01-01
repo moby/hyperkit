@@ -69,7 +69,7 @@ func CheckGitRepoRemote(path string) string {
 // ---
 
 // TODO: Rename this struct to something meaningful, maybe "VersionedGoPackage"... I still can't think of a good name
-//       that describes what this represents (basically, a locally checked out Go Package in your GOPATH)
+// that describes what this represents (basically, a locally checked out Go Package in your GOPATH)
 type Something struct {
 	Bpkg          *build.Package
 	Path          string
