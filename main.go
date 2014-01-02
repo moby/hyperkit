@@ -14,7 +14,7 @@ func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
 	cmd.Dir = path
 
 	if out, err := cmd.CombinedOutput(); err == nil {
-		return true, MustTrimLastNewline(string(out))
+		return true, TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
 	} else {
 		return false, ""
 	}
@@ -38,7 +38,7 @@ func CheckGitRepoLocalBranch(path string) string {
 	cmd.Dir = path
 
 	if out, err := cmd.CombinedOutput(); err == nil {
-		return MustTrimLastNewline(string(out))
+		return TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
 	} else {
 		return ""
 	}
