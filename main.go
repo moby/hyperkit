@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 )
 
+// A Package describes the Import Path found in a directory.
 type ImportPathFound struct {
 	importPath  string
 	gopathEntry string
