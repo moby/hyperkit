@@ -18,7 +18,7 @@ var _ = fmt.Print
 var _ = goon.Dump
 
 func rec(out chan<- ImportPathFound, importPathFound ImportPathFound) {
-	if x := SomethingFromImportPathFound(importPathFound); x != nil {
+	if goPackage := GoPackageFromImportPathFound(importPathFound); goPackage != nil {
 		out <- importPathFound
 	}
 
