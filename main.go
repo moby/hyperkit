@@ -2,110 +2,61 @@ package gist7480523
 
 import (
 	"go/build"
-	"os/exec"
+
+	"github.com/shurcooL/go/vcs"
 
 	. "gist.github.com/5504644.git"
-	. "gist.github.com/5892738.git"
 	. "gist.github.com/7519227.git"
 )
 
-func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = path
+type GoPackageStringer func(*GoPackage) string
 
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return true, TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
-	} else {
-		return false, ""
-	}
-}
+// A GoPackage represents an instance of a Go package.
+type GoPackage struct {
+	Bpkg *build.Package
 
-func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
-	// Alternative: git rev-parse
-	// For individual files: git ls-files --error-unmatch -- 'Filename', return code == 0
-	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = path
+	Vcs vcs.Vcs // TODO: Reuse same Vcs for all Go packages that are subfolders of same repo, etc.
 
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return true, string(out)
-	} else {
-		return false, ""
-	}
-}
-
-func CheckGitRepoLocalBranch(path string) string {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = path
-
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
-	} else {
-		return ""
-	}
-}
-
-func CheckGitRepoLocal(path string) string {
-	cmd := exec.Command("git", "rev-parse", "master")
-	cmd.Dir = path
-
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
-		return string(out[:40])
-	} else {
-		return ""
-	}
-}
-
-func CheckGitRepoRemote(path string) string {
-	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
-	cmd.Dir = path
-
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
-		return string(out[:40])
-	} else {
-		return ""
-	}
-}
-
-// ---
-
-type SomethingStringer func(*Something) string
-
-// TODO: Rename this struct to something meaningful, maybe "VersionedGoPackage"... I still can't think of a good name
-// that describes what this represents (basically, a locally checked out Go Package in your GOPATH)
-type Something struct {
-	Bpkg          *build.Package
-	Path          string
-	IsGitRepo     bool
+	// TODO: These cached values should be a part of a Vcs struct or something, etc.
 	Status        string
 	LocalBranch   string
-	Remote, Local string
+	Local, Remote string
 }
 
-func SomethingFromImportPathFound(importPathFound ImportPathFound) *Something {
+func GoPackageFromImportPathFound(importPathFound ImportPathFound) *GoPackage {
 	bpkg, err := BuildPackageFromSrcDir(importPathFound.FullPath())
 	if err != nil {
 		return nil
 	}
 
-	w := &Something{Bpkg: bpkg, Path: importPathFound.FullPath()}
+	w := &GoPackage{Bpkg: bpkg}
 	return w
 }
 
-func SomethingFromImportPath(importPath string) *Something {
+func GoPackageFromImportPath(importPath string) *GoPackage {
 	bpkg, err := BuildPackageFromImportPath(importPath)
 	if err != nil {
 		return nil
 	}
 
-	w := &Something{Bpkg: bpkg, Path: bpkg.Dir}
+	w := &GoPackage{Bpkg: bpkg}
 	return w
 }
 
-func (w *Something) Update() {
-	w.IsGitRepo, w.Status = IsFolderGitRepo(w.Path)
-	if w.IsGitRepo {
-		w.LocalBranch = CheckGitRepoLocalBranch(w.Path)
-		w.Remote = CheckGitRepoRemote(w.Path)
-		w.Local = CheckGitRepoLocal(w.Path)
+func (w *GoPackage) Path() string {
+	return w.Bpkg.Dir
+}
+
+func (w *GoPackage) CheckIfUnderVcs() bool {
+	w.Vcs = vcs.New(w.Path())
+	return w.Vcs != nil
+}
+
+func (w *GoPackage) UpdateVcsFields() {
+	if w.Vcs != nil {
+		w.Status = w.Vcs.GetStatus()
+		w.LocalBranch = w.Vcs.GetLocalBranch()
+		w.Local = w.Vcs.GetLocalRev()
+		w.Remote = w.Vcs.GetRemoteRev()
 	}
 }
