@@ -6,6 +6,17 @@ import (
 	. "gist.github.com/5892738.git"
 )
 
+func init() {
+	if _, err := exec.LookPath("git"); err == nil {
+		addVcsProvider(func(path string) Vcs {
+			if isRepo, rootPath := GetGitRepoRoot(path); isRepo {
+				return &gitVcs{commonVcs{rootPath: rootPath}}
+			}
+			return nil
+		})
+	}
+}
+
 type gitVcs struct {
 	commonVcs
 }
@@ -13,7 +24,7 @@ type gitVcs struct {
 func (this *gitVcs) Type() Type { return Git }
 
 func (this *gitVcs) GetStatus() string {
-	_, status := IsFolderGitRepo(this.path)
+	_, status := IsFolderGitRepo(this.rootPath)
 	return status
 }
 
@@ -22,15 +33,15 @@ func (this *gitVcs) GetDefaultBranch() string {
 }
 
 func (this *gitVcs) GetLocalBranch() string {
-	return CheckGitRepoLocalBranch(this.path)
+	return CheckGitRepoLocalBranch(this.rootPath)
 }
 
 func (this *gitVcs) GetLocalRev() string {
-	return CheckGitRepoLocal(this.path)
+	return CheckGitRepoLocal(this.rootPath)
 }
 
 func (this *gitVcs) GetRemoteRev() string {
-	return CheckGitRepoRemote(this.path)
+	return CheckGitRepoRemote(this.rootPath)
 }
 
 // ---
@@ -70,12 +81,15 @@ func CheckGitRepoLocalBranch(path string) string {
 	}
 }
 
+// Length of a git revision hash.
+const gitRevisionLength = 40
+
 func CheckGitRepoLocal(path string) string {
 	cmd := exec.Command("git", "rev-parse", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
-		return string(out[:40])
+	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= gitRevisionLength {
+		return string(out[:gitRevisionLength])
 	} else {
 		return ""
 	}
@@ -85,8 +99,8 @@ func CheckGitRepoRemote(path string) string {
 	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= 40 {
-		return string(out[:40])
+	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= gitRevisionLength {
+		return string(out[:gitRevisionLength])
 	} else {
 		return ""
 	}

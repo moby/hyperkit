@@ -14,29 +14,39 @@ type Vcs interface {
 	Type() Type
 
 	GetStatus() string
-	GetDefaultBranch() string // TODO: Consider renaming GetRemoteBranch()
-	GetLocalBranch() string
-	GetLocalRev() string
 
+	GetDefaultBranch() string
+	GetLocalBranch() string
+
+	GetLocalRev() string
 	GetRemoteRev() string
 }
 
 type commonVcs struct {
-	path string
+	rootPath string
 }
 
 func (this *commonVcs) RootPath() string {
-	return this.path
+	return this.rootPath
 }
 
 // New returns a Vcs if path is under version control, otherwise nil.
+// TODO: Asking for same path should return point to existing Vcs, rather than creating another copy.
+// Actually, maybe that should be the responsibility of a higher level package that uses this one, like VcsManager.
 func New(path string) Vcs {
-	// TODO: This func should be done in a more general and smarter way
-	if isRepo, rootPath := GetGitRepoRoot(path); isRepo {
-		return &gitVcs{commonVcs{path: rootPath}}
-	} else if isRepo, rootPath = GetHgRepoRoot(path); isRepo {
-		return &hgVcs{commonVcs{path: rootPath}}
-	} else {
-		return nil
+	for _, vcsProvider := range vcsProviders {
+		if vcs := vcsProvider(path); vcs != nil {
+			return vcs
+		}
 	}
+
+	return nil
+}
+
+type vcsProvider func(path string) Vcs
+
+var vcsProviders []vcsProvider
+
+func addVcsProvider(s vcsProvider) {
+	vcsProviders = append(vcsProviders, s)
 }
