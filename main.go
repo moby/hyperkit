@@ -2,6 +2,7 @@ package gist7480523
 
 import (
 	"go/build"
+	"strings"
 
 	"github.com/shurcooL/go/vcs"
 
@@ -11,9 +12,12 @@ import (
 
 type GoPackageStringer func(*GoPackage) string
 
-// A GoPackage represents an instance of a Go package.
+// A GoPackage describes a single package found in a directory.
+// This is partially a copy of "cmd/go".Package, except it can be imported and reused. =.=
+// https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#24
 type GoPackage struct {
-	Bpkg *build.Package
+	Bpkg     *build.Package
+	Standard bool // is this package part of the standard Go library?
 
 	Vcs vcs.Vcs // TODO: Reuse same Vcs for all Go packages that are subfolders of same repo, etc.
 
@@ -28,9 +32,7 @@ func GoPackageFromImportPathFound(importPathFound ImportPathFound) *GoPackage {
 	if err != nil {
 		return nil
 	}
-
-	w := &GoPackage{Bpkg: bpkg}
-	return w
+	return goPackageFromBuildPackage(bpkg)
 }
 
 func GoPackageFromImportPath(importPath string) *GoPackage {
@@ -38,25 +40,30 @@ func GoPackageFromImportPath(importPath string) *GoPackage {
 	if err != nil {
 		return nil
 	}
-
-	w := &GoPackage{Bpkg: bpkg}
-	return w
+	return goPackageFromBuildPackage(bpkg)
 }
 
-func (w *GoPackage) Path() string {
-	return w.Bpkg.Dir
+func goPackageFromBuildPackage(bpkg *build.Package) *GoPackage {
+	goPackage := &GoPackage{
+		Bpkg:     bpkg,
+		Standard: bpkg.Goroot && bpkg.ImportPath != "" && !strings.Contains(bpkg.ImportPath, "."), // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#110
+	}
+	if goPackage.Bpkg.Goroot == false { // Optimization that assume packages under Goroot are not under vcs
+		goPackage.Vcs = vcs.New(goPackage.Bpkg.Dir)
+	}
+
+	return goPackage
 }
 
-func (w *GoPackage) CheckIfUnderVcs() bool {
-	w.Vcs = vcs.New(w.Path())
-	return w.Vcs != nil
+func (this *GoPackage) Path() string {
+	return this.Bpkg.Dir
 }
 
-func (w *GoPackage) UpdateVcsFields() {
-	if w.Vcs != nil {
-		w.Status = w.Vcs.GetStatus()
-		w.LocalBranch = w.Vcs.GetLocalBranch()
-		w.Local = w.Vcs.GetLocalRev()
-		w.Remote = w.Vcs.GetRemoteRev()
+func (this *GoPackage) UpdateVcsFields() {
+	if this.Vcs != nil {
+		this.Status = this.Vcs.GetStatus()
+		this.LocalBranch = this.Vcs.GetLocalBranch()
+		this.Local = this.Vcs.GetLocalRev()
+		this.Remote = this.Vcs.GetRemoteRev()
 	}
 }
