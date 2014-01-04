@@ -55,10 +55,6 @@ func goPackageFromBuildPackage(bpkg *build.Package) *GoPackage {
 	return goPackage
 }
 
-func (this *GoPackage) Path() string {
-	return this.Bpkg.Dir
-}
-
 func (this *GoPackage) UpdateVcsFields() {
 	if this.Vcs != nil {
 		this.Status = this.Vcs.GetStatus()
