@@ -45,7 +45,7 @@ func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package) {
 	CheckError(err)
 	apkg, err := AstPackageFromBuildPackage(bpkg)
 	CheckError(err)
-	return doc.New(apkg, bpkg.ImportPath, doc.AllDecls) // TODO: Is doc.AllMethods needed also?
+	return doc.New(apkg, bpkg.ImportPath, doc.AllDecls|doc.AllMethods)
 }
 
 /* Commented out because it's not in use anywhere, candidate for removal
