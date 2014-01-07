@@ -48,11 +48,13 @@ func goPackageFromBuildPackage(bpkg *build.Package) *GoPackage {
 		Bpkg:     bpkg,
 		Standard: bpkg.Goroot && bpkg.ImportPath != "" && !strings.Contains(bpkg.ImportPath, "."), // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#110
 	}
-	if goPackage.Bpkg.Goroot == false { // Optimization that assume packages under Goroot are not under vcs
-		goPackage.Vcs = vcs.New(goPackage.Bpkg.Dir)
-	}
-
 	return goPackage
+}
+
+func (this *GoPackage) UpdateVcs() {
+	if this.Bpkg.Goroot == false { // Optimization that assume packages under Goroot are not under vcs
+		this.Vcs = vcs.New(this.Bpkg.Dir)
+	}
 }
 
 func (this *GoPackage) UpdateVcsFields() {
