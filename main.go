@@ -49,7 +49,7 @@ func LineReader(r io.Reader) <-chan []byte {
 		for {
 			line, err := br.ReadBytes('\n')
 			if err == nil {
-				ch <- line[:len(line)-1] // Trim newline
+				ch <- line[:len(line)-1] // Trim last newline
 			} else {
 				ch <- line
 				close(ch)
