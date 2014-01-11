@@ -1,10 +1,8 @@
 package gist5286084
 
-import ()
-
-// Panics on error
+// CheckError panics on error.
 func CheckError(err error) {
-	if nil != err {
+	if err != nil {
 		panic(err)
 	}
 }
