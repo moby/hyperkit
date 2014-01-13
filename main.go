@@ -140,19 +140,21 @@ type ViewGroupI interface {
 	AddAndSetViewGroup(ViewGroupI, string)
 	RemoveView(ViewGroupI)
 
-	GetUri() string
-	GetAllUris() []string
-	GetUriForProtocol(protocol string) (uri string, ok bool)
-	ContainsUri(string) bool
+	GetUri() FileUri
+	GetAllUris() []FileUri
+	GetUriForProtocol(protocol string) (uri FileUri, ok bool)
+	ContainsUri(FileUri) bool
 
 	getViewGroup() *ViewGroup
 
 	DepNode2ManualI
 }
 
+type FileUri string
+
 type ViewGroup struct {
 	all *map[ViewGroupI]bool
-	uri string // TODO: Give this a named type
+	uri FileUri
 
 	*DepNode2Manual
 }
@@ -163,7 +165,7 @@ func (this *ViewGroup) getViewGroup() *ViewGroup {
 
 // InitViewGroup must be called after creating a new ViewGroupI,
 // before any other ViewGroup method or ViewGroupI func.
-func (this *ViewGroup) InitViewGroup(self ViewGroupI, uri string) {
+func (this *ViewGroup) InitViewGroup(self ViewGroupI, uri FileUri) {
 	this.all = &map[ViewGroupI]bool{self: true}
 	this.uri = uri
 	this.DepNode2Manual = &DepNode2Manual{}
@@ -188,25 +190,24 @@ func (this *ViewGroup) RemoveView(other ViewGroupI) {
 	other.getViewGroup().InitViewGroup(other, other.GetUri())
 }
 
-func (this *ViewGroup) GetUri() string {
+func (this *ViewGroup) GetUri() FileUri {
 	return this.uri
 }
-func (this *ViewGroup) GetAllUris() []string {
-	var uris []string
+func (this *ViewGroup) GetAllUris() (uris []FileUri) {
 	for v := range *this.all {
 		uris = append(uris, v.GetUri())
 	}
 	return uris
 }
-func (this *ViewGroup) GetUriForProtocol(protocol string) (uri string, ok bool) {
+func (this *ViewGroup) GetUriForProtocol(protocol string) (uri FileUri, ok bool) {
 	for v := range *this.all {
-		if strings.HasPrefix(v.GetUri(), protocol) {
+		if strings.HasPrefix(string(v.GetUri()), protocol) {
 			return v.GetUri(), true
 		}
 	}
 	return "", false
 }
-func (this *ViewGroup) ContainsUri(uri string) bool {
+func (this *ViewGroup) ContainsUri(uri FileUri) bool {
 	for v := range *this.all {
 		if uri == v.GetUri() {
 			return true
