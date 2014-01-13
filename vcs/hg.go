@@ -61,13 +61,16 @@ func (this *hgVcs) GetLocalBranch() string {
 	}
 }
 
+// Length of a Mercurial revision hash.
+const hgRevisionLength = 40
+
 func (this *hgVcs) GetLocalRev() string {
 	// Alternative: hg parent --template '{node}'
 	cmd := exec.Command("hg", "--debug", "identify", "-i")
 	cmd.Dir = this.rootPath
 
-	if out, err := cmd.CombinedOutput(); err == nil {
-		return TrimLastNewline(string(out))
+	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= hgRevisionLength {
+		return string(out[:hgRevisionLength])
 	} else {
 		return ""
 	}
