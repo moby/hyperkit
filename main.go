@@ -5,6 +5,8 @@ import (
 	"unsafe"
 )
 
+// TODO: Consider /Users/Dmitri/Dropbox/Work/2013/GoLand/src/github.com/shurcooL/play/8/main.go
+
 // reflectValue mirrors the struct layout of the reflect package Value type.
 var reflectValue struct {
 	typ  unsafe.Pointer
