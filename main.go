@@ -34,18 +34,35 @@ func BuildPackageFromSrcDir(srcDir string) (bpkg *build.Package, err error) {
 	return build.ImportDir(srcDir, 0)
 }
 
-func GetDocPackage(bpkg *build.Package, err error) (dpkg *doc.Package) {
-	CheckError(err)
+func getDocPackageMode(bpkg *build.Package, err error, mode doc.Mode) (dpkg *doc.Package, err2 error) {
+	if err != nil {
+		return nil, err
+	}
 	apkg, err := AstPackageFromBuildPackage(bpkg)
-	CheckError(err)
-	return doc.New(apkg, bpkg.ImportPath, 0)
+	if err != nil {
+		return nil, err
+	}
+	return doc.New(apkg, bpkg.ImportPath, mode), nil
 }
 
-func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package) {
-	CheckError(err)
-	apkg, err := AstPackageFromBuildPackage(bpkg)
-	CheckError(err)
-	return doc.New(apkg, bpkg.ImportPath, doc.AllDecls|doc.AllMethods)
+func GetDocPackage(bpkg *build.Package, err error) (dpkg *doc.Package, err2 error) {
+	return getDocPackageMode(bpkg, err, 0)
+}
+
+func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package, err2 error) {
+	return getDocPackageMode(bpkg, err, doc.AllDecls|doc.AllMethods)
+}
+
+func MustGetDocPackage(bpkg *build.Package, err error) (dpkg *doc.Package) {
+	dpkg, err2 := getDocPackageMode(bpkg, err, 0)
+	CheckError(err2)
+	return dpkg
+}
+
+func MustGetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package) {
+	dpkg, err2 := getDocPackageMode(bpkg, err, doc.AllDecls|doc.AllMethods)
+	CheckError(err2)
+	return dpkg
 }
 
 /* Commented out because it's not in use anywhere, candidate for removal
@@ -64,7 +81,8 @@ func GetDocPackageFromFiles(paths ...string) (dpkg *doc.Package) {
 }*/
 
 func main() {
-	dpkg := GetDocPackage(BuildPackageFromImportPath("os"))
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath("os"))
+	CheckError(err)
 	println(dpkg.Consts[0].Names[0])
 	println(dpkg.Types[0].Name)
 	println(dpkg.Vars[0].Names[0])
