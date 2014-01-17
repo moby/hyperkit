@@ -7,9 +7,40 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"sync"
 
 	. "gist.github.com/5286084.git"
 )
+
+// ParseFiles parses the Go source files files within directory dir
+// and returns their ASTs, or the first parse error if any.
+// TODO: This was made unexported in Go library, need to find a good replacement.
+func ParseFiles(fset *token.FileSet, dir string, files ...string) ([]*ast.File, error) {
+	var wg sync.WaitGroup
+	n := len(files)
+	parsed := make([]*ast.File, n, n)
+	errors := make([]error, n, n)
+	for i, file := range files {
+		if !filepath.IsAbs(file) {
+			file = filepath.Join(dir, file)
+		}
+		wg.Add(1)
+		go func(i int, file string) {
+			parsed[i], errors[i] = parser.ParseFile(fset, file, nil, 0)
+			wg.Done()
+		}(i, file)
+	}
+	wg.Wait()
+
+	for _, err := range errors {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return parsed, nil
+}
+
+// ---
 
 func AstPackageFromBuildPackage(bpkg *build.Package) (apkg *ast.Package, err error) {
 	// TODO: Either find a way to use code.google.com/p/go.tools/importer directly, or do file AST parsing in parallel like it does
