@@ -53,18 +53,6 @@ func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package, err2 e
 	return getDocPackageMode(bpkg, err, doc.AllDecls|doc.AllMethods)
 }
 
-func MustGetDocPackage(bpkg *build.Package, err error) (dpkg *doc.Package) {
-	dpkg, err2 := getDocPackageMode(bpkg, err, 0)
-	CheckError(err2)
-	return dpkg
-}
-
-func MustGetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package) {
-	dpkg, err2 := getDocPackageMode(bpkg, err, doc.AllDecls|doc.AllMethods)
-	CheckError(err2)
-	return dpkg
-}
-
 /* Commented out because it's not in use anywhere, candidate for removal
 func GetDocPackageFromFiles(paths ...string) (dpkg *doc.Package) {
 	// TODO: Either find a way to use code.google.com/p/go.tools/importer directly, or do file AST parsing in parallel like it does
