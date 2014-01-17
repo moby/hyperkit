@@ -2,9 +2,10 @@ package gist4727543
 
 import (
 	"fmt"
+	"strings"
+
 	. "gist.github.com/5210270.git"
 	. "gist.github.com/5504644.git"
-	"strings"
 )
 
 // Generates an anonymous usage for the given import statement to avoid "imported and not used" errors
@@ -39,7 +40,10 @@ func GetForcedUse(ImportPath string) string {
 //
 // e.g. `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`
 func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
-	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	if err != nil {
+		return "Package not valid (doesn't exist or can't be built)."
+	}
 
 	// Uncomment only for testing purposes
 	//dpkg.Funcs = dpkg.Funcs[0:0]
@@ -62,11 +66,12 @@ func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 		return "Package doesn't have a single public func, var, const or type."
 	}
 
-	if "" == LocalPackageName {
+	switch {
+	case LocalPackageName == "":
 		return Prefix + dpkg.Name + "." + Usage
-	} else if "." == LocalPackageName {
+	case LocalPackageName == ".":
 		return Prefix + Usage
-	} else {
+	default:
 		return Prefix + LocalPackageName + "." + Usage
 	}
 }
