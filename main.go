@@ -1,16 +1,16 @@
 package gist5645828
 
 import (
-	"io/ioutil"
-	//. "gist.github.com/5286084.git"
 	"fmt"
-	. "gist.github.com/5504644.git"
-	. "gist.github.com/5639599.git"
 	"go/doc"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	. "gist.github.com/5504644.git"
+	. "gist.github.com/5639599.git"
 )
 
 func PrintPackageFullSummary(dpkg *doc.Package) {
@@ -66,7 +66,10 @@ func printPackageSummary(dpkg *doc.Package) {
 }
 
 func PrintPackageSummary(ImportPath string) {
-	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	if err != nil {
+		panic(err)
+	}
 	if len(dpkg.Funcs) == 0 {
 		return
 	}
@@ -74,7 +77,10 @@ func PrintPackageSummary(ImportPath string) {
 }
 
 func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
-	dpkg := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	if err != nil {
+		panic(err)
+	}
 	if len(dpkg.Funcs) == 0 {
 		return
 	}
@@ -105,5 +111,9 @@ func PrintPackageSummariesInDir(dirname string) {
 func main() {
 	//PrintPackageSummary("gist.github.com/5639599.git"); return
 	//PrintPackageSummariesInDir("gist.github.com")
-	PrintPackageFullSummary(GetDocPackageAll(BuildPackageFromImportPath("gist.github.com/5694308.git")))
+	dpkg, err := GetDocPackageAll(BuildPackageFromImportPath("gist.github.com/5694308.git"))
+	if err != nil {
+		panic(err)
+	}
+	PrintPackageFullSummary(dpkg)
 }
