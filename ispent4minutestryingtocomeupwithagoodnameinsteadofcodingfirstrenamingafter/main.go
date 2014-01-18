@@ -1,9 +1,6 @@
-package ispent4minutestryingtocomeupwithagoodnameinsteadofcodingfirstrenamingafter
+package html_table
 
 import (
-	"io"
-	"os"
-
 	"code.google.com/p/go.net/html"
 )
 
@@ -46,13 +43,8 @@ func htmlNodeToPlainText(htmlNode *html.Node) (plainText string) {
 	return clean(extract(htmlNode))
 }
 
-// WalkRowsOfHtmlTable walks the rows of an html table, calling walkFunc on each row.
-func WalkRowsOfHtmlTable(htmlTable io.Reader, walkFunc func(columns ...string)) {
-	doc, err := html.Parse(os.Stdin)
-	if err != nil {
-		panic(err)
-	}
-
+// WalkRows walks the rows of an html table, calling walkFunc on each row.
+func WalkRows(htmlTable *html.Node, walkFunc func(columns ...string)) {
 	var f func(n *html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "tr" {
@@ -72,5 +64,5 @@ func WalkRowsOfHtmlTable(htmlTable io.Reader, walkFunc func(columns ...string)) 
 		}
 	}
 
-	f(doc)
+	f(htmlTable)
 }
