@@ -90,6 +90,36 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 	close(out)
 }
 
+// TODO: Remove old GetGoPackages that sends ImportPathFound
+func GetGoPackages2(out chan<- *GoPackage) {
+	gopathEntries := filepath.SplitList(build.Default.GOPATH)
+	for _, gopathEntry := range gopathEntries {
+		root := filepath.Join(gopathEntry, "src")
+		if !isDir(root) {
+			continue
+		}
+
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+			if !fi.IsDir() {
+				return nil
+			}
+			if strings.HasPrefix(fi.Name(), ".") {
+				return filepath.SkipDir
+			}
+			importPath, err := filepath.Rel(root, path)
+			if err != nil {
+				return nil
+			}
+			importPathFound := NewImportPathFound(importPath, gopathEntry)
+			if goPackage := GoPackageFromImportPathFound(importPathFound); goPackage != nil {
+				out <- goPackage
+			}
+			return nil
+		})
+	}
+	close(out)
+}
+
 func getGoPackagesC(out chan<- ImportPathFound) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
