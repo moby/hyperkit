@@ -65,3 +65,7 @@ func (this *GoPackage) UpdateVcsFields() {
 		this.Remote = this.Vcs.GetRemoteRev()
 	}
 }
+
+func (this *GoPackage) String() string {
+	return this.Bpkg.ImportPath
+}
