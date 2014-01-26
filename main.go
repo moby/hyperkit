@@ -40,9 +40,10 @@ func isDir(path string) bool {
 
 var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": false}
 
-func GetGoPackages(out chan<- ImportPathFound) {
+// Deprecated in favor of GetGoPackages(out chan<- *GoPackage).
+/*func GetGoPackages(out chan<- ImportPathFound) {
 	getGoPackagesB(out)
-}
+}*/
 
 func getGoPackagesA(out chan<- ImportPathFound) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
@@ -90,8 +91,8 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 	close(out)
 }
 
-// TODO: Remove old GetGoPackages that sends ImportPathFound
-func GetGoPackages2(out chan<- *GoPackage) {
+// Gets Go packages in all GOPATH workspaces.
+func GetGoPackages(out chan<- *GoPackage) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
 		root := filepath.Join(gopathEntry, "src")
@@ -152,13 +153,13 @@ func getGoPackagesC(out chan<- ImportPathFound) {
 func main() {
 	started := time.Now()
 
-	out := make(chan ImportPathFound)
+	out := make(chan *GoPackage)
 	go GetGoPackages(out)
 
-	for importPathFound := range out {
-		_ = importPathFound
-		println(importPathFound.ImportPath())
-		//goon.Dump(importPathFound)
+	for goPackage := range out {
+		_ = goPackage
+		println(goPackage.Bpkg.ImportPath)
+		//goon.Dump(goPackage)
 	}
 
 	goon.Dump(time.Since(started).Seconds() * 1000)
