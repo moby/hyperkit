@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	. "gist.github.com/5092053.git"
-
 	"io/ioutil"
+
+	. "gist.github.com/5092053.git"
 	. "gist.github.com/5286084.git"
 )
 
@@ -30,9 +30,10 @@ func PrintRuneStats(s string) {
 }
 
 func main() {
-	x := "abc   Z"
-	//b, err := ioutil.ReadFile("/Users/Dmitri/Desktop/out.md"); CheckError(err)
-	//x := string(b)
+	//x := "abc   Z"
+	b, err := ioutil.ReadFile("/Users/Dmitri/Desktop/1.txt")
+	CheckError(err)
+	x := string(b)
 
 	PrintRuneStats(x)
 }
