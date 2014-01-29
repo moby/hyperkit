@@ -23,16 +23,16 @@ var _ = PrintlnAst
 const parserMode = parser.ParseComments
 const astMergeMode = 0*ast.FilterFuncDuplicates | ast.FilterUnassociatedComments | ast.FilterImportDuplicates
 
-var imports map[string]*loader.PackageInfo
 var dotImports []*loader.PackageInfo
 
-func findDotImports(pi *loader.PackageInfo) {
+func findDotImports(prog *loader.Program, pi *loader.PackageInfo) {
 	for _, file := range pi.Files {
 		for _, importSpec := range file.Imports {
 			if importSpec.Name != nil && importSpec.Name.Name == "." {
-				importPath := strings.Trim(importSpec.Path.Value, `"`)
-				dotImports = append(dotImports, imports[importPath])
-				findDotImports(imports[importPath])
+				dotImportImportPath := strings.Trim(importSpec.Path.Value, `"`)
+				dotImportPi := prog.AllPackages[prog.ImportMap[dotImportImportPath]]
+				dotImports = append(dotImports, dotImportPi)
+				findDotImports(prog, dotImportPi)
 			}
 		}
 	}
@@ -60,13 +60,7 @@ func InlineDotImports(w io.Writer, importPath string) {
 
 	pi := prog.Imported[importPath]
 
-	// Create ImportPath -> *PackageInfo map
-	imports = make(map[string]*loader.PackageInfo, len(prog.AllPackages))
-	for _, pi := range prog.AllPackages {
-		imports[pi.Pkg.Path()] = pi
-	}
-
-	findDotImports(pi)
+	findDotImports(prog, pi)
 
 	files := make(map[string]*ast.File)
 	{
