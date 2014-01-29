@@ -8,9 +8,9 @@ import (
 	"go/token"
 	"io"
 	"strings"
-	"code.google.com/p/go.tools/go/types"
-	"code.google.com/p/go.tools/importer"
-	importer2 "honnef.co/go/importer"
+	"code.google.com/p/go.tools/go/loader"
+	//"code.google.com/p/go.tools/go/types"
+	//"honnef.co/go/importer"
 
 	. "gist.github.com/5286084.git"
 	. "gist.github.com/5504644.git"
@@ -23,10 +23,10 @@ var _ = PrintlnAst
 const parserMode = parser.ParseComments
 const astMergeMode = 0*ast.FilterFuncDuplicates | ast.FilterUnassociatedComments | ast.FilterImportDuplicates
 
-var imports map[string]*importer.PackageInfo
-var dotImports []*importer.PackageInfo
+var imports map[string]*loader.PackageInfo
+var dotImports []*loader.PackageInfo
 
-func findDotImports(pi *importer.PackageInfo) {
+func findDotImports(pi *loader.PackageInfo) {
 	for _, file := range pi.Files {
 		for _, importSpec := range file.Imports {
 			if importSpec.Name != nil && importSpec.Name.Name == "." {
@@ -39,23 +39,30 @@ func findDotImports(pi *importer.PackageInfo) {
 }
 
 func InlineDotImports(w io.Writer, importPath string) {
-	imp2 := importer2.New()
+	/*imp2 := importer.New()
 	imp2.Config.UseGcFallback = true
 	cfg := types.Config{Import: imp2.Import}
-	_ = cfg
+	_ = cfg*/
 
-	imp := importer.New(&importer.Config{
+	conf := loader.Config{
 		//TypeChecker:   cfg,
 		SourceImports: true,
-	})
+	}
 
-	pi, err := imp.ImportPackage(importPath)
+	conf.Import(importPath)
+
+	prog, err := conf.Load()
 	CheckError(err)
-	_ = pi
+
+	/*pi, err := imp.ImportPackage(importPath)
+	CheckError(err)
+	_ = pi*/
+
+	pi := prog.Imported[importPath]
 
 	// Create ImportPath -> *PackageInfo map
-	imports = make(map[string]*importer.PackageInfo, len(imp.AllPackages()))
-	for _, pi := range imp.AllPackages() {
+	imports = make(map[string]*loader.PackageInfo, len(prog.AllPackages))
+	for _, pi := range prog.AllPackages {
 		imports[pi.Pkg.Path()] = pi
 	}
 
@@ -65,14 +72,14 @@ func InlineDotImports(w io.Writer, importPath string) {
 	{
 		// This package
 		for _, file := range pi.Files {
-			filename := imp.Fset.File(file.Package).Name()
+			filename := prog.Fset.File(file.Package).Name()
 			files[filename] = file
 		}
 
 		// All dot imports
 		for _, pi := range dotImports {
 			for _, file := range pi.Files {
-				filename := imp.Fset.File(file.Package).Name()
+				filename := prog.Fset.File(file.Package).Name()
 				files[filename] = file
 			}
 		}
@@ -82,14 +89,14 @@ func InlineDotImports(w io.Writer, importPath string) {
 
 	merged := ast.MergePackageFiles(apkg, astMergeMode)
 
-	fmt.Fprintln(w, "package "+SprintAst(imp.Fset, merged.Name))
+	fmt.Fprintln(w, "package "+SprintAst(prog.Fset, merged.Name))
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, `import (`)
 	for _, importSpec := range merged.Imports {
 		if importSpec.Name != nil && importSpec.Name.Name == "." {
 			continue
 		}
-		fmt.Fprintln(w, "\t"+SprintAst(imp.Fset, importSpec))
+		fmt.Fprintln(w, "\t"+SprintAst(prog.Fset, importSpec))
 	}
 	fmt.Fprintln(w, `)`)
 	fmt.Fprintln(w)
@@ -99,7 +106,7 @@ func InlineDotImports(w io.Writer, importPath string) {
 			continue
 		}
 
-		fmt.Fprintln(w, SprintAst(imp.Fset, decl))
+		fmt.Fprintln(w, SprintAst(prog.Fset, decl))
 		fmt.Fprintln(w)
 	}
 
