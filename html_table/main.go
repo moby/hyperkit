@@ -2,6 +2,7 @@ package html_table
 
 import (
 	"code.google.com/p/go.net/html"
+	"code.google.com/p/go.net/html/atom"
 )
 
 // clean replaces each sequence of space, \n, \r, or \t characters
@@ -26,11 +27,25 @@ func clean(s string) string {
 	return string(b)
 }
 
-// extract returns the recursive concatenation of the raw text contents of an html node.
+// getAttribute returns an attribute of a node, or blank strink if not found.
+func getAttribute(n *html.Node, key string) (val string) {
+	for _, attr := range n.Attr {
+		if attr.Key == key {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
+// extract returns the recursive concatenation of the raw text contents of an html node, with Markdown tags.
 func extract(n *html.Node) (out string) {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.TextNode {
 			out += c.Data
+		} else if c.Type == html.ElementNode && c.DataAtom == atom.A {
+			out += "[" + extract(c) + "](" + getAttribute(c, "href") + ")"
+		} else if c.Type == html.ElementNode && c.DataAtom == atom.B {
+			out += "**" + extract(c) + "**"
 		} else {
 			out += extract(c)
 		}
@@ -38,8 +53,8 @@ func extract(n *html.Node) (out string) {
 	return out
 }
 
-// htmlNodeToPlainText renders an html node to plain text.
-func htmlNodeToPlainText(htmlNode *html.Node) (plainText string) {
+// htmlNodeToMarkdown renders an html node to Markdown.
+func htmlNodeToMarkdown(htmlNode *html.Node) (markdown string) {
 	return clean(extract(htmlNode))
 }
 
@@ -53,7 +68,7 @@ func WalkRows(htmlTable *html.Node, walkFunc func(columns ...string)) {
 
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.ElementNode && c.Data == "td" {
-					columns = append(columns, htmlNodeToPlainText(c))
+					columns = append(columns, htmlNodeToMarkdown(c))
 				}
 			}
 
