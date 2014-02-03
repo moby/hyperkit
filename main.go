@@ -38,7 +38,7 @@ func isDir(path string) bool {
 	return err == nil && fi.IsDir()
 }
 
-var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": false}
+//var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": false}
 
 // Deprecated in favor of GetGoPackages(out chan<- *GoPackage).
 /*func GetGoPackages(out chan<- ImportPathFound) {
