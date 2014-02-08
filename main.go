@@ -1,8 +1,9 @@
 package gist5571468
 
 import (
-	. "gist.github.com/5286084.git"
 	"io/ioutil"
+
+	. "gist.github.com/5286084.git"
 )
 
 func MustReadFile(filename string) string {
