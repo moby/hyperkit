@@ -62,7 +62,32 @@ func printPackageSummary(dpkg *doc.Package) {
 		fmt.Print("\t")
 		PrintlnAstBare(f.Decl)
 	}
+	for _, t := range dpkg.Types {
+		for _, f := range t.Funcs {
+			fmt.Print("\t")
+			PrintlnAstBare(f.Decl)
+		}
+		// THINK: Do I want to include methods?
+		/*for _, m := range t.Methods {
+			fmt.Print("\t")
+			PrintlnAstBare(m.Decl)
+		}*/
+	}
 	fmt.Println()
+}
+
+func hasAnyFuncs(dpkg *doc.Package) bool {
+	if len(dpkg.Funcs) > 0 {
+		return true
+	}
+
+	for _, t := range dpkg.Types {
+		if len(t.Funcs) > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func PrintPackageSummary(ImportPath string) {
@@ -70,7 +95,7 @@ func PrintPackageSummary(ImportPath string) {
 	if err != nil {
 		panic(err)
 	}
-	if len(dpkg.Funcs) == 0 {
+	if !hasAnyFuncs(dpkg) {
 		return
 	}
 	printPackageSummary(dpkg)
@@ -81,7 +106,7 @@ func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 	if err != nil {
 		panic(err)
 	}
-	if len(dpkg.Funcs) == 0 {
+	if !hasAnyFuncs(dpkg) {
 		return
 	}
 	fmt.Println(filepath.Join(fullPath, dpkg.Filenames[0]))
