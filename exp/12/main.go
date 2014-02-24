@@ -1,6 +1,8 @@
 package exp12
 
 import (
+	"sync"
+
 	"github.com/shurcooL/go/exp/13"
 	"github.com/shurcooL/go/vcs"
 
@@ -10,6 +12,7 @@ import (
 // TODO: Use FileUri or similar type instead of string for clean path to repo root.
 // rootPath -> *VcsState
 var repos = make(map[string]*exp13.VcsState)
+var reposLock sync.Mutex
 
 type Directory struct {
 	path string
@@ -21,12 +24,14 @@ type Directory struct {
 
 func (this *Directory) Update() {
 	if vcs := vcs.New(this.path); vcs != nil {
+		reposLock.Lock()
 		if repo, ok := repos[vcs.RootPath()]; ok {
 			this.Repo = repo
 		} else {
 			this.Repo = exp13.NewVcsState(vcs)
 			repos[vcs.RootPath()] = this.Repo
 		}
+		reposLock.Unlock()
 	}
 }
 
