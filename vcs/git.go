@@ -50,7 +50,7 @@ func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return true, TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
 	} else {
 		return false, ""
@@ -63,7 +63,7 @@ func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return true, string(out)
 	} else {
 		return false, ""
@@ -74,7 +74,7 @@ func CheckGitRepoLocalBranch(path string) string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return TrimLastNewline(string(out)) // Since rev-parse is considered porcelain and may change, need to error-check its output
 	} else {
 		return ""
@@ -88,7 +88,7 @@ func CheckGitRepoLocal(path string) string {
 	cmd := exec.Command("git", "rev-parse", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= gitRevisionLength {
+	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
 		return string(out[:gitRevisionLength])
 	} else {
 		return ""
@@ -99,7 +99,7 @@ func CheckGitRepoRemote(path string) string {
 	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= gitRevisionLength {
+	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
 		return string(out[:gitRevisionLength])
 	} else {
 		return ""

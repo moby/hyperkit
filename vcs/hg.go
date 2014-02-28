@@ -22,7 +22,7 @@ func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {
 	cmd := exec.Command("hg", "root")
 	cmd.Dir = path
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return true, TrimLastNewline(string(out))
 	} else {
 		return false, ""
@@ -39,7 +39,7 @@ func (this *hgVcs) GetStatus() string {
 	cmd := exec.Command("hg", "status")
 	cmd.Dir = this.rootPath
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return string(out)
 	} else {
 		return ""
@@ -54,7 +54,7 @@ func (this *hgVcs) GetLocalBranch() string {
 	cmd := exec.Command("hg", "branch")
 	cmd.Dir = this.rootPath
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		return TrimLastNewline(string(out))
 	} else {
 		return ""
@@ -69,7 +69,7 @@ func (this *hgVcs) GetLocalRev() string {
 	cmd := exec.Command("hg", "--debug", "identify", "-i")
 	cmd.Dir = this.rootPath
 
-	if out, err := cmd.CombinedOutput(); err == nil && len(out) >= hgRevisionLength {
+	if out, err := cmd.Output(); err == nil && len(out) >= hgRevisionLength {
 		return string(out[:hgRevisionLength])
 	} else {
 		return ""
@@ -81,7 +81,7 @@ func (this *hgVcs) GetRemoteRev() string {
 	cmd := exec.Command("hg", "--debug", "identify", "-i", "default")
 	cmd.Dir = this.rootPath
 
-	if out, err := cmd.CombinedOutput(); err == nil {
+	if out, err := cmd.Output(); err == nil {
 		// Get the last line of output
 		if lines := GetLines(TrimLastNewline(string(out))); len(lines) > 0 {
 			return lines[len(lines)-1]
