@@ -61,6 +61,7 @@ func extract(n *html.Node) (out string) {
 
 func extractList(n *html.Node, listType atom.Atom) (out string) {
 	firstItem := true
+
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode && c.DataAtom == atom.Li {
 			if firstItem {
@@ -68,6 +69,7 @@ func extractList(n *html.Node, listType atom.Atom) (out string) {
 			} else {
 				out += "\n"
 			}
+
 			switch listType {
 			case atom.Ul:
 				out += "- "

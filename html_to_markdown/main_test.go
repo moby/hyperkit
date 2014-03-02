@@ -28,6 +28,8 @@ Cool.
 
 	renderedHtml := blackfriday.MarkdownBasic([]byte(markdownIn))
 
+	t.Log(string(renderedHtml))
+
 	parsedHtml, err := html.Parse(bytes.NewReader(renderedHtml))
 	if err != nil {
 		panic(err)
