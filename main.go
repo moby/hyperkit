@@ -1,9 +1,6 @@
 package gist7802150
 
-import (
-	"fmt"
-	"strings"
-)
+import "strings"
 
 type DepNode2I interface {
 	Update()
@@ -11,7 +8,6 @@ type DepNode2I interface {
 	GetSources() []DepNode2I
 
 	addSink(*DepNode2)
-	//removeSource(DepNode2I)
 	getNeedToUpdate() bool
 	markAllAsNeedToUpdate()
 	markAsNotNeedToUpdate()
@@ -51,7 +47,7 @@ func ExternallyUpdated(this DepNode2ManualI) {
 type DepNode2 struct {
 	updated bool
 	sources []DepNode2I
-	sinks   map[*DepNode2]bool
+	sinks   []*DepNode2
 }
 
 func (this *DepNode2) GetSources() []DepNode2I {
@@ -59,7 +55,6 @@ func (this *DepNode2) GetSources() []DepNode2I {
 }
 
 func (this *DepNode2) AddSources(sources ...DepNode2I) {
-	//fmt.Println("AddSources", sources)
 	this.updated = false
 	this.sources = append(this.sources, sources...)
 	for _, source := range sources {
@@ -67,27 +62,8 @@ func (this *DepNode2) AddSources(sources ...DepNode2I) {
 	}
 }
 
-func (this *DepNode2) Close() error {
-	/*for _, source := range this.sources {
-		source.removeSink(this)
-	}*/
-	return nil
-}
-
 func (this *DepNode2) addSink(sink *DepNode2) {
-	if this.sinks == nil {
-		this.sinks = make(map[*DepNode2]bool)
-	}
-	this.sinks[sink] = true
-}
-
-func (this *DepNode2) removeSource(source DepNode2I) {
-	for i, s := range this.sources {
-		if s == source {
-			this.sources = append(this.sources[:i], this.sources[i+1:]...)
-			return
-		}
-	}
+	this.sinks = append(this.sinks, sink)
 }
 
 func (this *DepNode2) getNeedToUpdate() bool {
@@ -96,7 +72,7 @@ func (this *DepNode2) getNeedToUpdate() bool {
 
 func (this *DepNode2) markAllAsNeedToUpdate() {
 	this.updated = false
-	for sink := range this.sinks {
+	for _, sink := range this.sinks {
 		// TODO: See if this can be optimized away...
 		sink.markAllAsNeedToUpdate()
 	}
@@ -109,29 +85,17 @@ func (this *DepNode2) markAsNotNeedToUpdate() {
 // ---
 
 type DepNode2Manual struct {
-	sinks map[*DepNode2]bool
+	sinks []*DepNode2
 }
 
 func (this *DepNode2Manual) Update()                 { panic("") }
 func (this *DepNode2Manual) GetSources() []DepNode2I { panic("") }
-func (this *DepNode2Manual) Close() error {
-	for sink := range this.sinks {
-		sink.removeSource(this)
-	}
-	this.sinks = nil
-	return nil
-}
 func (this *DepNode2Manual) addSink(sink *DepNode2) {
-	if this.sinks == nil {
-		this.sinks = make(map[*DepNode2]bool)
-	}
-	this.sinks[sink] = true
+	this.sinks = append(this.sinks, sink)
 }
-
-//func (this *DepNode2Manual) removeSource(source DepNode2I) { panic("") }
 func (this *DepNode2Manual) getNeedToUpdate() bool { return false }
 func (this *DepNode2Manual) markAllAsNeedToUpdate() {
-	for sink := range this.sinks {
+	for _, sink := range this.sinks {
 		// TODO: See if this can be optimized away...
 		sink.markAllAsNeedToUpdate()
 	}
@@ -143,11 +107,15 @@ func (this *DepNode2Manual) manual()                { panic("") }
 // merge takes other and merges it (along with its current sinks) into this.
 // Afterwards, both pointers point to a single unified DepNode2Manual struct.
 func (this *DepNode2Manual) merge(other **DepNode2Manual) {
-	if this.sinks == nil {
-		this.sinks = make(map[*DepNode2]bool)
+	presentSinks := map[*DepNode2]bool{}
+	for _, sink := range this.sinks {
+		presentSinks[sink] = true
 	}
-	for sink := range (*other).sinks {
-		this.sinks[sink] = true
+
+	for _, sink := range (*other).sinks {
+		if !presentSinks[sink] {
+			this.sinks = append(this.sinks, sink)
+		}
 	}
 
 	*other = this
@@ -178,8 +146,6 @@ type ViewGroupI interface {
 	ContainsUri(FileUri) bool
 
 	getViewGroup() *ViewGroup
-
-	Debug()
 
 	DepNode2ManualI
 }
@@ -221,12 +187,7 @@ func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) 
 // RemoveView removes a single view from the ViewGroup.
 func (this *ViewGroup) RemoveView(other ViewGroupI) {
 	delete(*this.all, other)
-	//this.DepNode2Manual.Close() // <<< THIS is the key to making it work. But it's hack, need a proper solution.
 	other.getViewGroup().InitViewGroup(other, other.GetUri())
-}
-
-func (this *ViewGroup) Debug() {
-	fmt.Println(*this.all)
 }
 
 func (this *ViewGroup) GetUri() FileUri {
