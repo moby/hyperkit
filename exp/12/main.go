@@ -14,6 +14,11 @@ import (
 var repos = make(map[string]*exp13.VcsState)
 var reposLock sync.Mutex
 
+// TODO: Use FileUri or similar type instead of string for clean path to repo root.
+// path -> *Directory
+var directories = make(map[string]*Directory)
+var directoriesLock sync.Mutex
+
 type Directory struct {
 	path string
 
@@ -35,8 +40,20 @@ func (this *Directory) Update() {
 	}
 }
 
-func NewDirectory(path string) *Directory {
+func newDirectory(path string) *Directory {
 	this := &Directory{path: path}
 	// No DepNode2I sources, so each instance can only be updated (i.e. initialized) once
 	return this
+}
+
+func LookupDirectory(path string) *Directory {
+	directoriesLock.Lock()
+	defer directoriesLock.Unlock()
+	if dir := directories[path]; dir != nil {
+		return dir
+	} else {
+		dir = newDirectory(path)
+		directories[path] = dir
+		return dir
+	}
 }
