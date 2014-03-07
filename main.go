@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 )
 
-// An ImportPathFound describes the Import Path found in a directory.
+// An ImportPathFound describes the Import Path found in a GOPATH workspace.
 type ImportPathFound struct {
 	importPath  string
 	gopathEntry string
