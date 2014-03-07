@@ -93,7 +93,7 @@ func hasAnyFuncs(dpkg *doc.Package) bool {
 func PrintPackageSummary(ImportPath string) {
 	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
 	if err != nil {
-		panic(err)
+		return
 	}
 	if !hasAnyFuncs(dpkg) {
 		return
@@ -104,7 +104,7 @@ func PrintPackageSummary(ImportPath string) {
 func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
 	if err != nil {
-		panic(err)
+		return
 	}
 	if !hasAnyFuncs(dpkg) {
 		return
@@ -119,7 +119,7 @@ func PrintPackageSummariesInDir(dirname string) {
 		path0 := filepath.Join(gopathEntry, "src")
 		entries, err := ioutil.ReadDir(filepath.Join(path0, dirname))
 		//CheckError(err)
-		if nil != err {
+		if err != nil {
 			continue
 		}
 		//for _, v := range entries {
