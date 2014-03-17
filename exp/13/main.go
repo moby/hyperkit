@@ -12,6 +12,9 @@ type VcsState struct {
 	VcsLocal  *VcsLocal
 	VcsRemote *VcsRemote
 
+	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
+	// TODO: No need for this to have a DepNode2Manual, remove it.
+	//       Well, the idea is I don't foresee anyone invalidating the entire VcsState.
 	DepNode2Manual
 }
 
@@ -36,11 +39,13 @@ type VcsLocal struct {
 
 func NewVcsLocal(repo *VcsState) *VcsLocal {
 	this := &VcsLocal{}
+	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
 	this.AddSources(repo, &DepNode2Manual{})
 	return this
 }
 
 func (this *VcsLocal) Update() {
+	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
 	vcs := this.GetSources()[0].(*VcsState).Vcs
 
 	//fmt.Println("*VcsLocal) Update() for", vcs.RootPath())
