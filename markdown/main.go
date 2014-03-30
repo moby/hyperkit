@@ -11,7 +11,7 @@ import (
 )
 
 type markdownRenderer struct {
-	normalTextMarker   int
+	normalTextMarker   map[*bytes.Buffer]int
 	orderedListCounter int
 }
 
@@ -62,37 +62,65 @@ func (_ *markdownRenderer) FootnoteItem(out *bytes.Buffer, name, text []byte, fl
 // Span-level callbacks.
 func (_ *markdownRenderer) AutoLink(out *bytes.Buffer, link []byte, kind int) {}
 func (m *markdownRenderer) CodeSpan(out *bytes.Buffer, text []byte) {
-	if m.normalTextMarker == out.Len() {
+	if m.normalTextMarker[out] == out.Len() {
 		out.WriteByte(' ')
 	}
 	out.WriteByte('`')
 	out.Write(text)
 	out.WriteByte('`')
-	m.normalTextMarker = out.Len()
+	m.normalTextMarker[out] = out.Len()
 }
-func (_ *markdownRenderer) DoubleEmphasis(out *bytes.Buffer, text []byte)                     {}
-func (_ *markdownRenderer) Emphasis(out *bytes.Buffer, text []byte)                           {}
+func (m *markdownRenderer) DoubleEmphasis(out *bytes.Buffer, text []byte) {
+	if m.normalTextMarker[out] == out.Len() {
+		out.WriteByte(' ')
+	}
+	out.WriteString("**")
+	out.Write(text)
+	out.WriteString("**")
+	m.normalTextMarker[out] = out.Len()
+}
+func (m *markdownRenderer) Emphasis(out *bytes.Buffer, text []byte) {
+	if m.normalTextMarker[out] == out.Len() {
+		out.WriteByte(' ')
+	}
+	out.WriteByte('*')
+	out.Write(text)
+	out.WriteByte('*')
+	m.normalTextMarker[out] = out.Len()
+}
 func (_ *markdownRenderer) Image(out *bytes.Buffer, link []byte, title []byte, alt []byte)    {}
 func (_ *markdownRenderer) LineBreak(out *bytes.Buffer)                                       {}
 func (_ *markdownRenderer) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {}
 func (_ *markdownRenderer) RawHtmlTag(out *bytes.Buffer, tag []byte)                          {}
-func (_ *markdownRenderer) TripleEmphasis(out *bytes.Buffer, text []byte)                     {}
-func (_ *markdownRenderer) StrikeThrough(out *bytes.Buffer, text []byte)                      {}
-func (_ *markdownRenderer) FootnoteRef(out *bytes.Buffer, ref []byte, id int)                 {}
+func (m *markdownRenderer) TripleEmphasis(out *bytes.Buffer, text []byte) {
+	if m.normalTextMarker[out] == out.Len() {
+		out.WriteByte(' ')
+	}
+	out.WriteString("***")
+	out.Write(text)
+	out.WriteString("***")
+	m.normalTextMarker[out] = out.Len()
+}
+func (_ *markdownRenderer) StrikeThrough(out *bytes.Buffer, text []byte)      {}
+func (_ *markdownRenderer) FootnoteRef(out *bytes.Buffer, ref []byte, id int) {}
 
 // Low-level callbacks
 func (_ *markdownRenderer) Entity(out *bytes.Buffer, entity []byte) { /*out.Write(entity)*/
+	panic(string(entity))
 }
 func (m *markdownRenderer) NormalText(out *bytes.Buffer, text []byte) {
 	cleanString := clean(string(text))
 	if cleanString == "" {
 		return
 	}
-	if m.normalTextMarker == out.Len() {
+	if _, ok := m.normalTextMarker[out]; !ok {
+		m.normalTextMarker[out] = -1
+	}
+	if m.normalTextMarker[out] == out.Len() && !isPunctuation(cleanString[0]) {
 		out.WriteByte(' ')
 	}
 	out.WriteString(cleanString)
-	m.normalTextMarker = out.Len()
+	m.normalTextMarker[out] = out.Len()
 }
 
 // Header and footer.
@@ -123,9 +151,18 @@ func clean(s string) string {
 	return string(b)
 }
 
+func isPunctuation(b byte) bool {
+	switch b {
+	case ',', '.':
+		return true
+	default:
+		return false
+	}
+}
+
 // NewRenderer returns a Markdown renderer.
 func NewRenderer() blackfriday.Renderer {
-	return &markdownRenderer{normalTextMarker: -1}
+	return &markdownRenderer{normalTextMarker: make(map[*bytes.Buffer]int)}
 }
 
 // Options specifies options for formatting.

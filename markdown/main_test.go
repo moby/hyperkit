@@ -50,7 +50,7 @@ func Example2() {
 Subtitle
 ---
 
-How about ` + "`this`" + ` and other stuff.
+How about ` + "`this`" + ` and other stuff like *italic*, **bold** and ***super    extra***.
 `)
 
 	output := blackfriday.Markdown(input, markdown.NewRenderer(), 0)
@@ -64,6 +64,6 @@ How about ` + "`this`" + ` and other stuff.
 	//Subtitle
 	//--------
 	//
-	//How about `this` and other stuff.
+	//How about `this` and other stuff like *italic*, **bold** and ***super extra***.
 	//
 }
