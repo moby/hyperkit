@@ -38,7 +38,7 @@ func main() {
 		for _, row := range results.Rows {
 			row := row.(map[string]interface{})
 
-			fmt.Println(row["name"], row["chef_environment"])
+			fmt.Println(row["name"])
 		}
 	/*case false:
 	c := chefConnect()
