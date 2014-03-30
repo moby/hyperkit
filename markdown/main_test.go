@@ -1,9 +1,9 @@
 package markdown_test
 
 import (
+	"log"
 	"os"
 
-	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go/markdown"
 )
 
@@ -24,7 +24,10 @@ But the next one...
 Final paragraph.
 `)
 
-	output := blackfriday.Markdown(input, markdown.NewRenderer(), 0)
+	output, err := markdown.Process("", input, nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	os.Stdout.Write(output)
 
@@ -53,7 +56,10 @@ Subtitle
 How about ` + "`this`" + ` and other stuff like *italic*, **bold** and ***super    extra***.
 `)
 
-	output := blackfriday.Markdown(input, markdown.NewRenderer(), 0)
+	output, err := markdown.Process("", input, nil)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	os.Stdout.Write(output)
 
