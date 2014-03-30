@@ -22,10 +22,16 @@ func (_ *markdownRenderer) BlockQuote(out *bytes.Buffer, text []byte)           
 func (_ *markdownRenderer) BlockHtml(out *bytes.Buffer, text []byte)              {}
 func (_ *markdownRenderer) Header(out *bytes.Buffer, text func() bool, level int) {
 	marker := out.Len()
+	if marker != 0 {
+		fmt.Fprint(out, "\n")
+	}
+	textMarker := out.Len()
 	text()
 	switch level {
 	case 1:
-		fmt.Fprint(out, "\n", strings.Repeat("=", out.Len()-marker), "\n")
+		fmt.Fprint(out, "\n", strings.Repeat("=", out.Len()-textMarker), "\n")
+	case 2:
+		fmt.Fprint(out, "\n", strings.Repeat("-", out.Len()-textMarker), "\n")
 	}
 }
 func (_ *markdownRenderer) HRule(out *bytes.Buffer) {}
@@ -54,8 +60,16 @@ func (_ *markdownRenderer) Footnotes(out *bytes.Buffer, text func() bool)       
 func (_ *markdownRenderer) FootnoteItem(out *bytes.Buffer, name, text []byte, flags int)          {}
 
 // Span-level callbacks.
-func (_ *markdownRenderer) AutoLink(out *bytes.Buffer, link []byte, kind int)                 {}
-func (_ *markdownRenderer) CodeSpan(out *bytes.Buffer, text []byte)                           {}
+func (_ *markdownRenderer) AutoLink(out *bytes.Buffer, link []byte, kind int) {}
+func (m *markdownRenderer) CodeSpan(out *bytes.Buffer, text []byte) {
+	if m.normalTextMarker == out.Len() {
+		out.WriteByte(' ')
+	}
+	out.WriteByte('`')
+	out.Write(text)
+	out.WriteByte('`')
+	m.normalTextMarker = out.Len()
+}
 func (_ *markdownRenderer) DoubleEmphasis(out *bytes.Buffer, text []byte)                     {}
 func (_ *markdownRenderer) Emphasis(out *bytes.Buffer, text []byte)                           {}
 func (_ *markdownRenderer) Image(out *bytes.Buffer, link []byte, title []byte, alt []byte)    {}
@@ -84,6 +98,8 @@ func (m *markdownRenderer) NormalText(out *bytes.Buffer, text []byte) {
 // Header and footer.
 func (_ *markdownRenderer) DocumentHeader(out *bytes.Buffer) {}
 func (_ *markdownRenderer) DocumentFooter(out *bytes.Buffer) {}
+
+func (_ *markdownRenderer) GetFlags() int { return 0 }
 
 // clean replaces each sequence of space, \n, \r, or \t characters
 // with a single space and removes any trailing and leading spaces.

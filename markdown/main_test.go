@@ -29,16 +29,41 @@ Final paragraph.
 	os.Stdout.Write(output)
 
 	// Output:
-	// Title
-	// =====
+	//Title
+	//=====
 	//
-	// This is a new paragraph. I wonder if I have too many spaces. What about new paragraph. But the next one...
+	//This is a new paragraph. I wonder if I have too many spaces. What about new paragraph. But the next one...
 	//
-	// Is really new.
+	//Is really new.
 	//
-	// 1. Item one.
-	// 2. Item TWO.
+	//1. Item one.
+	//2. Item TWO.
 	//
-	// Final paragraph.
+	//Final paragraph.
+	//
+}
+
+func Example2() {
+	input := []byte(`Title
+==
+
+Subtitle
+---
+
+How about ` + "`this`" + ` and other stuff.
+`)
+
+	output := blackfriday.Markdown(input, markdown.NewRenderer(), 0)
+
+	os.Stdout.Write(output)
+
+	// Output:
+	//Title
+	//=====
+	//
+	//Subtitle
+	//--------
+	//
+	//How about `this` and other stuff.
 	//
 }
