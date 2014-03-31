@@ -105,9 +105,9 @@ func (m *markdownRenderer) List(out *bytes.Buffer, text func() bool, flags int) 
 	}
 }
 func (m *markdownRenderer) ListItem(out *bytes.Buffer, text []byte, flags int) {
-	if flags&blackfriday.LIST_ITEM_CONTAINS_BLOCK != 0 {
+	/*if flags&blackfriday.LIST_ITEM_CONTAINS_BLOCK != 0 {
 		doubleSpace(out)
-	}
+	}*/
 	out.WriteString(strings.Repeat("\t", (m.listDepth - 1)))
 	if flags&blackfriday.LIST_TYPE_ORDERED != 0 {
 		fmt.Fprintf(out, "%d. %s", m.orderedListCounter[m.listDepth], string(text))
@@ -152,18 +152,14 @@ func (_ *markdownRenderer) AutoLink(out *bytes.Buffer, link []byte, kind int) {
 	out.Write(link)
 }
 func (m *markdownRenderer) CodeSpan(out *bytes.Buffer, text []byte) {
-	if m.normalTextMarker[out] == out.Len() {
-		out.WriteByte(' ')
-	}
+	m.spaceIfNeeded(out)
 	out.WriteByte('`')
 	out.Write(text)
 	out.WriteByte('`')
 	m.normalTextMarker[out] = out.Len()
 }
 func (m *markdownRenderer) DoubleEmphasis(out *bytes.Buffer, text []byte) {
-	if m.normalTextMarker[out] == out.Len() {
-		out.WriteByte(' ')
-	}
+	m.spaceIfNeeded(out)
 	out.WriteString("**")
 	out.Write(text)
 	out.WriteString("**")
@@ -173,9 +169,7 @@ func (m *markdownRenderer) Emphasis(out *bytes.Buffer, text []byte) {
 	if len(text) == 0 {
 		return
 	}
-	if m.normalTextMarker[out] == out.Len() {
-		out.WriteByte(' ')
-	}
+	m.spaceIfNeeded(out)
 	out.WriteByte('*')
 	out.Write(text)
 	out.WriteByte('*')
@@ -191,20 +185,20 @@ func (_ *markdownRenderer) Image(out *bytes.Buffer, link []byte, title []byte, a
 func (_ *markdownRenderer) LineBreak(out *bytes.Buffer) {
 	out.WriteString("<br>")
 }
-func (_ *markdownRenderer) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
+func (m *markdownRenderer) Link(out *bytes.Buffer, link []byte, title []byte, content []byte) {
+	m.spaceIfNeeded(out)
 	out.WriteString("[")
 	out.Write(content)
 	out.WriteString("](")
 	out.Write(link)
 	out.WriteString(")")
+	m.normalTextMarker[out] = out.Len()
 }
 func (_ *markdownRenderer) RawHtmlTag(out *bytes.Buffer, tag []byte) {
 	out.Write(tag)
 }
 func (m *markdownRenderer) TripleEmphasis(out *bytes.Buffer, text []byte) {
-	if m.normalTextMarker[out] == out.Len() {
-		out.WriteByte(' ')
-	}
+	m.spaceIfNeeded(out)
 	out.WriteString("***")
 	out.Write(text)
 	out.WriteString("***")
@@ -228,12 +222,7 @@ func (m *markdownRenderer) NormalText(out *bytes.Buffer, text []byte) {
 	if cleanString == "" {
 		return
 	}
-	if _, ok := m.normalTextMarker[out]; !ok {
-		m.normalTextMarker[out] = -1
-	}
-	if m.normalTextMarker[out] == out.Len() && !isPunctuation(cleanString[0]) {
-		out.WriteByte(' ')
-	}
+	m.spaceIfNeededNormalText(out, cleanString)
 	out.WriteString(cleanString)
 	m.normalTextMarker[out] = out.Len()
 }
@@ -243,6 +232,24 @@ func (_ *markdownRenderer) DocumentHeader(out *bytes.Buffer) {}
 func (_ *markdownRenderer) DocumentFooter(out *bytes.Buffer) {}
 
 func (_ *markdownRenderer) GetFlags() int { return 0 }
+
+func (m *markdownRenderer) spaceIfNeeded(out *bytes.Buffer) {
+	if _, ok := m.normalTextMarker[out]; !ok {
+		m.normalTextMarker[out] = -1
+	}
+	if m.normalTextMarker[out] == out.Len() {
+		out.WriteByte(' ')
+	}
+}
+
+func (m *markdownRenderer) spaceIfNeededNormalText(out *bytes.Buffer, cleanString string) {
+	if _, ok := m.normalTextMarker[out]; !ok {
+		m.normalTextMarker[out] = -1
+	}
+	if m.normalTextMarker[out] == out.Len() && !isPunctuation(cleanString[0]) {
+		out.WriteByte(' ')
+	}
+}
 
 // clean replaces each sequence of space, \n, \r, or \t characters
 // with a single space and removes any trailing and leading spaces.
@@ -268,7 +275,7 @@ func clean(s string) string {
 
 func isPunctuation(b byte) bool {
 	switch b {
-	case ',', '.', ':', ';':
+	case ',', '.', ':', ';', '_':
 		return true
 	default:
 		return false

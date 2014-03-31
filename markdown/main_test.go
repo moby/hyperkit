@@ -119,6 +119,9 @@ Last paragraph here.
 An h2 header
 ------------
 
+- Paragraph right away.
+- **Big item**: Right away after header.
+
 [Visit GitHub!](www.github.com)
 
 ![Hmm](http://example.org/image.png)
@@ -126,6 +129,10 @@ An h2 header
 ~~Mistaken text.~~
 
 http://example.com
+
+Now a [link](www.github.com) in a paragraph. End with [link_underscore.go](www.github.com).
+
+- [Link](www.example.com)
 
 ### An h3 header
 
