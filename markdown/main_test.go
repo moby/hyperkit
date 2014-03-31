@@ -159,9 +159,9 @@ define foobar() {
 
 (which makes copying & pasting easier). You can optionally mark the delimited block for Pandoc to syntax highlight it:
 
-` + "```" + `Go
+` + "```Go" + `
 func main() {
-    println("Hi.")
+	println("Hi.")
 }
 ` + "```" + `
 
