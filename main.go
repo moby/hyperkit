@@ -3,6 +3,7 @@ package gist7480523
 import (
 	"go/build"
 	"strings"
+
 	"github.com/shurcooL/go/exp/12"
 
 	. "gist.github.com/5504644.git"
@@ -25,25 +26,21 @@ type GoPackage struct {
 
 func GoPackageFromImportPathFound(importPathFound ImportPathFound) *GoPackage {
 	bpkg, err := BuildPackageFromSrcDir(importPathFound.FullPath())
-	if err != nil {
-		if _, noGo := err.(*build.NoGoError); noGo {
-			return nil
-		}
-	}
 	return goPackageFromBuildPackage(bpkg, err)
 }
 
 func GoPackageFromImportPath(importPath string) *GoPackage {
 	bpkg, err := BuildPackageFromImportPath(importPath)
-	if err != nil {
-		if _, noGo := err.(*build.NoGoError); noGo {
-			return nil
-		}
-	}
 	return goPackageFromBuildPackage(bpkg, err)
 }
 
 func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
+	if bpkgErr != nil {
+		if _, noGo := bpkgErr.(*build.NoGoError); noGo || bpkg.Dir == "" {
+			return nil
+		}
+	}
+
 	goPackage := &GoPackage{
 		Bpkg:      bpkg,
 		BpkgError: bpkgErr,
