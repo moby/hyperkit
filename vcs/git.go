@@ -37,11 +37,11 @@ func (this *gitVcs) GetLocalBranch() string {
 }
 
 func (this *gitVcs) GetLocalRev() string {
-	return CheckGitRepoLocal(this.rootPath)
+	return CheckGitRepoLocal(this.rootPath, this.GetDefaultBranch())
 }
 
 func (this *gitVcs) GetRemoteRev() string {
-	return CheckGitRepoRemote(this.rootPath)
+	return CheckGitRepoRemote(this.rootPath, this.GetDefaultBranch())
 }
 
 // ---
@@ -84,8 +84,8 @@ func CheckGitRepoLocalBranch(path string) string {
 // Length of a git revision hash.
 const gitRevisionLength = 40
 
-func CheckGitRepoLocal(path string) string {
-	cmd := exec.Command("git", "rev-parse", "master")
+func CheckGitRepoLocal(path, branch string) string {
+	cmd := exec.Command("git", "rev-parse", branch)
 	cmd.Dir = path
 
 	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
@@ -95,8 +95,8 @@ func CheckGitRepoLocal(path string) string {
 	}
 }
 
-func CheckGitRepoRemote(path string) string {
-	cmd := exec.Command("git", "ls-remote", "--heads", "origin", "master")
+func CheckGitRepoRemote(path, branch string) string {
+	cmd := exec.Command("git", "ls-remote", "--heads", "origin", branch)
 	cmd.Dir = path
 
 	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
