@@ -66,7 +66,7 @@ const hgRevisionLength = 40
 
 func (this *hgVcs) GetLocalRev() string {
 	// Alternative: hg parent --template '{node}'
-	cmd := exec.Command("hg", "--debug", "identify", "-i")
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", this.GetDefaultBranch())
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil && len(out) >= hgRevisionLength {
@@ -78,7 +78,7 @@ func (this *hgVcs) GetLocalRev() string {
 
 func (this *hgVcs) GetRemoteRev() string {
 	// TODO: Make this more robust and proper, etc.
-	cmd := exec.Command("hg", "--debug", "identify", "-i", "default")
+	cmd := exec.Command("hg", "--debug", "identify", "-i", "--rev", this.GetDefaultBranch(), "default")
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
