@@ -41,6 +41,10 @@ func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
 		}
 	}
 
+	if bpkg.ConflictDir != "" {
+		return nil
+	}
+
 	goPackage := &GoPackage{
 		Bpkg:      bpkg,
 		BpkgError: bpkgErr,
