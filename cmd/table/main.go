@@ -26,10 +26,10 @@ func main() {
 	args := flag.Args()
 
 	switch {
-	case len(args) == 3 && args[0] == "search":
+	case len(args) == 1:
 		c := chefConnect()
 
-		results, err := c.Search(args[1], args[2])
+		results, err := c.Search("node", "role:"+args[0])
 		if err != nil {
 			panic(err)
 		}
