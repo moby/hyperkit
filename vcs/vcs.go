@@ -30,10 +30,11 @@ func (this *commonVcs) RootPath() string {
 	return this.rootPath
 }
 
-// New returns a Vcs if path is under version control, otherwise nil.
-// TODO: Asking for same path should return point to existing Vcs, rather than creating another copy.
-// Actually, maybe that should be the responsibility of a higher level package that uses this one, like VcsManager.
+// New returns a new Vcs if path is under version control, otherwise nil.
+// It should be a valid path.
+// TODO: Use a better type for path, e.g., github.com/shurcooL/go/path.
 func New(path string) Vcs {
+	// TODO: Optimize by checking more likely vcs first. Potentially check in parallel.
 	for _, vcsProvider := range vcsProviders {
 		if vcs := vcsProvider(path); vcs != nil {
 			return vcs
