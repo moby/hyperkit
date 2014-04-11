@@ -16,11 +16,17 @@ func GetParentFuncAsString() string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	// TODO: Use runtime.FuncForPC(runtime.Caller()).Name() to get func name if source code not found.
 	stack := string(debug.Stack())
+
 	funcName := GetLine(stack, 3)
 	funcName = funcName[1:strings.Index(funcName, ": ")]
+	if dotPos := strings.LastIndex(funcName, "."); dotPos != -1 { // Trim package prefix.
+		funcName = funcName[dotPos+1:]
+	}
+
 	funcArgs := GetLine(stack, 5)
 	funcArgs = funcArgs[strings.Index(funcArgs, ": ")+len(": "):]
-	funcArgs = funcArgs[strings.Index(funcArgs, "("):]
+	funcArgs = funcArgs[strings.Index(funcArgs, "(") : strings.LastIndex(funcArgs, ")")+len(")")] // TODO: This may fail if there are 2+ func calls on one line.
+
 	return funcName + funcArgs
 }
 
@@ -36,7 +42,7 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 
 	parentName := GetLine(stack, 5)
 	parentName = parentName[1:strings.Index(parentName, ": ")]
-	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix
+	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix.
 		parentName = parentName[dotPos+1:]
 	}
 
