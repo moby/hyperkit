@@ -47,7 +47,21 @@ func GoReduceLinesFromReader(r io.Reader, numWorkers int, reduceFunc func(string
 	return outChan
 }
 
-// Caller is expected to close inChan after sending all input to it.
+func GoReduceLinesFromSlice(inSlice []string, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
+	inChan := make(chan interface{})
+	outChan := GoReduce(inChan, numWorkers, reduceFunc)
+	go func() { // This needs to happen in the background because sending input will be blocked on reading output.
+		for _, in := range inSlice {
+			inChan <- in
+		}
+		close(inChan)
+	}()
+
+	return outChan
+}
+
+// Caller is expected to close inChan after sending all input to it. Sending input should be done in a background goroutine,
+// because sending input will be blocked on reading output.
 func GoReduce(inChan <-chan interface{}, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
 	outChan := make(chan interface{})
 
