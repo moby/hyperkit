@@ -42,7 +42,7 @@ func GetForcedUse(ImportPath string) string {
 func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
 	if err != nil {
-		return "Package not valid (doesn't exist or can't be built)."
+		return fmt.Sprintf("Package %q not valid (doesn't exist or can't be built).", ImportPath)
 	}
 
 	// Uncomment only for testing purposes
