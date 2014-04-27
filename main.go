@@ -6,6 +6,8 @@ import (
 
 	. "gist.github.com/7729255.git"
 	. "gist.github.com/7802150.git"
+
+	"gopkg.in/pipe.v2"
 )
 
 // CmdFactory is an interface to create new commands.
@@ -79,4 +81,56 @@ func NewCmdTemplateDynamic2() *CmdTemplateDynamic2 {
 func (this *CmdTemplateDynamic2) NewCommand() *exec.Cmd {
 	MakeUpdated(this)
 	return this.Template.NewCommand()
+}
+
+// =====
+
+type PipeFactory interface {
+	NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.Pipe)
+}
+
+// ---
+
+type PipeStatic pipe.Pipe
+
+func (this PipeStatic) NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.Pipe) {
+	return pipe.NewState(stdout, stderr), (pipe.Pipe)(this)
+}
+
+// ---
+
+type pipeTemplate struct {
+	Pipe  pipe.Pipe
+	Dir   string
+	Stdin func() io.Reader
+}
+
+func NewPipeTemplate(pipe pipe.Pipe) *pipeTemplate {
+	return &pipeTemplate{Pipe: pipe}
+}
+
+func (this *pipeTemplate) NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.Pipe) {
+	s := pipe.NewState(stdout, stderr)
+	s.Dir = this.Dir
+	if this.Stdin != nil {
+		s.Stdin = this.Stdin()
+	}
+	return s, this.Pipe
+}
+
+// ---
+
+type pipeTemplateDynamic struct {
+	Template *pipeTemplate
+
+	DepNode2Func
+}
+
+func NewPipeTemplateDynamic() *pipeTemplateDynamic {
+	return &pipeTemplateDynamic{}
+}
+
+func (this *pipeTemplateDynamic) NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.Pipe) {
+	MakeUpdated(this)
+	return this.Template.NewPipe(stdout, stderr)
 }
