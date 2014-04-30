@@ -38,13 +38,13 @@ func GistIdToUsername(gistId string) (string, error) {
 	gistUrl := "https://api.github.com/gists/" + gistId
 
 	var gistJson struct {
-		User struct{ Login string }
+		Owner struct{ Login string }
 	}
 	err := json.Unmarshal(HttpGetB(gistUrl), &gistJson)
 	if err != nil {
 		return "", err
 	}
-	return gistJson.User.Login, nil
+	return gistJson.Owner.Login, nil
 }
 
 func main() {
