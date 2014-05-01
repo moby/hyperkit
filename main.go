@@ -17,9 +17,9 @@ type GoPackageStringer func(*GoPackage) string
 // This is partially a copy of "cmd/go".Package, except it can be imported and reused. =.=
 // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#24
 type GoPackage struct {
-	Bpkg      *build.Package
-	BpkgError error
-	Standard  bool // is this package part of the standard Go library?
+	Bpkg     *build.Package
+	BpkgErr  error
+	Standard bool // is this package part of the standard Go library?
 
 	Dir *exp12.Directory
 }
@@ -46,9 +46,9 @@ func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
 	}
 
 	goPackage := &GoPackage{
-		Bpkg:      bpkg,
-		BpkgError: bpkgErr,
-		Standard:  bpkg.Goroot && bpkg.ImportPath != "" && !strings.Contains(bpkg.ImportPath, "."), // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#110
+		Bpkg:     bpkg,
+		BpkgErr:  bpkgErr,
+		Standard: bpkg.Goroot && bpkg.ImportPath != "" && !strings.Contains(bpkg.ImportPath, "."), // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#110
 
 		Dir: exp12.LookupDirectory(bpkg.Dir),
 	}
