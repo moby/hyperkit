@@ -1,4 +1,4 @@
-package main
+package gist5408736
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ func PrintRuneStats(s string) {
 
 	//for i := len(sm) - 1; i >= 0; i-- { v := sm[i]
 	for _, v := range sm {
-		fmt.Printf("%v\t\t%q \t%v\n", v.Key, v.Key, v.Value)
+		fmt.Printf("%v   \t%q \t%v\n", v.Key, v.Key, v.Value)
 	}
 }
 
