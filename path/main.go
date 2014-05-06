@@ -2,7 +2,10 @@
 package path
 
 import (
+	"io"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -26,4 +29,19 @@ func (this *Path) String() (out string) {
 	} else {
 		return path.Join(this.Elements...)
 	}
+}
+
+// Converts this path to a host OS native path format.
+// TODO: Currently, it won't work on Windows.
+func (this *Path) hostPath() (out string) {
+	if !this.Relative {
+		return string(filepath.Separator) + filepath.Join(this.Elements...)
+	} else {
+		return filepath.Join(this.Elements...)
+	}
+}
+
+// Opens the file at this path as a ReadCloser.
+func (this *Path) ToReadCloser() (io.ReadCloser, error) {
+	return os.Open(this.hostPath())
 }
