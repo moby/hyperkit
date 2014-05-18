@@ -1,6 +1,7 @@
 package gist6418290
 
 import (
+	"fmt"
 	"go/ast"
 	"runtime/debug"
 	"strings"
@@ -30,8 +31,33 @@ func GetParentFuncAsString() string {
 	return funcName + funcArgs
 }
 
+// Gets the parent func with its args as a string.
+func GetParentFuncArgsAsString(args ...interface{}) string {
+	// TODO: Replace use of debug.Stack() with direct use of runtime package...
+	// TODO: Use runtime.FuncForPC(runtime.Caller()).Name() to get func name if source code not found.
+	stack := string(debug.Stack())
+
+	funcName := GetLine(stack, 3)
+	funcName = funcName[1:strings.Index(funcName, ": ")]
+	if dotPos := strings.LastIndex(funcName, "."); dotPos != -1 { // Trim package prefix.
+		funcName = funcName[dotPos+1:]
+	}
+
+	funcArgs := "("
+	for i, arg := range args {
+		// TODO: Add arg names. Maybe not?
+		if i != 0 {
+			funcArgs += ", "
+		}
+		funcArgs += fmt.Sprintf("%#v", arg) // TODO: Maybe use goon instead. Need to move elsewhere to avoid import cycle.
+	}
+	funcArgs += ")"
+
+	return funcName + funcArgs
+}
+
 // Gets the expression as a string.
-func GetExprAsString(interface{}) string {
+func GetExprAsString(_ interface{}) string {
 	return GetParentArgExprAsString(0)
 }
 
