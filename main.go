@@ -10,7 +10,6 @@ import (
 
 // ParseStmt is a convenience function for obtaining the AST of a statement x.
 // The position information recorded in the AST is undefined.
-//
 func ParseStmt(x string) (ast.Stmt, error) {
 	file, err := parser.ParseFile(token.NewFileSet(), "", "package p;func _(){\n//line :1\n"+x+"\n;}", 0)
 	if err != nil {
