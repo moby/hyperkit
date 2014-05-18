@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
 	"github.com/shurcooL/go-goon"
 
 	. "gist.github.com/5504644.git"
@@ -91,8 +92,34 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 	close(out)
 }
 
-// Gets Go packages in all GOPATH workspaces.
+// Gets all local Go packages (from GOROOT and all GOPATH workspaces).
 func GetGoPackages(out chan<- *GoPackage) {
+	for _, root := range build.Default.SrcDirs() {
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+			switch {
+			case !fi.IsDir():
+				return nil
+			case path == root:
+				return nil
+			case strings.HasPrefix(fi.Name(), "."):
+				return filepath.SkipDir
+			default:
+				importPath, err := filepath.Rel(root, path)
+				if err != nil {
+					return nil
+				}
+				if goPackage := GoPackageFromImportPath(importPath); goPackage != nil {
+					out <- goPackage
+				}
+				return nil
+			}
+		})
+	}
+	close(out)
+}
+
+// Gets Go packages in all GOPATH workspaces.
+func GetGopathGoPackages(out chan<- *GoPackage) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
 		root := filepath.Join(gopathEntry, "src")
