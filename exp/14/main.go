@@ -8,6 +8,8 @@ import (
 )
 
 type GoPackages struct {
+	SkipGoroot bool // Currently, works on initial run only; changing its value afterwards has no effect.
+
 	Entries []*GoPackage
 
 	DepNode2
@@ -20,7 +22,11 @@ func (this *GoPackages) Update() {
 	{
 		goPackages := make(chan *GoPackage, 64)
 
-		go gist8018045.GetGoPackages(goPackages)
+		if this.SkipGoroot {
+			go gist8018045.GetGopathGoPackages(goPackages)
+		} else {
+			go gist8018045.GetGoPackages(goPackages)
+		}
 
 		this.Entries = nil
 		for {
