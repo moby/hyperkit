@@ -4,17 +4,22 @@ import (
 	"net"
 	"net/http"
 	"strings"
-
-	. "gist.github.com/5286084.git"
 )
 
-func ListenAndServeStoppable(addr string, handler http.Handler, stopServerChan <-chan bool) error {
+// Closes listener socket when stopServerChan receives a value.
+func ListenAndServeStoppable(addr string, handler http.Handler, stopServerChan <-chan struct{}) error {
 	server := &http.Server{Addr: addr, Handler: handler}
 	listener, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		return err
 	}
-	go func() { <-stopServerChan; err := listener.Close(); CheckError(err) }()
+	go func() {
+		<-stopServerChan
+		err := listener.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 	err = server.Serve(listener)
 	switch {
 	case err == nil:
