@@ -60,6 +60,7 @@ func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
 	return goPackage
 }
 
+// This is okay to call concurrently (a mutex is used internally).
 func (this *GoPackage) UpdateVcs() {
 	if this.Bpkg.Goroot == false { // Optimization that assume packages under Goroot are not under vcs
 		MakeUpdated(this.Dir)
