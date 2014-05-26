@@ -23,9 +23,21 @@ func DisplayMarkdownInBrowser(markdown []byte) {
 	http.Handle("/favicon.ico", http.NotFoundHandler())
 
 	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
+	// TODO: Consider using httptest.NewServer.
 	u4.Open("http://localhost:7044/index")
 
 	err := gist7390843.ListenAndServeStoppable("localhost:7044", nil, stopServerChan)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Displays given html page in a new browser window/tab.
+func DisplayHtmlInBrowser(mux *http.ServeMux, stopServerChan <-chan struct{}, query string) {
+	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
+	u4.Open("http://localhost:7044/index" + query)
+
+	err := gist7390843.ListenAndServeStoppable("localhost:7044", mux, stopServerChan)
 	if err != nil {
 		panic(err)
 	}
