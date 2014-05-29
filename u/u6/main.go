@@ -8,13 +8,14 @@ import (
 	. "gist.github.com/7480523.git"
 )
 
+// Show the difference between the working directory and the most recent commit.
 // TODO: Currently, it shows modified files, but not new files. Fix that.
 // TODO: Support for non-git.
 func GoPackageWorkingDiff(goPackage *GoPackage) string {
 	// git diff
 	if goPackage.Dir.Repo.VcsLocal.Status != "" {
 		if goPackage.Dir.Repo.Vcs.Type() == vcs.Git {
-			cmd := exec.Command("git", "diff", "--no-ext-diff")
+			cmd := exec.Command("git", "diff", "HEAD", "--no-ext-diff")
 			cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
 			if outputBytes, err := cmd.CombinedOutput(); err == nil {
 				return string(outputBytes)
