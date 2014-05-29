@@ -6,17 +6,6 @@ import (
 	. "gist.github.com/5892738.git"
 )
 
-func init() {
-	if _, err := exec.LookPath("git"); err == nil {
-		addVcsProvider(func(path string) Vcs {
-			if isRepo, rootPath := GetGitRepoRoot(path); isRepo {
-				return &gitVcs{commonVcs{rootPath: rootPath}}
-			}
-			return nil
-		})
-	}
-}
-
 type gitVcs struct {
 	commonVcs
 }

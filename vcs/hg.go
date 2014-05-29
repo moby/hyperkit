@@ -7,17 +7,6 @@ import (
 	. "gist.github.com/5892738.git"
 )
 
-func init() {
-	if _, err := exec.LookPath("hg"); err == nil {
-		addVcsProvider(func(path string) Vcs {
-			if isRepo, rootPath := getHgRepoRoot(path); isRepo {
-				return &hgVcs{commonVcs{rootPath: rootPath}}
-			}
-			return nil
-		})
-	}
-}
-
 func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {
 	cmd := exec.Command("hg", "root")
 	cmd.Dir = path

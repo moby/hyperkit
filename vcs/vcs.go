@@ -1,6 +1,8 @@
 // Package for getting status of a repo under vcs.
 package vcs
 
+import "os/exec"
+
 type Type uint8
 
 const (
@@ -34,7 +36,8 @@ func (this *commonVcs) RootPath() string {
 // It should be a valid path.
 // TODO: Use a better type for path, e.g., github.com/shurcooL/go/path.
 func New(path string) Vcs {
-	// TODO: Optimize by checking more likely vcs first. Potentially check in parallel.
+	// TODO: Try to figure out vcs provider with a more constant-time operation.
+	// TODO: Potentially check in parallel.
 	for _, vcsProvider := range vcsProviders {
 		if vcs := vcsProvider(path); vcs != nil {
 			return vcs
@@ -50,4 +53,28 @@ var vcsProviders []vcsProvider
 
 func addVcsProvider(s vcsProvider) {
 	vcsProviders = append(vcsProviders, s)
+}
+
+func init() {
+	// As an optimization, add Vcs providers sorted by the most likely first.
+
+	// git
+	if _, err := exec.LookPath("git"); err == nil {
+		addVcsProvider(func(path string) Vcs {
+			if isRepo, rootPath := GetGitRepoRoot(path); isRepo {
+				return &gitVcs{commonVcs{rootPath: rootPath}}
+			}
+			return nil
+		})
+	}
+
+	// hg
+	if _, err := exec.LookPath("hg"); err == nil {
+		addVcsProvider(func(path string) Vcs {
+			if isRepo, rootPath := getHgRepoRoot(path); isRepo {
+				return &hgVcs{commonVcs{rootPath: rootPath}}
+			}
+			return nil
+		})
+	}
 }
