@@ -46,6 +46,7 @@ func newDirectory(path string) *Directory {
 	return this
 }
 
+// Safe to call concurrently.
 func LookupDirectory(path string) *Directory {
 	directoriesLock.Lock()
 	defer directoriesLock.Unlock()
