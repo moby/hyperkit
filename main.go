@@ -63,36 +63,3 @@ func GetSourceAsString(f interface{}) string {
 
 	return SprintAst(fs, funcAst)
 }
-
-var f2 = func() { panic(1337) }
-
-func main() {
-	f := func() {
-		println("Hello from anon func!") // Comments are currently not preserved
-	}
-	if 5*5 > 26 {
-		f = f2
-	}
-
-	println(GetSourceAsString(f))
-
-	// Output:
-	// func() {
-	// 	println("Hello from anon func!")
-	// }
-
-	f2 := func(a int, b int) int {
-		c := a + b
-		return c
-	}
-
-	println(GetSourceAsString(f2))
-
-	// Output:
-	// func(a int, b int) int {
-	// 	c := a + b
-	// 	return c
-	// }
-
-	println(GetSourceAsString(GetSourceAsString))
-}
