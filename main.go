@@ -2,15 +2,16 @@ package gist6545684
 
 import (
 	"fmt"
-	. "gist.github.com/5286084.git"
-	"github.com/Jragonmiris/mathgl"
 	"os"
 
+	. "gist.github.com/5286084.git"
+
+	"github.com/go-gl/mathgl/mgl64"
 	"github.com/shurcooL/go-goon"
 )
 
 type Contour struct {
-	Vertices []mathgl.Vec2d
+	Vertices []mgl64.Vec2
 }
 
 type Polygon struct {
@@ -31,7 +32,7 @@ func ReadGpcFile(path string) Polygon {
 	for contourIndex := range p.Contours {
 		var numVertices uint64
 		fmt.Fscan(file, &numVertices)
-		p.Contours[contourIndex].Vertices = make([]mathgl.Vec2d, numVertices)
+		p.Contours[contourIndex].Vertices = make([]mgl64.Vec2, numVertices)
 
 		for vertexIndex := range p.Contours[contourIndex].Vertices {
 			fmt.Fscan(file, &p.Contours[contourIndex].Vertices[vertexIndex][0], &p.Contours[contourIndex].Vertices[vertexIndex][1])
