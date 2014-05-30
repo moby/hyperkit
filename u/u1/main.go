@@ -42,7 +42,7 @@ func WriteMarkdownGfmAsHtmlPage(w io.Writer, markdown []byte) {
 func WriteGitHubFlavoredMarkdownViaLocal(w io.Writer, markdown []byte) {
 	// TODO: Don't hotlink the css file from github.com, serve it locally (it's needed for the GFM html to appear properly)
 	// TODO: Use github.com/sourcegraph/syntaxhighlight to add missing syntax highlighting.
-	io.WriteString(w, `<html><head><meta charset="utf-8"><style>code { tab-size: 4; }</style><link href="https://github.com/assets/github.css" media="all" rel="stylesheet" type="text/css" /></head><body><article class="markdown-body entry-content" style="padding: 30px;">`)
+	io.WriteString(w, `<html><head><meta charset="utf-8"><style>code, div.highlight { tab-size: 4; }</style><link href="https://github.com/assets/github.css" media="all" rel="stylesheet" type="text/css" /></head><body><article class="markdown-body entry-content" style="padding: 30px;">`)
 	w.Write(MarkdownGfm(markdown))
 	io.WriteString(w, `</article></body></html>`)
 }
