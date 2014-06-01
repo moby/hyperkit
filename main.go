@@ -1,6 +1,9 @@
 package gist7802150
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 type DepNode2I interface {
 	Update()
@@ -18,13 +21,28 @@ type DepNode2ManualI interface {
 	manual() // Noop, just to separate it from automatic DepNode2I
 }
 
+// Used to make MakeUpdated resilient to concurrent access. Not really a good long term solution,
+// but needed for now to prevent race conditions. Especially when called form http handler funcs.
+var MakeUpdatedLock sync.Mutex
+
 // Updates dependencies and itself, only if its dependencies have changed.
 func MakeUpdated(this DepNode2I) {
+	/*fmt.Println(gist6418290.GetParentFuncAsString())
+	if gist6418290.GetParentFuncAsString() == "MakeUpdated(this)" {
+		debug.PrintStack()
+	}*/
+
+	MakeUpdatedLock.Lock()
+	makeUpdated(this)
+	MakeUpdatedLock.Unlock()
+}
+
+func makeUpdated(this DepNode2I) {
 	if !this.getNeedToUpdate() {
 		return
 	}
 	for _, source := range this.GetSources() {
-		MakeUpdated(source)
+		makeUpdated(source)
 	}
 	this.Update()
 	this.markAsNotNeedToUpdate()
