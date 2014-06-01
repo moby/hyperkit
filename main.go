@@ -27,11 +27,6 @@ var MakeUpdatedLock sync.Mutex
 
 // Updates dependencies and itself, only if its dependencies have changed.
 func MakeUpdated(this DepNode2I) {
-	/*fmt.Println(gist6418290.GetParentFuncAsString())
-	if gist6418290.GetParentFuncAsString() == "MakeUpdated(this)" {
-		debug.PrintStack()
-	}*/
-
 	MakeUpdatedLock.Lock()
 	makeUpdated(this)
 	MakeUpdatedLock.Unlock()
