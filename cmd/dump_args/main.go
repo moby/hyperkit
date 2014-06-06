@@ -9,4 +9,5 @@ import (
 
 func main() {
 	goon.DumpExpr(os.Args)
+	goon.DumpExpr(os.Getwd())
 }
