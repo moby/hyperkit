@@ -1,19 +1,24 @@
-// Package github_flavored_markdown provides a GitHub Flavored Markdown renderer
-// with fenced code block highlighting.
+/*
+Package github_flavored_markdown provides a GitHub Flavored Markdown renderer
+with fenced code block highlighting.
+
+The functionality should be equivalent to the GitHub Markdown API endpoint specified at
+https://developer.github.com/v3/markdown/#render-a-markdown-document-in-raw-mode, except
+the rendering is performed locally.
+*/
 package github_flavored_markdown
 
 import (
 	"bytes"
 	"strings"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go/u/u7"
 	"github.com/sourcegraph/syntaxhighlight"
 )
 
 // Markdown renders GitHub Flavored Markdown text.
-//
-// It does not attempt to sanitize HTML output; you can do that in post-processing using github.com/microcosm-cc/bluemonday package.
 func Markdown(text []byte) []byte {
 	htmlFlags := 0
 	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
@@ -30,7 +35,13 @@ func Markdown(text []byte) []byte {
 	extensions |= blackfriday.EXTENSION_SPACE_HEADERS
 	//extensions |= blackfriday.EXTENSION_HARD_LINE_BREAK
 
-	return blackfriday.Markdown(text, renderer, extensions)
+	unsanitized := blackfriday.Markdown(text, renderer, extensions)
+
+	// GitHub Flavored Markdown-like sanitization policy.
+	p := bluemonday.UGCPolicy()
+	p.AllowAttrs("class").OnElements("div", "span")
+
+	return []byte(p.Sanitize(string(unsanitized)))
 }
 
 type renderer struct {
