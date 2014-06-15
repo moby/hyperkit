@@ -14,7 +14,7 @@ func DisplayMarkdownInBrowser(markdown []byte) {
 	stopServerChan := make(chan struct{})
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
-		u1.WriteMarkdownGfmAsHtmlPage(w, markdown)
+		u1.WriteGitHubFlavoredMarkdownViaLocal(w, markdown)
 
 		stopServerChan <- struct{}{}
 	}
