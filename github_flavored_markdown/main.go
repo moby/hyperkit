@@ -30,7 +30,7 @@ func Markdown(input []byte) []byte {
 	return blackfriday.Markdown(input, renderer, gfmExtensions)
 }
 
-// HtmlRenderer creates a GitHub Flavored Markdown HTML renderer, which satisfies the blackfriday.Renderer interface.
+// NewRenderer creates a GitHub Flavored Markdown HTML renderer, which satisfies the blackfriday.Renderer interface.
 //
 // It does not attempt to sanitize HTML output; you can do that in post-processing using github.com/microcosm-cc/bluemonday package.
 func NewRenderer() blackfriday.Renderer {
