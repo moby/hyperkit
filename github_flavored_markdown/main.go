@@ -11,34 +11,26 @@ import (
 	"github.com/sourcegraph/syntaxhighlight"
 )
 
-// Markdown is a convenience function for rendering input GitHub Flavored Markdown.
+// Markdown renders GitHub Flavored Markdown text.
 //
 // It does not attempt to sanitize HTML output; you can do that in post-processing using github.com/microcosm-cc/bluemonday package.
-func Markdown(input []byte) []byte {
-	renderer := NewRenderer()
+func Markdown(text []byte) []byte {
+	htmlFlags := 0
+	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
+	htmlFlags |= blackfriday.HTML_GITHUB_BLOCKCODE
+	renderer := &renderer{blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
 
-	// GitHub Flavored Markdown extensions.
-	var gfmExtensions = 0 |
-		blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
-		blackfriday.EXTENSION_TABLES |
-		blackfriday.EXTENSION_FENCED_CODE |
-		blackfriday.EXTENSION_AUTOLINK |
-		blackfriday.EXTENSION_STRIKETHROUGH |
-		blackfriday.EXTENSION_SPACE_HEADERS
-		//blackfriday.EXTENSION_HARD_LINE_BREAK
+	// Parser extensions for GitHub Flavored Markdown.
+	extensions := 0
+	extensions |= blackfriday.EXTENSION_NO_INTRA_EMPHASIS
+	extensions |= blackfriday.EXTENSION_TABLES
+	extensions |= blackfriday.EXTENSION_FENCED_CODE
+	extensions |= blackfriday.EXTENSION_AUTOLINK
+	extensions |= blackfriday.EXTENSION_STRIKETHROUGH
+	extensions |= blackfriday.EXTENSION_SPACE_HEADERS
+	//extensions |= blackfriday.EXTENSION_HARD_LINE_BREAK
 
-	return blackfriday.Markdown(input, renderer, gfmExtensions)
-}
-
-// NewRenderer creates a GitHub Flavored Markdown HTML renderer, which satisfies the blackfriday.Renderer interface.
-//
-// It does not attempt to sanitize HTML output; you can do that in post-processing using github.com/microcosm-cc/bluemonday package.
-func NewRenderer() blackfriday.Renderer {
-	htmlFlags := 0 |
-		//blackfriday.HTML_SANITIZE_OUTPUT |
-		blackfriday.HTML_GITHUB_BLOCKCODE
-
-	return &renderer{blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
+	return blackfriday.Markdown(text, renderer, extensions)
 }
 
 type renderer struct {
@@ -47,7 +39,7 @@ type renderer struct {
 
 // TODO: Clean up and improve this code.
 // GitHub Flavored Markdown fenced code block with highlighting.
-func (r *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
+func (_ *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	doubleSpace(out)
 
 	// parse out the language name
