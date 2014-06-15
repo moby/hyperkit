@@ -35,6 +35,17 @@ func (this *hgVcs) GetStatus() string {
 	}
 }
 
+func (this *hgVcs) GetRemote() string {
+	cmd := exec.Command("hg", "paths", "default")
+	cmd.Dir = this.rootPath
+
+	if out, err := cmd.Output(); err == nil {
+		return TrimLastNewline(string(out))
+	} else {
+		return ""
+	}
+}
+
 func (this *hgVcs) GetDefaultBranch() string {
 	return "default"
 }

@@ -31,6 +31,7 @@ func NewVcsState(vcs vcs.Vcs) *VcsState {
 
 type VcsLocal struct {
 	Status      string
+	Remote      string
 	LocalBranch string
 	LocalRev    string
 
@@ -51,6 +52,7 @@ func (this *VcsLocal) Update() {
 	//fmt.Println("*VcsLocal) Update() for", vcs.RootPath())
 
 	this.Status = vcs.GetStatus()
+	this.Remote = vcs.GetRemote()
 	this.LocalBranch = vcs.GetLocalBranch()
 	this.LocalRev = vcs.GetLocalRev()
 }

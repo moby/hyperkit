@@ -17,6 +17,17 @@ func (this *gitVcs) GetStatus() string {
 	return status
 }
 
+func (this *gitVcs) GetRemote() string {
+	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
+	cmd.Dir = this.rootPath
+
+	if out, err := cmd.Output(); err == nil {
+		return TrimLastNewline(string(out))
+	} else {
+		return ""
+	}
+}
+
 func (this *gitVcs) GetDefaultBranch() string {
 	return "master"
 }

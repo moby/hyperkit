@@ -17,6 +17,8 @@ type Vcs interface {
 
 	GetStatus() string
 
+	GetRemote() string // Get primary remote repository Url.
+
 	GetDefaultBranch() string
 	GetLocalBranch() string
 
