@@ -29,11 +29,10 @@ func Remove(importPath string) error {
 	goPackage.UpdateVcsFields()
 
 	notableStatus := func(goPackage *GoPackage) bool {
-		// Check for notable status
-		return goPackage.Dir.Repo != nil &&
-			(goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() ||
-				goPackage.Dir.Repo.VcsLocal.Status != "" ||
-				goPackage.Dir.Repo.VcsLocal.LocalRev != goPackage.Dir.Repo.VcsRemote.RemoteRev)
+		// Check for notable status.
+		packageStatus := status.PorcelainPresenter(goPackage)[:3] // Assumes status.PorcelainPresenter output is always at least 3 bytes.
+		return packageStatus != "   " &&
+			packageStatus != "  +" // Updates are okay to ignore.
 	}
 
 	if notableStatus(goPackage) {
