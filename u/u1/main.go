@@ -5,31 +5,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/russross/blackfriday"
+	"github.com/shurcooL/go/github_flavored_markdown"
 )
-
-// GitHub Flavored Markdown-like extensions.
-var MarkdownGfmExtensions = 0 |
-	blackfriday.EXTENSION_NO_INTRA_EMPHASIS |
-	//blackfriday.EXTENSION_TABLES | // TODO: Implement. Maybe.
-	blackfriday.EXTENSION_FENCED_CODE |
-	blackfriday.EXTENSION_AUTOLINK |
-	blackfriday.EXTENSION_STRIKETHROUGH |
-	blackfriday.EXTENSION_SPACE_HEADERS
-	//blackfriday.EXTENSION_HARD_LINE_BREAK
-
-// Best effort at generating GitHub Flavored Markdown-like HTML output locally.
-func MarkdownGfm(input []byte) []byte {
-	htmlFlags := 0 |
-		blackfriday.HTML_SANITIZE_OUTPUT |
-		blackfriday.HTML_GITHUB_BLOCKCODE
-
-	renderer := blackfriday.HtmlRenderer(htmlFlags, "", "")
-
-	return blackfriday.Markdown(input, renderer, MarkdownGfmExtensions)
-}
-
-// ---
 
 // Convert GitHub Flavored Markdown to full HTML page and write to w.
 // TODO: Do this locally via a native Go library... That's not too much to ask for, is it?
@@ -41,9 +18,8 @@ func WriteMarkdownGfmAsHtmlPage(w io.Writer, markdown []byte) {
 
 func WriteGitHubFlavoredMarkdownViaLocal(w io.Writer, markdown []byte) {
 	// TODO: Don't hotlink the css file from github.com, serve it locally (it's needed for the GFM html to appear properly)
-	// TODO: Use github.com/sourcegraph/syntaxhighlight to add missing syntax highlighting.
 	io.WriteString(w, `<html><head><meta charset="utf-8"><style>code, div.highlight { tab-size: 4; }</style><link href="https://github.com/assets/github.css" media="all" rel="stylesheet" type="text/css" /></head><body><article class="markdown-body entry-content" style="padding: 30px;">`)
-	w.Write(MarkdownGfm(markdown))
+	w.Write(github_flavored_markdown.Markdown(markdown))
 	io.WriteString(w, `</article></body></html>`)
 }
 
