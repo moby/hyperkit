@@ -64,7 +64,7 @@ index dc83bf7..5260a7d 100644
 
 	// GitHub Flavored Markdown sanitization.
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").OnElements("div", "span")
+	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
 
 	output := []byte(p.Sanitize(string(unsanitized)))
 
@@ -79,11 +79,37 @@ index dc83bf7..5260a7d 100644
 	}
 }
 
-// Making sure that <script> is sanitized away.
+// Make sure that <script> tag is sanitized away.
 func TestSanitize2(t *testing.T) {
 	text := []byte("Hello <script>alert();</script> world.")
 
 	if expected, got := "<p>Hello  world.</p>", string(Markdown(text)); expected != got {
+		t.Errorf("expected: %q, got: %q\n", expected, got)
+	}
+}
+
+// Make sure that "class" attribute values that are not sane get sanitized away.
+func TestSanitize3a(t *testing.T) {
+	// Just a normal class name, should be preserved.
+	text := []byte(`Hello <span class="foo bar bash">there</span> world.`)
+
+	if expected, got := `<p>Hello <span class="foo bar bash">there</span> world.</p>`, string(Markdown(text)); expected != got {
+		t.Errorf("expected: %q, got: %q\n", expected, got)
+	}
+}
+func TestSanitize3b(t *testing.T) {
+	// JavaScript in class name, should be sanitized away.
+	text := []byte(`Hello <span class="javascript:alert('XSS')">there</span> world.`)
+
+	if expected, got := "<p>Hello <span>there</span> world.</p>", string(Markdown(text)); expected != got {
+		t.Errorf("expected: %q, got: %q\n", expected, got)
+	}
+}
+func TestSanitize3c(t *testing.T) {
+	// Script injection attempt, should be sanitized away.
+	text := []byte(`Hello <span class="><script src='http://hackers.org/XSS.js'></script>">there</span> world.`)
+
+	if expected, got := "<p>Hello <span>there</span> world.</p>", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
 }
