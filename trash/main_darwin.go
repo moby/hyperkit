@@ -7,6 +7,7 @@ import (
 )
 
 // TODO: Use better type than string.
+// MoveToTrash moves name to trash.
 func MoveToTrash(name string) error {
 	name = filepath.Clean(name)
 	home := os.Getenv("HOME")
