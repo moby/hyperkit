@@ -39,7 +39,7 @@ func Markdown(text []byte) []byte {
 
 	// GitHub Flavored Markdown-like sanitization policy.
 	p := bluemonday.UGCPolicy()
-	p.AllowAttrs("class").OnElements("div", "span")
+	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
 
 	return []byte(p.Sanitize(string(unsanitized)))
 }
