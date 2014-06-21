@@ -109,7 +109,7 @@ func TestSanitize3c(t *testing.T) {
 	// Script injection attempt, should be sanitized away.
 	text := []byte(`Hello <span class="><script src='http://hackers.org/XSS.js'></script>">there</span> world.`)
 
-	if expected, got := "<p>Hello <span>there</span> world.</p>", string(Markdown(text)); expected != got {
+	if expected, got := "<p>Hello ", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
 }
