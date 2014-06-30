@@ -75,6 +75,13 @@ func (this *GoPackage) UpdateVcsFields() {
 	}
 }
 
+func GetRepoImportPath(repoRootPath, srcRoot string) string {
+	return strings.TrimPrefix(repoRootPath, srcRoot+"/")
+}
+func GetRepoImportPathPattern(a, b string) string {
+	return GetRepoImportPath(a, b) + "/..."
+}
+
 func (this *GoPackage) String() string {
 	return this.Bpkg.ImportPath
 }
