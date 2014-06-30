@@ -47,8 +47,8 @@ func RemoveRepo(importPathPattern string) error {
 		}
 	}
 
-	if repoRootImportPath := strings.TrimPrefix(firstGoPackage.Dir.Repo.Vcs.RootPath(), firstGoPackage.Bpkg.SrcRoot+"/"); repoRootImportPath+"/..." != importPathPattern {
-		return errors.New("importPathPattern not exact repo root match: " + importPathPattern + " != " + repoRootImportPath + "/...")
+	if repoImportPathPattern := GetRepoImportPathPattern(firstGoPackage.Dir.Repo.Vcs.RootPath(), firstGoPackage.Bpkg.SrcRoot); repoImportPathPattern != importPathPattern {
+		return errors.New("importPathPattern not exact repo root match: " + importPathPattern + " != " + repoImportPathPattern)
 	}
 
 	firstGoPackage.UpdateVcsFields()

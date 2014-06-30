@@ -22,7 +22,7 @@ var directoriesLock sync.Mutex
 type Directory struct {
 	path string
 
-	Repo *exp13.VcsState
+	Repo *exp13.VcsState // nil if no Vcs.
 
 	DepNode2
 }
