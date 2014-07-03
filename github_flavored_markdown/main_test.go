@@ -14,3 +14,12 @@ func ExampleMarkdown() {
 	// Output:
 	//<p>Hello world github/linguist#1 <strong>cool</strong>, and #1!</p>
 }
+
+func ExampleHeader() {
+	text := []byte("## git diff")
+
+	os.Stdout.Write(github_flavored_markdown.Markdown(text))
+
+	// Output:
+	//<h2><a name="git-diff" class="anchor" href="#git-diff" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>git diff</h2>
+}

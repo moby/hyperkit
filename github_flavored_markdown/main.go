@@ -10,7 +10,10 @@ package github_flavored_markdown
 
 import (
 	"bytes"
+	"fmt"
+	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
@@ -40,12 +43,49 @@ func Markdown(text []byte) []byte {
 	// GitHub Flavored Markdown-like sanitization policy.
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
+	p.AllowAttrs("class", "name").Matching(bluemonday.SpaceSeparatedTokens).OnElements("a")
+	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
+	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
 
 	return []byte(p.Sanitize(string(unsanitized)))
 }
 
 type renderer struct {
 	*blackfriday.Html
+}
+
+// GitHub Flavored Markdown header with clickable and hidden anchor.
+func (_ *renderer) Header(out *bytes.Buffer, text func() bool, level int, _ string) {
+	marker := out.Len()
+	doubleSpace(out)
+
+	if !text() {
+		out.Truncate(marker)
+		return
+	}
+
+	textString := out.String()[marker:]
+	out.Truncate(marker)
+
+	anchorName := createSanitizedAnchorName(textString)
+
+	out.WriteString(fmt.Sprintf(`<h%d><a name="%s" class="anchor" href="#%s" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>`, level, anchorName, anchorName))
+	out.WriteString(textString)
+	out.WriteString(fmt.Sprintf("</h%d>\n", level))
+}
+
+// Returns an anchor name for the given header text.
+func createSanitizedAnchorName(text string) string {
+	var anchorName []rune
+	for _, r := range []rune(text) {
+		switch {
+		case r == ' ':
+			anchorName = append(anchorName, '-')
+		case unicode.IsLetter(r) || unicode.IsNumber(r):
+			anchorName = append(anchorName, unicode.ToLower(r))
+		}
+	}
+	return string(anchorName)
 }
 
 // TODO: Clean up and improve this code.

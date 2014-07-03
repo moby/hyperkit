@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"testing"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -62,9 +63,12 @@ index dc83bf7..5260a7d 100644
 
 	unsanitized := blackfriday.Markdown(text, renderer, extensions)
 
-	// GitHub Flavored Markdown sanitization.
+	// GitHub Flavored Markdown-like sanitization policy.
 	p := bluemonday.UGCPolicy()
 	p.AllowAttrs("class").Matching(bluemonday.SpaceSeparatedTokens).OnElements("div", "span")
+	p.AllowAttrs("class", "name").Matching(bluemonday.SpaceSeparatedTokens).OnElements("a")
+	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
+	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
 
 	output := []byte(p.Sanitize(string(unsanitized)))
 
@@ -112,6 +116,15 @@ func TestSanitize3c(t *testing.T) {
 	if expected, got := "<p>Hello ", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
+}
+
+func ExampleSanitizeAnchorName() {
+	text := []byte("## Did you just steal this template from Tom's TOML?")
+
+	os.Stdout.Write(Markdown(text))
+
+	// Output:
+	//<h2><a name="did-you-just-steal-this-template-from-toms-toml" class="anchor" href="#did-you-just-steal-this-template-from-toms-toml" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>Did you just steal this template from Tom&#39;s TOML?</h2>
 }
 
 // TODO: Factor out.
