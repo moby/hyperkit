@@ -1,4 +1,4 @@
-// Package gist6003701 functions for converting between camelCase and underscore_separated forms for identifier names.
+// Package gist6003701 implements functions for converting between camelCase and underscore_separated forms for identifier names.
 package gist6003701
 
 import (
