@@ -1,3 +1,4 @@
+// Package gist6003701 functions for converting between camelCase and underscore_separated forms for identifier names.
 package gist6003701
 
 import (
@@ -5,7 +6,7 @@ import (
 	"unicode"
 )
 
-// Converts "string_URL_append" to "StringUrlAppend" form.
+// UnderscoreSepToCamelCase converts "string_URL_append" to "StringUrlAppend" form.
 func UnderscoreSepToCamelCase(s string) string {
 	return strings.Replace(strings.Title(strings.Replace(strings.ToLower(s), "_", " ", -1)), " ", "", -1)
 }
@@ -21,7 +22,7 @@ func addSegment(inout, seg []rune) []rune {
 	return inout
 }
 
-// Converts "StringUrlAppend" to "string_url_append" form.
+// CamelCaseToUnderscoreSep converts "StringUrlAppend" to "string_url_append" form.
 func CamelCaseToUnderscoreSep(s string) string {
 	var out []rune
 	var seg []rune
