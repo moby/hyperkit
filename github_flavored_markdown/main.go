@@ -1,6 +1,6 @@
 /*
 Package github_flavored_markdown provides a GitHub Flavored Markdown renderer
-with fenced code block highlighting.
+with fenced code block highlighting, clickable header anchor links.
 
 The functionality should be equivalent to the GitHub Markdown API endpoint specified at
 https://developer.github.com/v3/markdown/#render-a-markdown-document-in-raw-mode, except
@@ -47,7 +47,7 @@ func Markdown(text []byte) []byte {
 	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
 	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
 
-	return []byte(p.Sanitize(string(unsanitized)))
+	return p.SanitizeBytes(unsanitized)
 }
 
 type renderer struct {

@@ -70,9 +70,8 @@ index dc83bf7..5260a7d 100644
 	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
 	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
 
-	output := []byte(p.Sanitize(string(unsanitized)))
+	output := p.SanitizeBytes(unsanitized)
 
-	output = append(output, '\n')
 	diff, err := diff(unsanitized, output)
 	if err != nil {
 		log.Fatalln(err)
@@ -87,7 +86,7 @@ index dc83bf7..5260a7d 100644
 func TestSanitize2(t *testing.T) {
 	text := []byte("Hello <script>alert();</script> world.")
 
-	if expected, got := "<p>Hello  world.</p>", string(Markdown(text)); expected != got {
+	if expected, got := "<p>Hello  world.</p>\n", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
 }
@@ -97,7 +96,7 @@ func TestSanitize3a(t *testing.T) {
 	// Just a normal class name, should be preserved.
 	text := []byte(`Hello <span class="foo bar bash">there</span> world.`)
 
-	if expected, got := `<p>Hello <span class="foo bar bash">there</span> world.</p>`, string(Markdown(text)); expected != got {
+	if expected, got := `<p>Hello <span class="foo bar bash">there</span> world.</p>`+"\n", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
 }
@@ -105,7 +104,7 @@ func TestSanitize3b(t *testing.T) {
 	// JavaScript in class name, should be sanitized away.
 	text := []byte(`Hello <span class="javascript:alert('XSS')">there</span> world.`)
 
-	if expected, got := "<p>Hello <span>there</span> world.</p>", string(Markdown(text)); expected != got {
+	if expected, got := "<p>Hello <span>there</span> world.</p>"+"\n", string(Markdown(text)); expected != got {
 		t.Errorf("expected: %q, got: %q\n", expected, got)
 	}
 }
