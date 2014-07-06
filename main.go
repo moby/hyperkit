@@ -7,6 +7,8 @@ import (
 	. "gist.github.com/5286084.git"
 )
 
+// TODO: Better interface. Perhaps a slice of strings.
+// Get a string of non-loopback IPs.
 func Something() (out string) {
 	netInterfaces, err := net.Interfaces()
 	CheckError(err)
@@ -16,7 +18,8 @@ func Something() (out string) {
 		for _, addr := range addrs {
 			if ipnet, ok := addr.(*net.IPNet); ok {
 				if ip4 := ipnet.IP.To4(); ip4 != nil && !ip4.IsLoopback() {
-					out += fmt.Sprintln(netInterface.Name, ipnet.IP.String())
+					//netInterface.Name
+					out += fmt.Sprintln(ipnet.IP.String())
 				}
 			}
 		}
