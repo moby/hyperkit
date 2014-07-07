@@ -49,6 +49,7 @@ func Markdown(text []byte) []byte {
 	p.AllowAttrs("class", "name").Matching(bluemonday.SpaceSeparatedTokens).OnElements("a")
 	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
 	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
+	p.AllowDataURIImages()
 
 	return p.SanitizeBytes(unsanitized)
 }

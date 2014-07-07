@@ -69,6 +69,7 @@ index dc83bf7..5260a7d 100644
 	p.AllowAttrs("class", "name").Matching(bluemonday.SpaceSeparatedTokens).OnElements("a")
 	p.AllowAttrs("rel").Matching(regexp.MustCompile(`^nofollow$`)).OnElements("a")
 	p.AllowAttrs("aria-hidden").Matching(regexp.MustCompile(`^true$`)).OnElements("a")
+	p.AllowDataURIImages()
 
 	output := p.SanitizeBytes(unsanitized)
 
