@@ -15,14 +15,18 @@ import (
 	. "gist.github.com/6445065.git"
 )
 
-// Returns the source of the func f.
+// GetSourceAsString returns the source of the func f.
 func GetSourceAsString(f interface{}) string {
 	v := reflect.ValueOf(f)
 	if v.IsNil() {
 		return "nil"
 	}
 	pc := v.Pointer()
-	file, line := runtime.FuncForPC(pc).FileLine(pc)
+	function := runtime.FuncForPC(pc)
+	if function == nil {
+		return "nil"
+	}
+	file, line := function.FileLine(pc)
 
 	var startIndex, endIndex int
 	{

@@ -34,3 +34,12 @@ func Example2() {
 	//	return c
 	//}
 }
+
+func ExampleNil() {
+	var f func()
+
+	fmt.Println(GetSourceAsString(f))
+
+	// Output:
+	//nil
+}
