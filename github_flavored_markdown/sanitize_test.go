@@ -49,7 +49,7 @@ index dc83bf7..5260a7d 100644
 	htmlFlags := 0
 	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
 	htmlFlags |= blackfriday.HTML_GITHUB_BLOCKCODE
-	renderer := &renderer{blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
+	renderer := &renderer{Html: blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
 
 	// Parser extensions for GitHub Flavored Markdown.
 	extensions := 0
@@ -124,6 +124,15 @@ func ExampleSanitizeAnchorName() {
 
 	// Output:
 	//<h2><a name="did-you-just-steal-this-template-from-toms-toml" class="anchor" href="#did-you-just-steal-this-template-from-toms-toml" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>Did you just steal this template from Tom&#39;s TOML?</h2>
+}
+
+func ExampleSanitizeAnchorName2() {
+	text := []byte(`## What about "quotes" & things?`)
+
+	os.Stdout.Write(Markdown(text))
+
+	// Output:
+	//<h2><a name="what-about-quotes--things" class="anchor" href="#what-about-quotes--things" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>What about &#34;quotes&#34; &amp; things?</h2>
 }
 
 // TODO: Factor out.

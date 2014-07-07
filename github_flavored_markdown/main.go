@@ -13,6 +13,7 @@ package github_flavored_markdown
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 	"unicode"
@@ -28,7 +29,7 @@ func Markdown(text []byte) []byte {
 	htmlFlags := 0
 	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
 	htmlFlags |= blackfriday.HTML_GITHUB_BLOCKCODE
-	renderer := &renderer{blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
+	renderer := &renderer{Html: blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
 
 	// Parser extensions for GitHub Flavored Markdown.
 	extensions := 0
@@ -69,7 +70,7 @@ func (_ *renderer) Header(out *bytes.Buffer, text func() bool, level int, _ stri
 	textString := out.String()[marker:]
 	out.Truncate(marker)
 
-	anchorName := createSanitizedAnchorName(textString)
+	anchorName := createSanitizedAnchorName(html.UnescapeString(textString))
 
 	out.WriteString(fmt.Sprintf(`<h%d><a name="%s" class="anchor" href="#%s" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>`, level, anchorName, anchorName))
 	out.WriteString(textString)
