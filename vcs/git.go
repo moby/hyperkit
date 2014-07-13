@@ -96,7 +96,7 @@ func CheckGitRepoLocal(path, branch string) string {
 }
 
 func CheckGitRepoRemote(path, branch string) string {
-	cmd := exec.Command("git", "ls-remote", "--heads", "origin", branch)
+	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", branch)
 	cmd.Dir = path
 
 	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
