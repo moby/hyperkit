@@ -14,13 +14,17 @@ import (
 	"bytes"
 	"fmt"
 	"html"
+	"io"
 	"regexp"
+	"sort"
 	"strings"
+	"text/template"
 	"unicode"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go/u/u7"
+	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"
 )
 
@@ -131,7 +135,7 @@ func (_ *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	}
 }
 
-var gfmHTMLConfig = syntaxhighlight.HTMLConfig{
+var gfmHtmlConfig = syntaxhighlight.HTMLConfig{
 	String:        "s",
 	Keyword:       "k",
 	Comment:       "c",
@@ -152,18 +156,87 @@ func formatCode(src []byte, lang string) (formattedCode []byte, ok bool) {
 	// TODO: Use a highlighter based on go/scanner for Go code.
 	case "Go", "go":
 		var buf bytes.Buffer
-		err := syntaxhighlight.Print(syntaxhighlight.NewScanner(src), &buf, syntaxhighlight.HTMLPrinter(gfmHTMLConfig))
+		err := syntaxhighlight.Print(syntaxhighlight.NewScanner(src), &buf, syntaxhighlight.HTMLPrinter(gfmHtmlConfig))
 		if err != nil {
 			return nil, false
 		}
 		return buf.Bytes(), true
 	case "diff":
-		var buf bytes.Buffer
-		err := u7.Print(u7.NewScanner(src), &buf)
-		if err != nil {
-			return nil, false
+		switch 2 {
+		default:
+			var buf bytes.Buffer
+			err := u7.Print(u7.NewScanner(src), &buf)
+			if err != nil {
+				return nil, false
+			}
+			return buf.Bytes(), true
+		case 1:
+			lines := bytes.Split(src, []byte("\n"))
+			return bytes.Join(lines, []byte("\n")), true
+		case 2:
+			anns, err := u7.Annotate(src)
+			if err != nil {
+				return nil, false
+			}
+
+			lines := bytes.Split(src, []byte("\n"))
+			lineStarts := make([]int, len(lines))
+			var offset int
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				lineStarts[lineIndex] = offset
+				offset += len(lines[lineIndex]) + 1
+			}
+
+			lastDel, lastIns := -1, -1
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				var lineFirstChar byte
+				if len(lines[lineIndex]) > 0 {
+					lineFirstChar = lines[lineIndex][0]
+				}
+				switch lineFirstChar {
+				case '+':
+					if lastIns == -1 {
+						lastIns = lineIndex
+					}
+				case '-':
+					if lastDel == -1 {
+						lastDel = lineIndex
+					}
+				default:
+					if lastDel != -1 && lastIns != -1 && lastDel+1 == lastIns && lastIns+1 == lineIndex && '@' != lineFirstChar {
+						if lastDel == -1 {
+							lastDel = lastIns
+						} else if lastIns == -1 {
+							lastIns = lineIndex
+						}
+
+						beginOffsetLeft := lineStarts[lastDel] + 1
+						endOffsetLeft := lineStarts[lastIns]
+						beginOffsetRight := lineStarts[lastIns] + 1
+						endOffsetRight := lineStarts[lineIndex]
+
+						leftContent := string(src[beginOffsetLeft:endOffsetLeft])
+						rightContent := string(src[beginOffsetRight:endOffsetRight])
+
+						var sectionSegments [2][]*annotate.Annotation
+						u7.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+
+						anns = append(anns, sectionSegments[0]...)
+						anns = append(anns, sectionSegments[1]...)
+					}
+					lastDel, lastIns = -1, -1
+				}
+			}
+
+			sort.Sort(anns)
+
+			out, err := annotate.Annotate(src, anns, func(w io.Writer, b []byte) { template.HTMLEscape(w, b) })
+			if err != nil {
+				return nil, false
+			}
+
+			return out, true
 		}
-		return buf.Bytes(), true
 	default:
 		return nil, false
 	}
