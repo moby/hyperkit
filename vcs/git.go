@@ -96,6 +96,8 @@ func CheckGitRepoLocal(path, branch string) string {
 }
 
 func CheckGitRepoRemote(path, branch string) string {
+	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
+	// and prevent potential interactive password prompts (opting to return failure exit code instead).
 	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", branch)
 	cmd.Dir = path
 
