@@ -36,10 +36,3 @@ func CamelCaseToUnderscoreSep(s string) string {
 	out = addSegment(out, seg)
 	return string(out)
 }
-
-func main() {
-	in := "string_URL_append"
-	out := UnderscoreSepToCamelCase(in)
-	println(in, "->", UnderscoreSepToCamelCase(in))
-	println(out, "->", CamelCaseToUnderscoreSep(out))
-}
