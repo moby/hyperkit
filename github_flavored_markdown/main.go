@@ -82,6 +82,11 @@ func (_ *renderer) Header(out *bytes.Buffer, text func() bool, level int, _ stri
 	out.WriteString(fmt.Sprintf("</h%d>\n", level))
 }
 
+// HeaderLink returns a relative link to the anchor of the given header.
+func HeaderLink(header string) (link string) {
+	return "#" + createSanitizedAnchorName(header)
+}
+
 // Returns an anchor name for the given header text.
 func createSanitizedAnchorName(text string) string {
 	var anchorName []rune
@@ -203,26 +208,41 @@ func formatCode(src []byte, lang string) (formattedCode []byte, ok bool) {
 						lastDel = lineIndex
 					}
 				default:
-					if lastDel != -1 && lastIns != -1 && lastDel+1 == lastIns && lastIns+1 == lineIndex && '@' != lineFirstChar {
+					if lastDel != -1 || lastIns != -1 {
 						if lastDel == -1 {
 							lastDel = lastIns
 						} else if lastIns == -1 {
 							lastIns = lineIndex
 						}
 
-						beginOffsetLeft := lineStarts[lastDel] + 1
+						beginOffsetLeft := lineStarts[lastDel]
 						endOffsetLeft := lineStarts[lastIns]
-						beginOffsetRight := lineStarts[lastIns] + 1
+						beginOffsetRight := lineStarts[lastIns]
 						endOffsetRight := lineStarts[lineIndex]
 
-						leftContent := string(src[beginOffsetLeft:endOffsetLeft])
-						rightContent := string(src[beginOffsetRight:endOffsetRight])
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetLeft, End: endOffsetLeft, Left: []byte(`<span class="gd input-block">`), Right: []byte(`</span>`), WantInner: 0})
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetRight, End: endOffsetRight, Left: []byte(`<span class="gi input-block">`), Right: []byte(`</span>`), WantInner: 0})
 
-						var sectionSegments [2][]*annotate.Annotation
-						u7.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+						if '@' != lineFirstChar {
+							//leftContent := string(src[beginOffsetLeft:endOffsetLeft])
+							//rightContent := string(src[beginOffsetRight:endOffsetRight])
+							// This is needed to filter out the "-" and "+" at the beginning of each line from being highlighted.
+							// TODO: Still not completely filtered out.
+							leftContent := ""
+							for line := lastDel; line < lastIns; line++ {
+								leftContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
+							rightContent := ""
+							for line := lastIns; line < lineIndex; line++ {
+								rightContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
 
-						anns = append(anns, sectionSegments[0]...)
-						anns = append(anns, sectionSegments[1]...)
+							var sectionSegments [2][]*annotate.Annotation
+							u7.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+
+							anns = append(anns, sectionSegments[0]...)
+							anns = append(anns, sectionSegments[1]...)
+						}
 					}
 					lastDel, lastIns = -1, -1
 				}

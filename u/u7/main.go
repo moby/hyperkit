@@ -24,7 +24,7 @@ func Print(s *Scanner, w io.Writer) error {
 
 	for s.Scan() {
 		tok, kind := s.Token()
-		err := p.Print(w, tok, kind)
+		err := p.Print(w, kind, string(tok))
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ type HTMLConfig []string
 
 type HTMLPrinter HTMLConfig
 
-func (p HTMLPrinter) Print(w io.Writer, tok []byte, kind int) error {
+func (p HTMLPrinter) Print(w io.Writer, kind int, tokText string) error {
 	class := HTMLConfig(p)[kind]
 	if class != "" {
 		_, err := w.Write([]byte(`<span class="`))
@@ -58,7 +58,7 @@ func (p HTMLPrinter) Print(w io.Writer, tok []byte, kind int) error {
 			return err
 		}
 	}
-	template.HTMLEscape(w, tok)
+	template.HTMLEscape(w, []byte(tokText))
 	if class != "" {
 		_, err := w.Write([]byte(`</span>`))
 		if err != nil {
@@ -90,9 +90,11 @@ func (s *Scanner) Token() ([]byte, int) {
 	case len(s.line) == 0 || s.line[0] == ' ':
 		kind = 0
 	case s.line[0] == '+':
-		kind = 1
+		//kind = 1
+		kind = 0
 	case s.line[0] == '-':
-		kind = 2
+		//kind = 2
+		kind = 0
 	case s.line[0] == '@':
 		kind = 3
 	default:
@@ -109,7 +111,7 @@ func (s *Scanner) Err() error {
 
 type HTMLAnnotator HTMLConfig
 
-func (a HTMLAnnotator) Annotate(start int, tok []byte, kind int) (*annotate.Annotation, error) {
+func (a HTMLAnnotator) Annotate(start int, kind int, tokText string) (*annotate.Annotation, error) {
 	class := HTMLConfig(a)[kind]
 	if class != "" {
 		left := []byte(`<span class="`)
@@ -117,7 +119,7 @@ func (a HTMLAnnotator) Annotate(start int, tok []byte, kind int) (*annotate.Anno
 		left = append(left, []byte(" input-block")...) // For "display: block;" style.
 		left = append(left, []byte(`">`)...)
 		return &annotate.Annotation{
-			Start: start, End: start + len(tok),
+			Start: start, End: start + len(tokText),
 			Left: left, Right: []byte("</span>"),
 		}, nil
 	}
@@ -132,7 +134,7 @@ func Annotate(src []byte) (annotate.Annotations, error) {
 	read := 0
 	for s.Scan() {
 		tok, kind := s.Token()
-		ann, err := a.Annotate(read, tok, kind)
+		ann, err := a.Annotate(read, kind, string(tok))
 		if err != nil {
 			return nil, err
 		}
@@ -173,22 +175,3 @@ func HighlightedDiffFunc(leftContent, rightContent string, segments *[2][]*annot
 		}
 	}
 }
-
-/*func highlightedDiffFunc2(leftContent, rightContent string) (leftOut, rightOut string) {
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(leftContent, rightContent, true)
-
-	for _, diff := range diffs {
-		switch diff.Type {
-		case -1:
-			leftOut += `<span class="x">` + diff.Text + `</span>`
-		case +1:
-			rightOut += `<span class="x">` + diff.Text + `</span>`
-		case 0:
-			leftOut += diff.Text
-			rightOut += diff.Text
-		}
-	}
-
-	return
-}*/
