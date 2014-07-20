@@ -35,6 +35,11 @@ func (this *hgVcs) GetStatus() string {
 	}
 }
 
+func (this *hgVcs) GetStash() string {
+	// TODO: Does Mercurial have stashes? Figure it out, add support, etc.
+	return ""
+}
+
 func (this *hgVcs) GetRemote() string {
 	cmd := exec.Command("hg", "paths", "default")
 	cmd.Dir = this.rootPath

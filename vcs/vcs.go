@@ -16,6 +16,7 @@ type Vcs interface {
 	Type() Type
 
 	GetStatus() string
+	GetStash() string
 
 	GetRemote() string // Get primary remote repository Url.
 

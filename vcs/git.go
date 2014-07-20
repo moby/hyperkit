@@ -17,6 +17,17 @@ func (this *gitVcs) GetStatus() string {
 	return status
 }
 
+func (this *gitVcs) GetStash() string {
+	cmd := exec.Command("git", "stash", "list")
+	cmd.Dir = this.rootPath
+
+	if out, err := cmd.Output(); err == nil {
+		return string(out)
+	} else {
+		return ""
+	}
+}
+
 func (this *gitVcs) GetRemote() string {
 	cmd := exec.Command("git", "ls-remote", "--get-url", "origin")
 	cmd.Dir = this.rootPath
