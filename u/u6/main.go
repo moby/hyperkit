@@ -18,15 +18,6 @@ func GoPackageWorkingDiff(goPackage *GoPackage) string {
 	// git diff
 	if goPackage.Dir.Repo.VcsLocal.Status != "" {
 		if goPackage.Dir.Repo.Vcs.Type() == vcs.Git {
-			/*cmd := exec.Command("git", "diff", "--no-ext-diff", "HEAD")
-			cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
-
-			if out, err := cmd.CombinedOutput(); err == nil {
-				return string(out)
-			} else {
-				return err.Error()
-			}*/
-
 			newFileDiff := func(line []byte) []byte {
 				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", TrimLastNewline(string(line)))
 				cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
