@@ -53,15 +53,13 @@ func RemoveRepo(importPathPattern string) error {
 
 	firstGoPackage.UpdateVcsFields()
 
-	notableStatus := func(goPackage *GoPackage) bool {
-		// Check for notable status.
-		packageStatus := status.PorcelainPresenter(goPackage)[:3] // Assumes status.PorcelainPresenter output is always at least 3 bytes.
-		return packageStatus != "   " &&
-			packageStatus != "  +" // Updates are okay to ignore.
+	cleanStatus := func(goPackage *GoPackage) bool {
+		packageStatus := status.PlumbingPresenterV2(goPackage)[:4]
+		return packageStatus == "    " || packageStatus == "  + " // Updates are okay to ignore.
 	}
 
-	if notableStatus(firstGoPackage) {
-		return errors.New("notable status: " + status.PorcelainPresenter(firstGoPackage))
+	if !cleanStatus(firstGoPackage) {
+		return errors.New("non-clean status: " + status.PorcelainPresenter(firstGoPackage))
 	}
 
 	err := trash.MoveToTrash(firstGoPackage.Dir.Repo.Vcs.RootPath())
