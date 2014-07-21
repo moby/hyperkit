@@ -87,7 +87,8 @@ func (s *Scanner) Scan() bool {
 func (s *Scanner) Token() ([]byte, int) {
 	var kind int
 	switch {
-	case len(s.line) == 0 || s.line[0] == ' ':
+	// The backslash is to detect "\ No newline at end of file" lines.
+	case len(s.line) == 0 || s.line[0] == ' ' || s.line[0] == '\\':
 		kind = 0
 	case s.line[0] == '+':
 		//kind = 1
