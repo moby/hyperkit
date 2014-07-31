@@ -14,13 +14,17 @@ import (
 	"bytes"
 	"fmt"
 	"html"
+	"io"
 	"regexp"
+	"sort"
 	"strings"
+	"text/template"
 	"unicode"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go/u/u7"
+	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"
 )
 
@@ -78,6 +82,11 @@ func (_ *renderer) Header(out *bytes.Buffer, text func() bool, level int, _ stri
 	out.WriteString(fmt.Sprintf("</h%d>\n", level))
 }
 
+// HeaderLink returns a relative link to the anchor of the given header.
+func HeaderLink(header string) (link string) {
+	return "#" + createSanitizedAnchorName(header)
+}
+
 // Returns an anchor name for the given header text.
 func createSanitizedAnchorName(text string) string {
 	var anchorName []rune
@@ -131,7 +140,7 @@ func (_ *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 	}
 }
 
-var gfmHTMLConfig = syntaxhighlight.HTMLConfig{
+var gfmHtmlConfig = syntaxhighlight.HTMLConfig{
 	String:        "s",
 	Keyword:       "k",
 	Comment:       "c",
@@ -152,18 +161,102 @@ func formatCode(src []byte, lang string) (formattedCode []byte, ok bool) {
 	// TODO: Use a highlighter based on go/scanner for Go code.
 	case "Go", "go":
 		var buf bytes.Buffer
-		err := syntaxhighlight.Print(syntaxhighlight.NewScanner(src), &buf, syntaxhighlight.HTMLPrinter(gfmHTMLConfig))
+		err := syntaxhighlight.Print(syntaxhighlight.NewScanner(src), &buf, syntaxhighlight.HTMLPrinter(gfmHtmlConfig))
 		if err != nil {
 			return nil, false
 		}
 		return buf.Bytes(), true
 	case "diff":
-		var buf bytes.Buffer
-		err := u7.Print(u7.NewScanner(src), &buf)
-		if err != nil {
-			return nil, false
+		switch 2 {
+		default:
+			var buf bytes.Buffer
+			err := u7.Print(u7.NewScanner(src), &buf)
+			if err != nil {
+				return nil, false
+			}
+			return buf.Bytes(), true
+		case 1:
+			lines := bytes.Split(src, []byte("\n"))
+			return bytes.Join(lines, []byte("\n")), true
+		case 2:
+			anns, err := u7.Annotate(src)
+			if err != nil {
+				return nil, false
+			}
+
+			lines := bytes.Split(src, []byte("\n"))
+			lineStarts := make([]int, len(lines))
+			var offset int
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				lineStarts[lineIndex] = offset
+				offset += len(lines[lineIndex]) + 1
+			}
+
+			lastDel, lastIns := -1, -1
+			for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+				var lineFirstChar byte
+				if len(lines[lineIndex]) > 0 {
+					lineFirstChar = lines[lineIndex][0]
+				}
+				switch lineFirstChar {
+				case '+':
+					if lastIns == -1 {
+						lastIns = lineIndex
+					}
+				case '-':
+					if lastDel == -1 {
+						lastDel = lineIndex
+					}
+				default:
+					if lastDel != -1 || lastIns != -1 {
+						if lastDel == -1 {
+							lastDel = lastIns
+						} else if lastIns == -1 {
+							lastIns = lineIndex
+						}
+
+						beginOffsetLeft := lineStarts[lastDel]
+						endOffsetLeft := lineStarts[lastIns]
+						beginOffsetRight := lineStarts[lastIns]
+						endOffsetRight := lineStarts[lineIndex]
+
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetLeft, End: endOffsetLeft, Left: []byte(`<span class="gd input-block">`), Right: []byte(`</span>`), WantInner: 0})
+						anns = append(anns, &annotate.Annotation{Start: beginOffsetRight, End: endOffsetRight, Left: []byte(`<span class="gi input-block">`), Right: []byte(`</span>`), WantInner: 0})
+
+						if '@' != lineFirstChar {
+							//leftContent := string(src[beginOffsetLeft:endOffsetLeft])
+							//rightContent := string(src[beginOffsetRight:endOffsetRight])
+							// This is needed to filter out the "-" and "+" at the beginning of each line from being highlighted.
+							// TODO: Still not completely filtered out.
+							leftContent := ""
+							for line := lastDel; line < lastIns; line++ {
+								leftContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
+							rightContent := ""
+							for line := lastIns; line < lineIndex; line++ {
+								rightContent += "\x00" + string(lines[line][1:]) + "\n"
+							}
+
+							var sectionSegments [2][]*annotate.Annotation
+							u7.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+
+							anns = append(anns, sectionSegments[0]...)
+							anns = append(anns, sectionSegments[1]...)
+						}
+					}
+					lastDel, lastIns = -1, -1
+				}
+			}
+
+			sort.Sort(anns)
+
+			out, err := annotate.Annotate(src, anns, func(w io.Writer, b []byte) { template.HTMLEscape(w, b) })
+			if err != nil {
+				return nil, false
+			}
+
+			return out, true
 		}
-		return buf.Bytes(), true
 	default:
 		return nil, false
 	}
