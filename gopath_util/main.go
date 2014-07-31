@@ -64,4 +64,6 @@ func RemoveRepo(importPathPattern string) error {
 
 	err := trash.MoveToTrash(firstGoPackage.Dir.Repo.Vcs.RootPath())
 	return err
+
+	// TODO: Clean up /pkg folder contents, if any, etc.
 }
