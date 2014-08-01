@@ -7,8 +7,8 @@ import (
 	"github.com/shurcooL/go/vcs"
 	"gopkg.in/pipe.v2"
 
-	. "gist.github.com/5892738.git"
-	. "gist.github.com/7480523.git"
+	. "github.com/shurcooL/go/gists/gist5892738"
+	. "github.com/shurcooL/go/gists/gist7480523"
 )
 
 // Show the difference between the working directory and the most recent commit.

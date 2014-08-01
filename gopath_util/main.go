@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	. "gist.github.com/7480523.git"
+	. "github.com/shurcooL/go/gists/gist7480523"
 
 	"github.com/kisielk/gotool"
 	"github.com/shurcooL/go/trash"
