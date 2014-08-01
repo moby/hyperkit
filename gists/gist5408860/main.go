@@ -1,4 +1,5 @@
-package main
+// Package gist5408860 provides a reverse adapter for sort.
+package gist5408860
 
 import (
 	"fmt"

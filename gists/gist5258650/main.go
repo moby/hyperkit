@@ -1,3 +1,4 @@
+// Package gist5258650 splits a multiline string into a slice of lines.
 package gist5258650
 
 import (

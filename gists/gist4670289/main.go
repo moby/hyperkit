@@ -1,3 +1,4 @@
+// Package gist4670289 returns a list of Go keywords.
 package gist4670289
 
 import (

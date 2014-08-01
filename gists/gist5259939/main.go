@@ -1,3 +1,4 @@
+// Package gist5259939 gets the filepath of go source file that calls the function.
 package gist5259939
 
 import (

@@ -1,3 +1,5 @@
+// Given an import path, it will generate an anonymous usage of the package
+// to avoid "imported and not used" errors.
 package gist4727543
 
 import (

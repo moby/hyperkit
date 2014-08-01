@@ -1,3 +1,4 @@
+// Package gist5423254 reverses a string.
 package gist5423254
 
 func Reverse(s string) string {

@@ -1,3 +1,4 @@
+// Package gist5210270 trims double quotes from a string.
 package gist5210270
 
 import (

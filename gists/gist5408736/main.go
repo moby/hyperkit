@@ -1,3 +1,5 @@
+// Package gist5408736 prints counts of total and unique runes within a string.
+// Good for finding non-ASCII characters.
 package gist5408736
 
 import (

@@ -1,8 +1,10 @@
+// Package gist4668739 gets the contents of a webpage as a string.
 package gist4668739
 
 import (
 	"io/ioutil"
 	"net/http"
+
 	. "github.com/shurcooL/go/gists/gist5286084"
 )
 

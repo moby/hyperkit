@@ -1,3 +1,4 @@
+// Package gist4737109 gets the contents of a gist.
 package gist4737109
 
 import (

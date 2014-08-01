@@ -1,3 +1,4 @@
+// Package gist5571468 reads the content of a file, panics on error.
 package gist5571468
 
 import (

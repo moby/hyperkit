@@ -1,3 +1,4 @@
+// Package gist5022726 gets the weekly income of a Gittip user.
 package gist5022726
 
 import "encoding/json"

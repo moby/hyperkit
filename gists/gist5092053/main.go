@@ -1,8 +1,10 @@
+// A function to turn a map[string]int into a PairList, then sort and return it.
 package gist5092053
 
 import (
-	. "gist.github.com/5408860.git"
 	"sort"
+
+	. "github.com/shurcooL/go/gists/gist5408860"
 )
 
 // A data structure to hold a key/value pair.
