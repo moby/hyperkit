@@ -17,7 +17,7 @@ import (
 
 	"code.google.com/p/go.tools/astutil"
 
-	. "gist.github.com/5639599.git"
+	. "github.com/shurcooL/go/gists/gist5639599"
 )
 
 // TODO: Replace with go/ast.SortImports or code.google.com/p/go.tools/imports.SortImports whenever it's possible.

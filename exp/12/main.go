@@ -6,7 +6,7 @@ import (
 	"github.com/shurcooL/go/exp/13"
 	"github.com/shurcooL/go/vcs"
 
-	. "gist.github.com/7802150.git"
+	. "github.com/shurcooL/go/gists/gist7802150"
 )
 
 // TODO: Use FileUri or similar type instead of string for clean path to repo root.

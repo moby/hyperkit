@@ -1,10 +1,10 @@
 package exp14
 
 import (
-	. "gist.github.com/7480523.git"
-	. "gist.github.com/7802150.git"
+	. "github.com/shurcooL/go/gists/gist7480523"
+	. "github.com/shurcooL/go/gists/gist7802150"
 
-	"gist.github.com/8018045.git"
+	"github.com/shurcooL/go/gists/gist8018045"
 )
 
 type GoPackages struct {

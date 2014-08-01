@@ -3,7 +3,7 @@ package gist5571468
 import (
 	"io/ioutil"
 
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 func MustReadFile(filename string) string {

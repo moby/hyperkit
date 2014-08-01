@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"gist.github.com/7480523.git"
+	"github.com/shurcooL/go/gists/gist7480523"
 )
 
 type goPackage struct {

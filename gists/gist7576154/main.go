@@ -4,8 +4,8 @@ import (
 	"io"
 	"os/exec"
 
-	. "gist.github.com/7729255.git"
-	. "gist.github.com/7802150.git"
+	. "github.com/shurcooL/go/gists/gist7729255"
+	. "github.com/shurcooL/go/gists/gist7802150"
 
 	"gopkg.in/pipe.v2"
 )

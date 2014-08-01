@@ -6,9 +6,9 @@ import (
 
 	"github.com/shurcooL/go/exp/12"
 
-	. "gist.github.com/5504644.git"
-	. "gist.github.com/7519227.git"
-	. "gist.github.com/7802150.git"
+	. "github.com/shurcooL/go/gists/gist5504644"
+	. "github.com/shurcooL/go/gists/gist7519227"
+	. "github.com/shurcooL/go/gists/gist7802150"
 )
 
 type GoPackageStringer func(*GoPackage) string

@@ -16,9 +16,9 @@ import (
 	//"code.google.com/p/go.tools/go/types"
 	//"honnef.co/go/importer"
 
-	. "gist.github.com/5286084.git"
-	. "gist.github.com/5504644.git"
-	. "gist.github.com/5639599.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
+	. "github.com/shurcooL/go/gists/gist5504644"
+	. "github.com/shurcooL/go/gists/gist5639599"
 
 	"github.com/shurcooL/go/exp/15"
 )

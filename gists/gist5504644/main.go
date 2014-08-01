@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 // ParseFiles parses the Go source files files within directory dir

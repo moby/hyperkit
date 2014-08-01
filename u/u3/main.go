@@ -3,7 +3,7 @@ package u3
 import (
 	"net/http"
 
-	"gist.github.com/7390843.git"
+	"github.com/shurcooL/go/gists/gist7390843"
 
 	"github.com/shurcooL/go/u/u1"
 	"github.com/shurcooL/go/u/u4"

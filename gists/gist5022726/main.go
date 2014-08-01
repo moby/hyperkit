@@ -1,7 +1,7 @@
 package gist5022726
 
 import "encoding/json"
-import . "gist.github.com/4668739.git"
+import . "github.com/shurcooL/go/gists/gist4668739"
 
 func GetWeeklyIncome(username string) string {
 	url := "https://www.gittip.com/" + username + "/public.json"

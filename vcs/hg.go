@@ -3,8 +3,8 @@ package vcs
 import (
 	"os/exec"
 
-	. "gist.github.com/5258650.git"
-	. "gist.github.com/5892738.git"
+	. "github.com/shurcooL/go/gists/gist5258650"
+	. "github.com/shurcooL/go/gists/gist5892738"
 )
 
 func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {

@@ -11,9 +11,9 @@ import (
 
 	"github.com/shurcooL/go-goon"
 
-	. "gist.github.com/5504644.git"
-	. "gist.github.com/7480523.git"
-	. "gist.github.com/7519227.git"
+	. "github.com/shurcooL/go/gists/gist5504644"
+	. "github.com/shurcooL/go/gists/gist7480523"
+	. "github.com/shurcooL/go/gists/gist7519227"
 )
 
 var _ = fmt.Print

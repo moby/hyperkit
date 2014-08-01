@@ -6,10 +6,10 @@ import (
 	"runtime/debug"
 	"strings"
 
-	. "gist.github.com/5258650.git"
-	. "gist.github.com/5639599.git"
-	. "gist.github.com/5707298.git"
-	. "gist.github.com/6445065.git"
+	. "github.com/shurcooL/go/gists/gist5258650"
+	. "github.com/shurcooL/go/gists/gist5639599"
+	. "github.com/shurcooL/go/gists/gist5707298"
+	. "github.com/shurcooL/go/gists/gist6445065"
 )
 
 // Gets the parent func as a string.

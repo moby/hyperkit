@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	. "gist.github.com/5210270.git"
-	. "gist.github.com/5504644.git"
+	. "github.com/shurcooL/go/gists/gist5210270"
+	. "github.com/shurcooL/go/gists/gist5504644"
 )
 
 // Generates an anonymous usage for the given import statement to avoid "imported and not used" errors

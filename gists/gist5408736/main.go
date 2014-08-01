@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	. "gist.github.com/5092053.git"
-	. "gist.github.com/5286084.git"
-	. "gist.github.com/5571468.git"
+	. "github.com/shurcooL/go/gists/gist5092053"
+	. "github.com/shurcooL/go/gists/gist5286084"
+	. "github.com/shurcooL/go/gists/gist5571468"
 )
 
 var _ = ioutil.ReadFile

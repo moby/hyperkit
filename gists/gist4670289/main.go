@@ -3,7 +3,7 @@ package gist4670289
 import (
 	"strings"
 	//"fmt"
-	. "gist.github.com/4668739.git"
+	. "github.com/shurcooL/go/gists/gist4668739"
 )
 
 func GoKeywords() []string {

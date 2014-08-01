@@ -9,10 +9,10 @@ import (
 	"reflect"
 	"runtime"
 
-	. "gist.github.com/5286084.git"
-	. "gist.github.com/5639599.git"
-	. "gist.github.com/6433744.git"
-	. "gist.github.com/6445065.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
+	. "github.com/shurcooL/go/gists/gist5639599"
+	. "github.com/shurcooL/go/gists/gist6433744"
+	. "github.com/shurcooL/go/gists/gist6445065"
 )
 
 // GetSourceAsString returns the source of the func f.

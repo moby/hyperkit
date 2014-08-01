@@ -2,8 +2,8 @@ package gist5439318
 
 import (
 	"encoding/json"
-	. "gist.github.com/4668739.git"
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist4668739"
+	. "github.com/shurcooL/go/gists/gist5286084"
 
 	"github.com/shurcooL/go-goon"
 )

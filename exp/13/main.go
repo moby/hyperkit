@@ -1,7 +1,7 @@
 package exp13
 
 import (
-	. "gist.github.com/7802150.git"
+	. "github.com/shurcooL/go/gists/gist7802150"
 
 	"github.com/shurcooL/go/vcs"
 )

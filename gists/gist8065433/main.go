@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 // TODO: Better interface. Perhaps a slice of strings.

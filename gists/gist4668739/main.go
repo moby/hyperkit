@@ -3,7 +3,7 @@ package gist4668739
 import (
 	"io/ioutil"
 	"net/http"
-	. "gist.github.com/5286084.git"
+	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 func HttpGet(url string) string {

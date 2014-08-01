@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	. "gist.github.com/4668739.git"
+	. "github.com/shurcooL/go/gists/gist4668739"
 )
 
 /* TODO: Probably want to change interface to return error, etc. But it's worth doing when these funcs are used, not sooner.
