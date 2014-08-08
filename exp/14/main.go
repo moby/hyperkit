@@ -7,6 +7,12 @@ import (
 	"github.com/shurcooL/go/gists/gist8018045"
 )
 
+type GoPackageList interface {
+	List() []*GoPackage
+
+	DepNode2I
+}
+
 type GoPackages struct {
 	SkipGoroot bool // Currently, works on initial run only; changing its value afterwards has no effect.
 
@@ -37,4 +43,8 @@ func (this *GoPackages) Update() {
 			}
 		}
 	}
+}
+
+func (this *GoPackages) List() []*GoPackage {
+	return this.Entries
 }
