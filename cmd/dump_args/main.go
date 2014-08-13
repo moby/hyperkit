@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
-	goon.DumpExpr(os.Args)
-	goon.DumpExpr(os.Getwd())
+	goon.DumpExpr(os.Args[0])  // Program name.
+	goon.DumpExpr(os.Args[1:]) // Program arguments.
+	goon.DumpExpr(os.Getwd())  // Current working directory.
 }
