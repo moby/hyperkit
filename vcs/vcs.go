@@ -25,6 +25,9 @@ type Vcs interface {
 
 	GetLocalRev() string
 	GetRemoteRev() string
+
+	// Returns true if given commit is contained in the default local branch.
+	IsContained(rev string) bool
 }
 
 type commonVcs struct {

@@ -62,7 +62,8 @@ func (this *VcsLocal) Update() {
 // ---
 
 type VcsRemote struct {
-	RemoteRev string
+	RemoteRev   string
+	IsContained bool // True if remote commit is contained in the default local branch.
 
 	DepNode2
 }
@@ -79,4 +80,7 @@ func (this *VcsRemote) Update() {
 	//fmt.Println("*VcsRemote) Update() for", vcs.RootPath())
 
 	this.RemoteRev = vcs.GetRemoteRev()
+	if this.RemoteRev != "" {
+		this.IsContained = vcs.IsContained(this.RemoteRev)
+	}
 }

@@ -55,6 +55,18 @@ func (this *gitVcs) GetRemoteRev() string {
 	return CheckGitRepoRemote(this.rootPath, this.GetDefaultBranch())
 }
 
+func (this *gitVcs) IsContained(rev string) bool {
+	cmd := exec.Command("git", "branch", "--list", "--contains", rev, this.GetDefaultBranch())
+	cmd.Dir = this.rootPath
+
+	if out, err := cmd.Output(); err == nil {
+		if len(out) >= 2 && TrimLastNewline(string(out[2:])) == this.GetDefaultBranch() {
+			return true
+		}
+	}
+	return false
+}
+
 // ---
 
 func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {

@@ -94,3 +94,8 @@ func (this *hgVcs) GetRemoteRev() string {
 	}
 	return ""
 }
+
+func (this *hgVcs) IsContained(rev string) bool {
+	// TODO
+	return false
+}
