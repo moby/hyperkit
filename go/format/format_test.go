@@ -89,6 +89,9 @@ var tests = []string{
 	"\n\t\t\n\n\t\t\tx := 0\n\t\t\tgo f()\n\n\n",
 	"\n\t\t\n\n\t\t\tx := 0\n\t\t\tconst s = `\nfoo\n`\n\n\n", // no indentation inside raw strings
 
+	// comments
+	"i := 5 /* Comment */", // Issue 5551.
+
 	// erroneous programs
 	"ERROR1 + 2 +",
 	"ERRORx :=  0",
