@@ -80,66 +80,24 @@ func Node(dst io.Writer, fset *token.FileSet, node interface{}) error {
 //
 func Source(src []byte) ([]byte, error) {
 	fset := token.NewFileSet()
-	node, err := parse(fset, src)
+	file, adjust, err := parse(fset, "", src, true)
 	if err != nil {
 		return nil, err
 	}
 
+	ast.SortImports(fset, file)
+
 	var buf bytes.Buffer
-	if file, ok := node.(*ast.File); ok {
-		// Complete source file.
-		ast.SortImports(fset, file)
-		err := config.Fprint(&buf, fset, file)
-		if err != nil {
-			return nil, err
-		}
-
-	} else {
-		// Partial source file.
-		// Determine and prepend leading space.
-		i, j := 0, 0
-		for j < len(src) && isSpace(src[j]) {
-			if src[j] == '\n' {
-				i = j + 1 // index of last line in leading space
-			}
-			j++
-		}
-		buf.Write(src[:i])
-
-		// Determine indentation of first code line.
-		// Spaces are ignored unless there are no tabs,
-		// in which case spaces count as one tab.
-		indent := 0
-		hasSpace := false
-		for _, b := range src[i:j] {
-			switch b {
-			case ' ':
-				hasSpace = true
-			case '\t':
-				indent++
-			}
-		}
-		if indent == 0 && hasSpace {
-			indent = 1
-		}
-
-		// Format the source.
-		cfg := config
-		cfg.Indent = indent
-		err := cfg.Fprint(&buf, fset, node)
-		if err != nil {
-			return nil, err
-		}
-
-		// Determine and append trailing space.
-		i = len(src)
-		for i > 0 && isSpace(src[i-1]) {
-			i--
-		}
-		buf.Write(src[i:])
+	err = config.Fprint(&buf, fset, file)
+	if err != nil {
+		return nil, err
+	}
+	res := buf.Bytes()
+	if adjust != nil {
+		res = adjust(src, res)
 	}
 
-	return buf.Bytes(), nil
+	return res, nil
 }
 
 func hasUnsortedImports(file *ast.File) bool {
@@ -160,40 +118,110 @@ func hasUnsortedImports(file *ast.File) bool {
 	return false
 }
 
-func isSpace(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
-}
-
-func parse(fset *token.FileSet, src []byte) (interface{}, error) {
-	// Try as a complete source file.
-	file, err := parser.ParseFile(fset, "", src, parser.ParseComments)
+// parse parses src, which was read from filename,
+// as a Go source file or statement list.
+func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(orig, src []byte) []byte, error) {
+	// Try as whole source file.
+	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 	if err == nil {
-		return file, nil
+		return file, nil, nil
 	}
-	// If the source is missing a package clause, try as a source fragment; otherwise fail.
-	if !strings.Contains(err.Error(), "expected 'package'") {
-		return nil, err
+	// If the error is that the source file didn't begin with a
+	// package line and this is standard input, fall through to
+	// try as a source fragment.  Stop and return on any other error.
+	if !stdin || !strings.Contains(err.Error(), "expected 'package'") {
+		return nil, nil, err
 	}
 
-	// Try as a declaration list by prepending a package clause in front of src.
-	// Use ';' not '\n' to keep line numbers intact.
+	// If this is a declaration list, make it a source file
+	// by inserting a package clause.
+	// Insert using a ;, not a newline, so that the line numbers
+	// in psrc match the ones in src.
 	psrc := append([]byte("package p;"), src...)
-	file, err = parser.ParseFile(fset, "", psrc, parser.ParseComments)
+	file, err = parser.ParseFile(fset, filename, psrc, parser.ParseComments)
 	if err == nil {
-		return file.Decls, nil
+		adjust := func(orig, src []byte) []byte {
+			// Remove the package clause.
+			// Gofmt has turned the ; into a \n.
+			src = src[len("package p\n"):]
+			return matchSpace(orig, src)
+		}
+		return file, adjust, nil
 	}
-	// If the source is missing a declaration, try as a statement list; otherwise fail.
+	// If the error is that the source file didn't begin with a
+	// declaration, fall through to try as a statement list.
+	// Stop and return on any other error.
 	if !strings.Contains(err.Error(), "expected declaration") {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Try as statement list by wrapping a function around src.
-	fsrc := append(append([]byte("package p; func _() {"), src...), '}')
-	file, err = parser.ParseFile(fset, "", fsrc, parser.ParseComments)
+	// If this is a statement list, make it a source file
+	// by inserting a package clause and turning the list
+	// into a function body.  This handles expressions too.
+	// Insert using a ;, not a newline, so that the line numbers
+	// in fsrc match the ones in src.
+	fsrc := append(append([]byte("package p; func _() {"), src...), '\n', '}')
+	file, err = parser.ParseFile(fset, filename, fsrc, parser.ParseComments)
 	if err == nil {
-		return file.Decls[0].(*ast.FuncDecl).Body.List, nil
+		adjust := func(orig, src []byte) []byte {
+			// Remove the wrapping.
+			// Gofmt has turned the ; into a \n\n.
+			src = src[len("package p\n\nfunc _() {"):]
+			src = src[:len(src)-len("\n}\n")]
+			// Gofmt has also indented the function body one level.
+			// Remove that indent.
+			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
+			return matchSpace(orig, src)
+		}
+		return file, adjust, nil
 	}
 
 	// Failed, and out of options.
-	return nil, err
+	return nil, nil, err
+}
+
+func cutSpace(b []byte) (before, middle, after []byte) {
+	i := 0
+	for i < len(b) && (b[i] == ' ' || b[i] == '\t' || b[i] == '\n') {
+		i++
+	}
+	j := len(b)
+	for j > 0 && (b[j-1] == ' ' || b[j-1] == '\t' || b[j-1] == '\n') {
+		j--
+	}
+	if i <= j {
+		return b[:i], b[i:j], b[j:]
+	}
+	return nil, nil, b[j:]
+}
+
+// matchSpace reformats src to use the same space context as orig.
+// 1) If orig begins with blank lines, matchSpace inserts them at the beginning of src.
+// 2) matchSpace copies the indentation of the first non-blank line in orig
+//    to every non-blank line in src.
+// 3) matchSpace copies the trailing space from orig and uses it in place
+//   of src's trailing space.
+func matchSpace(orig []byte, src []byte) []byte {
+	before, _, after := cutSpace(orig)
+	i := bytes.LastIndex(before, []byte{'\n'})
+	before, indent := before[:i+1], before[i+1:]
+
+	_, src, _ = cutSpace(src)
+
+	var b bytes.Buffer
+	b.Write(before)
+	for len(src) > 0 {
+		line := src
+		if i := bytes.IndexByte(line, '\n'); i >= 0 {
+			line, src = line[:i+1], line[i+1:]
+		} else {
+			src = nil
+		}
+		if len(line) > 0 && line[0] != '\n' { // not blank
+			b.Write(indent)
+		}
+		b.Write(line)
+	}
+	b.Write(after)
+	return b.Bytes()
 }
