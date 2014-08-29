@@ -48,7 +48,6 @@ index dc83bf7..5260a7d 100644
 
 	htmlFlags := 0
 	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
-	htmlFlags |= blackfriday.HTML_GITHUB_BLOCKCODE
 	renderer := &renderer{Html: blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
 
 	// Parser extensions for GitHub Flavored Markdown.

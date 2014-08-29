@@ -32,7 +32,6 @@ import (
 func Markdown(text []byte) []byte {
 	htmlFlags := 0
 	//htmlFlags |= blackfriday.HTML_SANITIZE_OUTPUT
-	htmlFlags |= blackfriday.HTML_GITHUB_BLOCKCODE
 	renderer := &renderer{Html: blackfriday.HtmlRenderer(htmlFlags, "", "").(*blackfriday.Html)}
 
 	// Parser extensions for GitHub Flavored Markdown.
