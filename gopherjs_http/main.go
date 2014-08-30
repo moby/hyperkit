@@ -36,6 +36,8 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	processHtmlFile(file).WriteTo(w)
 }
 
+// TODO: Write into writer, no need for buffer. Or, alternatively, parse html and serve minified version?
+// TODO: Support non-inline <script src="..."> tags.
 func processHtmlFile(r io.Reader) *bytes.Buffer {
 	var buff bytes.Buffer
 	tokenizer := html.NewTokenizer(r)
@@ -67,7 +69,7 @@ func processHtmlFile(r io.Reader) *bytes.Buffer {
 				buff.WriteString(token.String())
 			}
 		case html.EndTagToken:
-			if token.DataAtom == atom.Script {
+			if token.DataAtom == atom.Script && depth > 0 {
 				depth--
 			}
 			buff.WriteString(token.String())
