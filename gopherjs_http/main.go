@@ -11,7 +11,6 @@ import (
 
 	"code.google.com/p/go.net/html"
 	"code.google.com/p/go.net/html/atom"
-	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/pipe_util"
 	"gopkg.in/pipe.v2"
 )
@@ -117,17 +116,17 @@ func goToJs(goCode string) (jsCode string) {
 		panic(err)
 	}
 	defer func() {
-		goon.DumpExpr(tempDir)
 		err := os.RemoveAll(tempDir)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "warning: error removing temp dir:", err)
 		}
 	}()
 
-	out, err := pipe_util.OutputDir(p, tempDir)
+	stdout, stderr, err := pipe_util.DividedOutputDir(p, tempDir)
 	if err != nil {
-		goon.Dump(string(out), err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Stderr.Write(stderr)
 	}
 
-	return string(out)
+	return string(stdout)
 }
