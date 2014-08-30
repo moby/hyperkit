@@ -90,9 +90,17 @@ func InlineDotImports(w io.Writer, importPath string) {
 
 	merged := ast.MergePackageFiles(apkg, astMergeMode)
 
+	WriteMergedPackage(w, prog.Fset, merged)
+}
+
+// WriteMergedPackage writes a merged package, typically coming from ast.MergePackageFiles, to w.
+// It sorts and de-duplicates imports.
+//
+// TODO: Support comments.
+func WriteMergedPackage(w io.Writer, fset *token.FileSet, merged *ast.File) {
 	switch 3 {
 	case 1:
-		fmt.Fprintln(w, "package "+SprintAst(prog.Fset, merged.Name))
+		fmt.Fprintln(w, "package "+SprintAst(fset, merged.Name))
 		fmt.Fprintln(w)
 		fmt.Fprintln(w, `import (`)
 		// TODO: SortImports (ala goimports).
@@ -100,7 +108,7 @@ func InlineDotImports(w io.Writer, importPath string) {
 			if importSpec.Name != nil && importSpec.Name.Name == "." {
 				continue
 			}
-			fmt.Fprintln(w, "\t"+SprintAst(prog.Fset, importSpec))
+			fmt.Fprintln(w, "\t"+SprintAst(fset, importSpec))
 		}
 		fmt.Fprintln(w, `)`)
 		fmt.Fprintln(w)
@@ -110,7 +118,7 @@ func InlineDotImports(w io.Writer, importPath string) {
 				continue
 			}
 
-			fmt.Fprintln(w, SprintAst(prog.Fset, decl))
+			fmt.Fprintln(w, SprintAst(fset, decl))
 			fmt.Fprintln(w)
 		}
 	case 2:
@@ -118,17 +126,17 @@ func InlineDotImports(w io.Writer, importPath string) {
 
 		//fmt.Fprintln(w, SprintAst(token.NewFileSet(), merged))
 
-		//ast.SortImports(prog.Fset, merged)
-		exp15.SortImports2(prog.Fset, merged)
+		//ast.SortImports(fset, merged)
+		exp15.SortImports2(fset, merged)
 
-		fmt.Fprintln(w, SprintAst(prog.Fset, merged))
+		fmt.Fprintln(w, SprintAst(fset, merged))
 	case 3:
 		sortDecls(merged)
 
 		// TODO: Clean up this mess...
 		fset2, f2 := exp15.SortImports2(token.NewFileSet(), merged)
 
-		fmt.Fprintln(w, "package "+SprintAst(prog.Fset, merged.Name))
+		fmt.Fprintln(w, "package "+SprintAst(fset, merged.Name))
 		for _, decl := range f2.Decls {
 			if x, ok := decl.(*ast.GenDecl); ok && x.Tok == token.IMPORT {
 				fmt.Fprintln(w)
@@ -141,12 +149,12 @@ func InlineDotImports(w io.Writer, importPath string) {
 			}
 
 			fmt.Fprintln(w)
-			fmt.Fprintln(w, SprintAst(prog.Fset, decl))
+			fmt.Fprintln(w, SprintAst(fset, decl))
 		}
 	case 4:
 		sortDecls(merged)
 
-		src := []byte(SprintAst(prog.Fset, merged))
+		src := []byte(SprintAst(fset, merged))
 
 		out, err := imports.Process("", src, nil)
 		if err != nil {
