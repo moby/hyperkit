@@ -128,5 +128,8 @@ func goToJs(goCode string) (jsCode string) {
 		os.Stderr.Write(stderr)
 	}
 
+	// TODO: Serve the .map too, somehow?
+	stdout = bytes.Replace(stdout, []byte("//# sourceMappingURL=tmp.js.map\n"), []byte("\n"), -1)
+
 	return string(stdout)
 }
