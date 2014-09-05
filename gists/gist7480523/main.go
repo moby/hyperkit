@@ -85,3 +85,36 @@ func GetRepoImportPathPattern(repoPath, srcRoot string) (repoImportPathPattern s
 func (this *GoPackage) String() string {
 	return this.Bpkg.ImportPath
 }
+
+// =====
+
+// GoPackageRepo represents a collection of Go packages contained by one VCS repository.
+type GoPackageRepo struct {
+	rootPath   string
+	goPackages []*GoPackage
+}
+
+func NewGoPackageRepo(rootPath string, goPackages []*GoPackage) GoPackageRepo {
+	return GoPackageRepo{rootPath, goPackages}
+}
+
+// ImportPathPattern returns an import path pattern that matches all of the Go packages in this repo.
+// E.g.,
+//
+//	"github.com/owner/repo/..."
+func (repo GoPackageRepo) ImportPathPattern() string {
+	return GetRepoImportPathPattern(repo.rootPath, repo.goPackages[0].Bpkg.SrcRoot)
+}
+
+// RootPath returns the path to the root workdir folder of the repository.
+func (repo GoPackageRepo) RootPath() string         { return repo.rootPath }
+func (repo GoPackageRepo) GoPackages() []*GoPackage { return repo.goPackages }
+
+// ImportPaths returns a newline separated list of all import paths.
+func (repo GoPackageRepo) ImportPaths() string {
+	var importPaths []string
+	for _, goPackage := range repo.goPackages {
+		importPaths = append(importPaths, goPackage.Bpkg.ImportPath)
+	}
+	return strings.Join(importPaths, "\n")
+}
