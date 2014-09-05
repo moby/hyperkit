@@ -7,12 +7,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"code.google.com/p/go.net/html"
 	"code.google.com/p/go.net/html/atom"
-	"github.com/shurcooL/go/pipe_util"
-	"gopkg.in/pipe.v2"
+	"github.com/go-on/gopherjslib"
 )
 
 // HtmlFile returns a handler that serves the given .html file, with the "text/go" scripts compiled to JavaScript via GopherJS.
@@ -113,37 +113,14 @@ func goToJs(goCode string) (jsCode string) {
 	started := time.Now()
 	defer func() { fmt.Println("goToJs taken:", time.Since(started)) }()
 
-	// TODO: Don't shell out, and avoid having to write/read temporary files, instead
-	//       use http://godoc.org/github.com/gopherjs/gopherjs/compiler directly, etc.
-	p := pipe.Script(
-		pipe.Line(
-			pipe.Print(goCode),
-			pipe.WriteFile("tmp.go", 0666),
-		),
-		pipe.Exec("gopherjs", "build", "tmp.go"),
-		pipe.ReadFile("tmp.js"),
-	)
+	code := strings.NewReader(goCode)
 
-	// Use a temporary dir.
-	tempDir, err := ioutil.TempDir("", "gopherjs_")
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		err := os.RemoveAll(tempDir)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "warning: error removing temp dir:", err)
-		}
-	}()
-
-	stdout, stderr, err := pipe_util.DividedOutputDir(p, tempDir)
+	var out bytes.Buffer
+	err := gopherjslib.Build(code, &out, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Stderr.Write(stderr)
+		return goCode
 	}
 
-	// TODO: Serve the .map too, somehow?
-	stdout = bytes.Replace(stdout, []byte("//# sourceMappingURL=tmp.js.map\n"), []byte("\n"), -1)
-
-	return string(stdout)
+	return out.String()
 }
