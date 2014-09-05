@@ -13,6 +13,26 @@ func ProcessLinesFromReader(r io.Reader, processFunc func(string)) {
 	}
 }
 
+// GoReduceLinesFromReader spawns numWorkers goroutines and reduces each line from reader with reduceFunc.
+//
+//	source := strings.NewReader(`1
+//	2
+//	three
+//	four
+//	etc.
+//	`)
+//
+//	reduceFunc := func(in string) interface{} {
+//		time.Sleep(2 * time.Second)
+//		return "Hello: " + in
+//	}
+//
+//	outChan := gist7651991.GoReduceLinesFromReader(source, 4, reduceFunc)
+//
+//	for out := range outChan {
+//		fmt.Println(out)
+//	}
+//
 func GoReduceLinesFromReader(r io.Reader, numWorkers int, reduceFunc func(string) interface{}) <-chan interface{} {
 	outChan := make(chan interface{})
 
