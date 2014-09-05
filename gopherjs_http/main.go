@@ -32,22 +32,20 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer file.Close()
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	processHtmlFile(file).WriteTo(w)
+	ProcessHtml(file).WriteTo(w)
 }
 
-// TODO: Write into writer, no need for buffer. Or, alternatively, parse html and serve minified version?
-// TODO: Support non-inline <script src="..."> tags.
-func processHtmlFile(r io.Reader) *bytes.Buffer {
-	var buff bytes.Buffer
+// TODO: Write into writer, no need for buffer (unless want to be able to abort on error?). Or, alternatively, parse html and serve minified version?
+func ProcessHtml(r io.Reader) *bytes.Buffer {
+	insideTextGo := false
 	tokenizer := html.NewTokenizer(r)
-
-	depth := 0
+	var buf bytes.Buffer
 
 	for {
 		if tokenizer.Next() == html.ErrorToken {
 			err := tokenizer.Err()
 			if err == io.EOF {
-				return &buff
+				return &buf
 			}
 
 			return &bytes.Buffer{}
@@ -56,29 +54,36 @@ func processHtmlFile(r io.Reader) *bytes.Buffer {
 		token := tokenizer.Token()
 		switch token.Type {
 		case html.DoctypeToken:
-			buff.WriteString(token.String())
+			buf.WriteString(token.String())
 		case html.CommentToken:
-			buff.WriteString(token.String())
+			buf.WriteString(token.String())
 		case html.StartTagToken:
 			if token.DataAtom == atom.Script && getType(token.Attr) == "text/go" {
-				depth++
-				//goon.Dump(token.Attr)
-				buff.WriteString(`<script type="text/javascript">`)
+				insideTextGo = true
+
+				buf.WriteString(`<script type="text/javascript">`)
+
+				if src := getSrc(token.Attr); src != "" {
+					if data, err := ioutil.ReadFile(src); err == nil {
+						buf.WriteString(goToJs(string(data)))
+					}
+				}
 			} else {
-				buff.WriteString(token.String())
+				buf.WriteString(token.String())
 			}
 		case html.EndTagToken:
-			if token.DataAtom == atom.Script && depth > 0 {
-				depth--
+			if token.DataAtom == atom.Script && insideTextGo {
+				insideTextGo = false
 			}
-			buff.WriteString(token.String())
+			buf.WriteString(token.String())
 		case html.SelfClosingTagToken:
-			buff.WriteString(token.String())
+			// TODO: Support <script type="text/go" src="..." />.
+			buf.WriteString(token.String())
 		case html.TextToken:
-			if depth > 0 {
-				buff.WriteString(goToJs(token.Data))
+			if insideTextGo {
+				buf.WriteString(goToJs(token.Data))
 			} else {
-				buff.WriteString(token.Data)
+				buf.WriteString(token.Data)
 			}
 		default:
 			panic("unknown token type")
@@ -89,6 +94,15 @@ func processHtmlFile(r io.Reader) *bytes.Buffer {
 func getType(attrs []html.Attribute) string {
 	for _, attr := range attrs {
 		if attr.Key == "type" {
+			return attr.Val
+		}
+	}
+	return ""
+}
+
+func getSrc(attrs []html.Attribute) string {
+	for _, attr := range attrs {
+		if attr.Key == "src" {
 			return attr.Val
 		}
 	}
