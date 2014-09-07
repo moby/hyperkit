@@ -137,8 +137,16 @@ func Source(src []byte) ([]byte, error) {
 		}
 
 		res = buf.Bytes()
-		//fmt.Printf("indent: %v\nbefore adjust:\n%s\n%q\nafter:\n", indent, string(res), string(res))
 		res = adjust(src, res, indent)
+
+		// Prepend leading space.
+		buf.Reset()
+		buf.Write(src[:i])
+		for index := 0; index < indent; index++ { // Need to prepend the first line's indent, since it was trimmed.
+			buf.WriteByte('\t')
+		}
+		buf.Write(res)
+		res = buf.Bytes()
 
 		// Determine and append trailing space.
 		i = len(src)
@@ -199,7 +207,9 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 			// Remove the package clause.
 			// Gofmt has turned the ; into a \n.
 			src = src[indent+len("package p\n"):]
-			return matchSpace(orig, src)
+			//return matchSpace(orig, src)
+			_, src, _ = cutSpace(src)
+			return src
 		}
 		return file, adjust, nil
 	}
@@ -219,14 +229,25 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	file, err = parser.ParseFile(fset, filename, fsrc, parserMode)
 	if err == nil {
 		adjust := func(orig, src []byte, indent int) []byte {
+			if indent != -1 {
+				fmt.Printf("indent: %v\noriginal:\n%s\n%q\nbefore adjust:\n%s\n%q\n", indent, string(orig), string(orig), string(src), string(src))
+			}
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
 			src = src[2*indent+len("package p\n\nfunc _() {"):]
 			src = src[:len(src)-1*indent-len("\n}\n")]
+			if indent != -1 {
+				fmt.Printf("after adjust:\n%s\n%q\n", string(src), string(src))
+			}
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
 			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
-			return matchSpace(orig, src)
+			if indent != -1 {
+				fmt.Printf("after Replace:\n%s\n%q\n", string(src), string(src))
+			}
+			//return matchSpace(orig, src)
+			_, src, _ = cutSpace(src)
+			return src
 		}
 		return file, adjust, nil
 	}
