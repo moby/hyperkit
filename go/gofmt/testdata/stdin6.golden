@@ -1,0 +1,8 @@
+	//gofmt -stdin
+
+	if err != nil {
+		source := strings.NewReader(`line 1.
+line 2.
+`)
+		return source
+	}
