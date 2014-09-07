@@ -297,7 +297,7 @@ func isSpace(b byte) bool {
 // as a Go source file or statement list.
 func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(orig, src []byte, indent int) []byte, error) {
 	// Try as whole source file.
-	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+	file, err := parser.ParseFile(fset, filename, src, parserMode)
 	if err == nil {
 		return file, nil, nil
 	}
@@ -313,7 +313,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	// Insert using a ;, not a newline, so that the line numbers
 	// in psrc match the ones in src.
 	psrc := append([]byte("package p;"), src...)
-	file, err = parser.ParseFile(fset, filename, psrc, parser.ParseComments)
+	file, err = parser.ParseFile(fset, filename, psrc, parserMode)
 	if err == nil {
 		adjust := func(orig, src []byte, indent int) []byte {
 			// Remove the package clause.
@@ -336,7 +336,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	// Insert using a ;, not a newline, so that the line numbers
 	// in fsrc match the ones in src.
 	fsrc := append(append([]byte("package p; func _() {"), src...), '\n', '}')
-	file, err = parser.ParseFile(fset, filename, fsrc, parser.ParseComments)
+	file, err = parser.ParseFile(fset, filename, fsrc, parserMode)
 	if err == nil {
 		adjust := func(orig, src []byte, indent int) []byte {
 			// Remove the wrapping.
