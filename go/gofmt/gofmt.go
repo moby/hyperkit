@@ -107,13 +107,62 @@ func processFile(filename string, in io.Reader, out io.Writer, stdin bool) error
 	}
 
 	var buf bytes.Buffer
-	err = (&printer.Config{Mode: printerMode, Tabwidth: tabWidth}).Fprint(&buf, fileSet, file)
-	if err != nil {
-		return err
-	}
-	res := buf.Bytes()
-	if adjust != nil {
-		res = adjust(src, res)
+	var res []byte
+	if adjust == nil {
+		// Complete source file.
+		err = (&printer.Config{Mode: printerMode, Tabwidth: tabWidth}).Fprint(&buf, fileSet, file)
+		if err != nil {
+			return err
+		}
+
+		res = buf.Bytes()
+
+	} else {
+		// Partial source file.
+		// Determine leading space.
+		i, j := 0, 0
+		for j < len(src) && isSpace(src[j]) {
+			if src[j] == '\n' {
+				i = j + 1 // index of last line in leading space
+			}
+			j++
+		}
+
+		// Determine indentation of first code line.
+		// Spaces are ignored unless there are no tabs,
+		// in which case spaces count as one tab.
+		indent := 0
+		hasSpace := false
+		for _, b := range src[i:j] {
+			switch b {
+			case ' ':
+				hasSpace = true
+			case '\t':
+				indent++
+			}
+		}
+		if indent == 0 && hasSpace {
+			indent = 1
+		}
+
+		// Format the source.
+		cfg := &printer.Config{Mode: printerMode, Tabwidth: tabWidth}
+		cfg.Indent = indent
+		err := cfg.Fprint(&buf, fileSet, file)
+		if err != nil {
+			return err
+		}
+
+		res = buf.Bytes()
+		//fmt.Printf("indent: %v\nbefore adjust:\n%s\n%q\nafter:\n", indent, string(res), string(res))
+		res = adjust(src, res, indent)
+
+		// Determine and append trailing space.
+		i = len(src)
+		for i > 0 && isSpace(src[i-1]) {
+			i--
+		}
+		res = append(res, src[i:]...)
 	}
 
 	if !bytes.Equal(src, res) {
@@ -240,11 +289,15 @@ func diff(b1, b2 []byte) (data []byte, err error) {
 
 }
 
+func isSpace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
 // parse parses src, which was read from filename,
 // as a Go source file or statement list.
-func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(orig, src []byte) []byte, error) {
+func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(orig, src []byte, indent int) []byte, error) {
 	// Try as whole source file.
-	file, err := parser.ParseFile(fset, filename, src, parserMode)
+	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 	if err == nil {
 		return file, nil, nil
 	}
@@ -260,12 +313,12 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	// Insert using a ;, not a newline, so that the line numbers
 	// in psrc match the ones in src.
 	psrc := append([]byte("package p;"), src...)
-	file, err = parser.ParseFile(fset, filename, psrc, parserMode)
+	file, err = parser.ParseFile(fset, filename, psrc, parser.ParseComments)
 	if err == nil {
-		adjust := func(orig, src []byte) []byte {
+		adjust := func(orig, src []byte, indent int) []byte {
 			// Remove the package clause.
 			// Gofmt has turned the ; into a \n.
-			src = src[len("package p\n"):]
+			src = src[indent+len("package p\n"):]
 			return matchSpace(orig, src)
 		}
 		return file, adjust, nil
@@ -283,13 +336,13 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	// Insert using a ;, not a newline, so that the line numbers
 	// in fsrc match the ones in src.
 	fsrc := append(append([]byte("package p; func _() {"), src...), '\n', '}')
-	file, err = parser.ParseFile(fset, filename, fsrc, parserMode)
+	file, err = parser.ParseFile(fset, filename, fsrc, parser.ParseComments)
 	if err == nil {
-		adjust := func(orig, src []byte) []byte {
+		adjust := func(orig, src []byte, indent int) []byte {
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
-			src = src[len("package p\n\nfunc _() {"):]
-			src = src[:len(src)-len("\n}\n")]
+			src = src[2*indent+len("package p\n\nfunc _() {"):]
+			src = src[:len(src)-0*indent-len("\n}\n")]
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
 			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
@@ -327,11 +380,13 @@ func matchSpace(orig []byte, src []byte) []byte {
 	before, _, after := cutSpace(orig)
 	i := bytes.LastIndex(before, []byte{'\n'})
 	before, indent := before[:i+1], before[i+1:]
+	_, _ = indent, after
 
 	_, src, _ = cutSpace(src)
 
 	var b bytes.Buffer
 	b.Write(before)
+	b.Write(indent)
 	for len(src) > 0 {
 		line := src
 		if i := bytes.IndexByte(line, '\n'); i >= 0 {
@@ -340,10 +395,10 @@ func matchSpace(orig []byte, src []byte) []byte {
 			src = nil
 		}
 		if len(line) > 0 && line[0] != '\n' { // not blank
-			b.Write(indent)
+			//b.Write(indent)
 		}
 		b.Write(line)
 	}
-	b.Write(after)
+	//b.Write(after)
 	return b.Bytes()
 }
