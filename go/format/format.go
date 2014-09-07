@@ -222,7 +222,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
 			src = src[2*indent+len("package p\n\nfunc _() {"):]
-			src = src[:len(src)-0*indent-len("\n}\n")]
+			src = src[:len(src)-1*indent-len("\n}\n")]
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
 			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
