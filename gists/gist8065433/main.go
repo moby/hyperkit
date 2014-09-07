@@ -1,34 +1,26 @@
 package gist8065433
 
-import (
-	"fmt"
-	"net"
-)
+import "net"
 
-// TODO: Better interface. Perhaps a slice of strings.
 // Get a string of non-loopback IPs.
-func Something() (out string) {
-	netInterfaces, err := net.Interfaces()
+func GetPublicIps() (publicIps []string, err error) {
+	ifis, err := net.Interfaces()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	for _, netInterface := range netInterfaces {
-		addrs, err := netInterface.Addrs()
+	for _, ifi := range ifis {
+		addrs, err := ifi.Addrs()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		for _, addr := range addrs {
 			if ipnet, ok := addr.(*net.IPNet); ok {
 				if ip4 := ipnet.IP.To4(); ip4 != nil && !ip4.IsLoopback() {
-					//netInterface.Name
-					out += fmt.Sprintln(ipnet.IP.String())
+					//ifi.Name
+					publicIps = append(publicIps, ipnet.IP.String())
 				}
 			}
 		}
 	}
-	return out
-}
-
-func main() {
-	fmt.Print(Something())
+	return publicIps, nil
 }
