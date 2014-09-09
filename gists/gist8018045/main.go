@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/build"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,7 +72,11 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 			continue
 		}
 
-		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("can't stat file %s: %v\n", path, err)
+				return nil
+			}
 			if !fi.IsDir() {
 				return nil
 			}
@@ -95,7 +100,11 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 // Gets all local Go packages (from GOROOT and all GOPATH workspaces).
 func GetGoPackages(out chan<- *GoPackage) {
 	for _, root := range build.Default.SrcDirs() {
-		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("can't stat file %s: %v\n", path, err)
+				return nil
+			}
 			switch {
 			case !fi.IsDir():
 				return nil
@@ -127,7 +136,11 @@ func GetGopathGoPackages(out chan<- *GoPackage) {
 			continue
 		}
 
-		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("can't stat file %s: %v\n", path, err)
+				return nil
+			}
 			if !fi.IsDir() {
 				return nil
 			}
@@ -156,7 +169,11 @@ func getGoPackagesC(out chan<- ImportPathFound) {
 			continue
 		}
 
-		_ = filepath.Walk(root, func(path string, fi os.FileInfo, _ error) error {
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("can't stat file %s: %v\n", path, err)
+				return nil
+			}
 			if !fi.IsDir() {
 				return nil
 			}
