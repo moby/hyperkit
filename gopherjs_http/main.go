@@ -3,6 +3,7 @@ package gopherjs_http
 import (
 	"bytes"
 	"fmt"
+	"html/template"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -119,7 +120,7 @@ func goToJs(goCode string) (jsCode string) {
 	err := gopherjslib.Build(code, &out, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		return goCode
+		return "console.error(\"" + template.JSEscapeString(err.Error()) + "\");"
 	}
 
 	return out.String()
