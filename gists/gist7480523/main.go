@@ -1,7 +1,9 @@
 package gist7480523
 
 import (
+	"fmt"
 	"go/build"
+	"os"
 	"strings"
 
 	"github.com/shurcooL/go/exp/12"
@@ -76,6 +78,12 @@ func (this *GoPackage) UpdateVcsFields() {
 }
 
 func GetRepoImportPath(repoPath, srcRoot string) (repoImportPath string) {
+	// Detect and handle case mismatch in prefix.
+	if prefixLen := len(srcRoot + "/"); len(repoPath) >= prefixLen && srcRoot+"/" != repoPath[:prefixLen] && strings.EqualFold(srcRoot+"/", repoPath[:prefixLen]) {
+		fmt.Fprintln(os.Stderr, "GetRepoImportPath: warning: prefix case doesn't match")
+		return repoPath[prefixLen:]
+	}
+
 	return strings.TrimPrefix(repoPath, srcRoot+"/")
 }
 func GetRepoImportPathPattern(repoPath, srcRoot string) (repoImportPathPattern string) {
