@@ -66,7 +66,13 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 	stack := string(debug.Stack())
 	//println(stack)
 
+	// TODO: Bounds error checking, get rid of GetLine gists, etc.
 	parentName := GetLine(stack, 5)
+	if strings.Index(parentName, ": ") == -1 {
+		// TODO: This happens when source file isn't present in same location as when built. See if can do anything better
+		//       via direct use of runtime package (instead of debug.Stack(), which will exclude any func names)...
+		return nil
+	}
 	parentName = parentName[1:strings.Index(parentName, ": ")]
 	if dotPos := strings.LastIndex(parentName, "."); dotPos != -1 { // Trim package prefix.
 		parentName = parentName[dotPos+1:]
