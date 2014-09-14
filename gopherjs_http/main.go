@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -16,7 +15,33 @@ import (
 	"github.com/go-on/gopherjslib"
 )
 
-// HtmlFile returns a handler that serves the given .html file, with the "text/go" scripts compiled to JavaScript via GopherJS.
+// StaticHtmlFile returns a handler that statically serves the given .html file, with the "text/go" script tags compiled to JavaScript via GopherJS.
+//
+// It reads file from disk and recompiles "text/go" script tags on startup only.
+func StaticHtmlFile(name string) http.Handler {
+	file, err := os.Open(name)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	return &staticHtmlFile{
+		content: ProcessHtml(file).Bytes(),
+	}
+}
+
+type staticHtmlFile struct {
+	content []byte
+}
+
+func (this *staticHtmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(this.content)
+}
+
+// HtmlFile returns a handler that serves the given .html file, with the "text/go" script tags compiled to JavaScript via GopherJS.
+//
+// It reads file from disk and recompiles "text/go" script tags on every request.
 func HtmlFile(name string) http.Handler {
 	return &htmlFile{name: name}
 }
@@ -36,6 +61,8 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ProcessHtml(file).WriteTo(w)
 }
 
+// ProcessHtml takes HTML with "text/go" script tags and replaces them with compiled JavaScript script tags.
+//
 // TODO: Write into writer, no need for buffer (unless want to be able to abort on error?). Or, alternatively, parse html and serve minified version?
 func ProcessHtml(r io.Reader) *bytes.Buffer {
 	insideTextGo := false
@@ -64,10 +91,8 @@ func ProcessHtml(r io.Reader) *bytes.Buffer {
 
 				buf.WriteString(`<script type="text/javascript">`)
 
-				if src := getSrc(token.Attr); src != "" {
-					if data, err := ioutil.ReadFile(src); err == nil {
-						buf.WriteString(goToJs(string(data)))
-					}
+				if srcs := getSrcs(token.Attr); len(srcs) != 0 {
+					buf.WriteString(handleJsError(goFilesToJs(srcs)))
 				}
 			} else {
 				buf.WriteString(token.String())
@@ -82,7 +107,7 @@ func ProcessHtml(r io.Reader) *bytes.Buffer {
 			buf.WriteString(token.String())
 		case html.TextToken:
 			if insideTextGo {
-				buf.WriteString(goToJs(token.Data))
+				buf.WriteString(handleJsError(goToJs(token.Data)))
 			} else {
 				buf.WriteString(token.Data)
 			}
@@ -101,27 +126,59 @@ func getType(attrs []html.Attribute) string {
 	return ""
 }
 
-func getSrc(attrs []html.Attribute) string {
+func getSrcs(attrs []html.Attribute) (srcs []string) {
 	for _, attr := range attrs {
 		if attr.Key == "src" {
-			return attr.Val
+			srcs = append(srcs, attr.Val)
 		}
 	}
-	return ""
+	return srcs
 }
 
-func goToJs(goCode string) (jsCode string) {
+func handleJsError(jsCode string, err error) string {
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return `console.error("` + template.JSEscapeString(err.Error()) + `");`
+	}
+	return jsCode
+}
+
+func goFilesToJs(goFiles []string) (jsCode string, err error) {
+	started := time.Now()
+	defer func() { fmt.Println("goFilesToJs taken:", time.Since(started)) }()
+
+	var out bytes.Buffer
+	builder := gopherjslib.NewBuilder(&out, nil)
+
+	for _, goFile := range goFiles {
+		file, err := os.Open(goFile)
+		if err != nil {
+			return "", err
+		}
+		defer file.Close()
+
+		builder.Add(goFile, file)
+	}
+
+	err = builder.Build()
+	if err != nil {
+		return "", err
+	}
+
+	return out.String(), nil
+}
+
+func goToJs(goCode string) (jsCode string, err error) {
 	started := time.Now()
 	defer func() { fmt.Println("goToJs taken:", time.Since(started)) }()
 
 	code := strings.NewReader(goCode)
 
 	var out bytes.Buffer
-	err := gopherjslib.Build(code, &out, nil)
+	err = gopherjslib.Build(code, &out, nil)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return "console.error(\"" + template.JSEscapeString(err.Error()) + "\");"
+		return "", err
 	}
 
-	return out.String()
+	return out.String(), nil
 }
