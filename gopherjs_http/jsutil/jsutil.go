@@ -1,5 +1,4 @@
-// +build js
-
+// Package jsutil provides utility functions for interacting with native JavaScript APIs.
 package jsutil
 
 import (
