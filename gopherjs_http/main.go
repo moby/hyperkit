@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"code.google.com/p/go.net/html"
@@ -143,9 +144,14 @@ func handleJsError(jsCode string, err error) string {
 	return jsCode
 }
 
+// Needed to prevent race condition until https://github.com/go-on/gopherjslib/issues/2 is resolved.
+var gopherjslibLock sync.Mutex
+
 func goFilesToJs(goFiles []string) (jsCode string, err error) {
 	started := time.Now()
 	defer func() { fmt.Println("goFilesToJs taken:", time.Since(started)) }()
+	gopherjslibLock.Lock()
+	defer gopherjslibLock.Unlock()
 
 	var out bytes.Buffer
 	builder := gopherjslib.NewBuilder(&out, nil)
@@ -171,6 +177,8 @@ func goFilesToJs(goFiles []string) (jsCode string, err error) {
 func goToJs(goCode string) (jsCode string, err error) {
 	started := time.Now()
 	defer func() { fmt.Println("goToJs taken:", time.Since(started)) }()
+	gopherjslibLock.Lock()
+	defer gopherjslibLock.Unlock()
 
 	code := strings.NewReader(goCode)
 
