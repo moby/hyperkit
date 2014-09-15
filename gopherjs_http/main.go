@@ -62,6 +62,22 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ProcessHtml(file).WriteTo(w)
 }
 
+// GoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
+//
+// It reads files from disk and recompiles on every request.
+func GoFiles(files ...string) http.Handler {
+	return &goFiles{goFiles: files}
+}
+
+type goFiles struct {
+	goFiles []string
+}
+
+func (this *goFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	io.WriteString(w, handleJsError(goFilesToJs(this.goFiles)))
+}
+
 // ProcessHtml takes HTML with "text/go" script tags and replaces them with compiled JavaScript script tags.
 //
 // TODO: Write into writer, no need for buffer (unless want to be able to abort on error?). Or, alternatively, parse html and serve minified version?
