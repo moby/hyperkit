@@ -114,3 +114,12 @@ func GoReduce(inChan <-chan interface{}, numWorkers int, reduceFunc func(interfa
 
 	return outChan
 }
+
+// Caller is expected to close inChan after sending all input to it. Sending input should be done in a background goroutine,
+// because sending input will be blocked on reading output.
+// Order is guaranteed to be preserved.
+//
+// TODO: Implement this.
+func GoReducePreservingOrder(inChan <-chan interface{}, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
+	panic("not implemented")
+}
