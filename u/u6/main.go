@@ -1,9 +1,9 @@
 package u6
 
 import (
-	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/shurcooL/go/exp/13"
 	"github.com/shurcooL/go/pipe_util"
@@ -26,7 +26,12 @@ func GoPackageWorkingDiff(goPackage *GoPackage) string {
 				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", TrimLastNewline(string(line)))
 				cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
 				out, err := cmd.Output()
-				if err != nil && len(out) == 0 {
+				if len(out) > 0 {
+					// diff exits with a non-zero status when the files don't match.
+					// Ignore that failure as long as we get output.
+					err = nil
+				}
+				if err != nil {
 					return []byte(err.Error())
 				}
 				return out
@@ -60,16 +65,16 @@ func Branches(repo *exp13.VcsState) string {
 			cmd := exec.Command("git", "rev-list", "--count", "--left-right", "master..."+branch)
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
-			if err != nil && len(out) == 0 {
+			if err != nil {
 				return []byte(err.Error())
 			}
 
-			behindAhead := bytes.Split(out, []byte("\t"))
+			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
 
 			if branch == repo.VcsLocal.LocalBranch {
-				return []byte(fmt.Sprintf("**%s** | %s | %s", branch, string(behindAhead[0]), string(behindAhead[1])))
+				return []byte(fmt.Sprintf("**%s** | %s | %s\n", branch, behindAhead[0], behindAhead[1]))
 			} else {
-				return []byte(fmt.Sprintf("%s | %s | %s", branch, string(behindAhead[0]), string(behindAhead[1])))
+				return []byte(fmt.Sprintf("%s | %s | %s\n", branch, behindAhead[0], behindAhead[1]))
 			}
 		}
 
@@ -78,6 +83,57 @@ func Branches(repo *exp13.VcsState) string {
 			pipe.Println("-------|-------:|:-----"),
 			pipe.Line(
 				pipe.Exec("git", "for-each-ref", "--format=%(refname:short)", "refs/heads"),
+				pipe.Replace(branchInfo),
+			),
+		)
+
+		out, err := pipe_util.OutputDir(p, repo.Vcs.RootPath())
+		if err != nil {
+			return err.Error()
+		}
+		return string(out)
+	default:
+		return ""
+	}
+}
+
+// Branches returns a Markdown table of branches with ahead/behind information relative to upstream.
+func BranchesRemote(repo *exp13.VcsState) string {
+	switch repo.Vcs.Type() {
+	case vcs.Git:
+		branchInfo := func(line []byte) []byte {
+			branchUpstream := strings.Split(TrimLastNewline(string(line)), "\t")
+			if len(branchUpstream) != 2 {
+				return []byte("error: len(branchUpstream) != 2")
+			}
+
+			branch := branchUpstream[0]
+			upstream := branchUpstream[1]
+			if upstream == "" {
+				return []byte(fmt.Sprintf("%s | | | \n", branch))
+			}
+
+			cmd := exec.Command("git", "rev-list", "--count", "--left-right", upstream+"..."+branch)
+			cmd.Dir = repo.Vcs.RootPath()
+			out, err := cmd.Output()
+			if err != nil {
+				return []byte(err.Error())
+			}
+
+			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
+
+			if branch == repo.VcsLocal.LocalBranch {
+				return []byte(fmt.Sprintf("**%s** | %s | %s | %s\n", branch, upstream, behindAhead[0], behindAhead[1]))
+			} else {
+				return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branch, upstream, behindAhead[0], behindAhead[1]))
+			}
+		}
+
+		p := pipe.Script(
+			pipe.Println("Branch | Upstream | Behind | Ahead"),
+			pipe.Println("-------|----------|-------:|:-----"),
+			pipe.Line(
+				pipe.Exec("git", "for-each-ref", "--format=%(refname:short)\t%(upstream:short)", "refs/heads"),
 				pipe.Replace(branchInfo),
 			),
 		)
