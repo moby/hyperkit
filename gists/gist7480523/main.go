@@ -81,7 +81,7 @@ func (this *GoPackage) UpdateVcsFields() {
 func GetRepoImportPath(repoPath, srcRoot string) (repoImportPath string) {
 	// Detect and handle case mismatch in prefix.
 	if prefixLen := len(srcRoot + "/"); len(repoPath) >= prefixLen && srcRoot+"/" != repoPath[:prefixLen] && strings.EqualFold(srcRoot+"/", repoPath[:prefixLen]) {
-		fmt.Fprintln(os.Stderr, "GetRepoImportPath: warning: prefix case doesn't match")
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match")
 		return repoPath[prefixLen:]
 	}
 
@@ -105,6 +105,14 @@ type GoPackageRepo struct {
 
 func NewGoPackageRepo(rootPath string, goPackages []*GoPackage) GoPackageRepo {
 	return GoPackageRepo{rootPath, goPackages}
+}
+
+// RepoImportPath returns what would be the import path of the root folder of the repository. It may or may not
+// be an actual Go package. E.g.,
+//
+//	"github.com/owner/repo"
+func (repo GoPackageRepo) RepoImportPath() string {
+	return GetRepoImportPath(repo.rootPath, repo.goPackages[0].Bpkg.SrcRoot)
 }
 
 // ImportPathPattern returns an import path pattern that matches all of the Go packages in this repo.
