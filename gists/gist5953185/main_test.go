@@ -7,7 +7,7 @@ func Example() {
 
 	// Output:
 	//Underline Test
-	//-------------
+	//--------------
 	//
 	//stuff that goes here
 }
