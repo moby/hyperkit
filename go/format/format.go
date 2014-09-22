@@ -88,11 +88,11 @@ func Source(src []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var buf bytes.Buffer
 	var res []byte
 	if adjust == nil {
 		// Complete source file.
 		ast.SortImports(fset, file)
+		var buf bytes.Buffer
 		err := config.Fprint(&buf, fset, file)
 		if err != nil {
 			return nil, err
@@ -102,7 +102,7 @@ func Source(src []byte) ([]byte, error) {
 
 	} else {
 		// Partial source file.
-		// Determine leading space.
+		// Determine and prepend leading space.
 		i, j := 0, 0
 		for j < len(src) && isSpace(src[j]) {
 			if src[j] == '\n' {
@@ -110,8 +110,9 @@ func Source(src []byte) ([]byte, error) {
 			}
 			j++
 		}
+		res = append(res, src[:i]...)
 
-		// Determine indentation of first code line.
+		// Determine and prepend indentation of first code line.
 		// Spaces are ignored unless there are no tabs,
 		// in which case spaces count as one tab.
 		indent := 0
@@ -127,26 +128,20 @@ func Source(src []byte) ([]byte, error) {
 		if indent == 0 && hasSpace {
 			indent = 1
 		}
+		for i := 0; i < indent; i++ {
+			res = append(res, '\t')
+		}
 
 		// Format the source.
+		// Write it without any leading and trailing space.
 		cfg := config
 		cfg.Indent = indent
+		var buf bytes.Buffer
 		err := cfg.Fprint(&buf, fset, file)
 		if err != nil {
 			return nil, err
 		}
-
-		res = buf.Bytes()
-		res = adjust(src, res, indent)
-
-		// Prepend leading space.
-		buf.Reset()
-		buf.Write(src[:i])
-		for index := 0; index < indent; index++ { // Need to prepend the first line's indent, since it was trimmed.
-			buf.WriteByte('\t')
-		}
-		buf.Write(res)
-		res = buf.Bytes()
+		res = append(res, adjust(buf.Bytes(), indent)...)
 
 		// Determine and append trailing space.
 		i = len(src)
@@ -177,13 +172,9 @@ func hasUnsortedImports(file *ast.File) bool {
 	return false
 }
 
-func isSpace(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
-}
-
 // parse parses src, which was read from filename,
 // as a Go source file or statement list.
-func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(orig, src []byte, indent int) []byte, error) {
+func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(src []byte, indent int) []byte, error) {
 	// Try as whole source file.
 	file, err := parser.ParseFile(fset, filename, src, parserMode)
 	if err == nil {
@@ -203,13 +194,11 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	psrc := append([]byte("package p;"), src...)
 	file, err = parser.ParseFile(fset, filename, psrc, parserMode)
 	if err == nil {
-		adjust := func(orig, src []byte, indent int) []byte {
+		adjust := func(src []byte, indent int) []byte {
 			// Remove the package clause.
 			// Gofmt has turned the ; into a \n.
 			src = src[indent+len("package p\n"):]
-			//return matchSpace(orig, src)
-			_, src, _ = cutSpace(src)
-			return src
+			return getMiddle(src)
 		}
 		return file, adjust, nil
 	}
@@ -228,32 +217,30 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	fsrc := append(append([]byte("package p; func _() {"), src...), '\n', '}')
 	file, err = parser.ParseFile(fset, filename, fsrc, parserMode)
 	if err == nil {
-		adjust := func(orig, src []byte, indent int) []byte {
-			if indent != -1 {
-				fmt.Printf("indent: %v\noriginal:\n%s\n%q\nbefore adjust:\n%s\n%q\n", indent, string(orig), string(orig), string(src), string(src))
-			}
+		adjust := func(src []byte, indent int) []byte {
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
 			src = src[2*indent+len("package p\n\nfunc _() {"):]
-			src = src[:len(src)-1*indent-len("\n}\n")]
-			if indent != -1 {
-				fmt.Printf("after adjust:\n%s\n%q\n", string(src), string(src))
-			}
+			src = src[:len(src)-(indent+len("\n}\n"))]
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
 			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
-			if indent != -1 {
-				fmt.Printf("after Replace:\n%s\n%q\n", string(src), string(src))
-			}
-			//return matchSpace(orig, src)
-			_, src, _ = cutSpace(src)
-			return src
+			return getMiddle(src)
 		}
 		return file, adjust, nil
 	}
 
 	// Failed, and out of options.
 	return nil, nil, err
+}
+
+func isSpace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
+}
+
+func getMiddle(b []byte) (middle []byte) {
+	_, middle, _ = cutSpace(b)
+	return
 }
 
 func cutSpace(b []byte) (before, middle, after []byte) {
@@ -269,37 +256,4 @@ func cutSpace(b []byte) (before, middle, after []byte) {
 		return b[:i], b[i:j], b[j:]
 	}
 	return nil, nil, b[j:]
-}
-
-// matchSpace reformats src to use the same space context as orig.
-// 1) If orig begins with blank lines, matchSpace inserts them at the beginning of src.
-// 2) matchSpace copies the indentation of the first non-blank line in orig
-//    to every non-blank line in src.
-// 3) matchSpace copies the trailing space from orig and uses it in place
-//   of src's trailing space.
-func matchSpace(orig []byte, src []byte) []byte {
-	before, _, after := cutSpace(orig)
-	i := bytes.LastIndex(before, []byte{'\n'})
-	before, indent := before[:i+1], before[i+1:]
-	_, _ = indent, after
-
-	_, src, _ = cutSpace(src)
-
-	var b bytes.Buffer
-	b.Write(before)
-	b.Write(indent)
-	for len(src) > 0 {
-		line := src
-		if i := bytes.IndexByte(line, '\n'); i >= 0 {
-			line, src = line[:i+1], line[i+1:]
-		} else {
-			src = nil
-		}
-		if len(line) > 0 && line[0] != '\n' { // not blank
-			//b.Write(indent)
-		}
-		b.Write(line)
-	}
-	//b.Write(after)
-	return b.Bytes()
 }
