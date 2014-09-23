@@ -96,18 +96,16 @@ func Source(src []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		res = buf.Bytes()
 
 	} else {
 		// Partial source file.
 		// Determine and prepend leading space.
 		i, j := 0, 0
-		for j < len(src) && isSpace(src[j]) {
+		for ; j < len(src) && isSpace(src[j]); j++ {
 			if src[j] == '\n' {
 				i = j + 1 // index of last line in leading space
 			}
-			j++
 		}
 		res = append(res, src[:i]...)
 
@@ -197,7 +195,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 			// Remove the package clause.
 			// Gofmt has turned the ; into a \n.
 			src = src[indent+len("package p\n"):]
-			return cutSpace(src)
+			return bytes.TrimSpace(src)
 		}
 		return file, adjust, nil
 	}
@@ -224,7 +222,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
 			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
-			return cutSpace(src)
+			return bytes.TrimSpace(src)
 		}
 		return file, adjust, nil
 	}
@@ -235,19 +233,4 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
-}
-
-func cutSpace(b []byte) (middle []byte) {
-	i := 0
-	for i < len(b) && isSpace(b[i]) {
-		i++
-	}
-	j := len(b)
-	for j > 0 && isSpace(b[j-1]) {
-		j--
-	}
-	if i <= j {
-		return b[i:j]
-	}
-	return nil
 }
