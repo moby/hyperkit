@@ -16,10 +16,9 @@ import (
 	"strings"
 )
 
-var (
-	config     = printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
-	parserMode = parser.ParseComments
-)
+var config = printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
+
+const parserMode = parser.ParseComments
 
 // Node formats node in canonical gofmt style and writes the result to dst.
 //
