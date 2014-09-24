@@ -102,10 +102,11 @@ func Source(src []byte) ([]byte, error) {
 		// Partial source file.
 		// Determine and prepend leading space.
 		i, j := 0, 0
-		for ; j < len(src) && isSpace(src[j]); j++ {
+		for j < len(src) && isSpace(src[j]) {
 			if src[j] == '\n' {
-				i = j + 1 // index of last line in leading space
+				i = j + 1 // byte offset of last line in leading space
 			}
+			j++
 		}
 		res = append(res, src[:i]...)
 
@@ -217,7 +218,7 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 		adjust := func(src []byte, indent int) []byte {
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
-			src = src[2*indent+len("package p\n\nfunc _() {"):]
+			src = src[2*indent+len("package p\n\nfunc _() {"):] // There will be two non-blank lines with indent, hence 2*indent.
 			src = src[:len(src)-(indent+len("\n}\n"))]
 			// Gofmt has also indented the function body one level.
 			// Remove that indent.
