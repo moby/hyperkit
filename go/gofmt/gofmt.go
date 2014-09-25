@@ -87,7 +87,7 @@ func processFile(filename string, in io.Reader, out io.Writer, stdin bool) error
 		return err
 	}
 
-	file, adjust, err := parse(fileSet, filename, src, stdin)
+	file, adjust, adjustIndent, err := parse(fileSet, filename, src, stdin)
 	if err != nil {
 		return err
 	}
@@ -151,13 +151,13 @@ func processFile(filename string, in io.Reader, out io.Writer, stdin bool) error
 		// Format the source.
 		// Write it without any leading and trailing space.
 		cfg := &printer.Config{Mode: printerMode, Tabwidth: tabWidth}
-		cfg.Indent = indent
+		cfg.Indent = indent + adjustIndent
 		var buf bytes.Buffer
 		err := cfg.Fprint(&buf, fileSet, file)
 		if err != nil {
 			return err
 		}
-		res = append(res, adjust(buf.Bytes(), indent)...)
+		res = append(res, adjust(buf.Bytes(), indent+adjustIndent)...)
 
 		// Determine and append trailing space.
 		i = len(src)
@@ -293,17 +293,17 @@ func diff(b1, b2 []byte) (data []byte, err error) {
 
 // parse parses src, which was read from filename,
 // as a Go source file or statement list.
-func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(src []byte, indent int) []byte, error) {
+func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.File, func(src []byte, indent int) []byte, int, error) {
 	// Try as whole source file.
 	file, err := parser.ParseFile(fset, filename, src, parserMode)
 	if err == nil {
-		return file, nil, nil
+		return file, nil, 0, nil
 	}
 	// If the error is that the source file didn't begin with a
 	// package line and this is standard input, fall through to
 	// try as a source fragment.  Stop and return on any other error.
 	if !stdin || !strings.Contains(err.Error(), "expected 'package'") {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// If this is a declaration list, make it a source file
@@ -319,13 +319,14 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 			src = src[indent+len("package p\n"):]
 			return bytes.TrimSpace(src)
 		}
-		return file, adjust, nil
+		adjustIndent := 0
+		return file, adjust, adjustIndent, nil
 	}
 	// If the error is that the source file didn't begin with a
 	// declaration, fall through to try as a statement list.
 	// Stop and return on any other error.
 	if !strings.Contains(err.Error(), "expected declaration") {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	// If this is a statement list, make it a source file
@@ -337,20 +338,25 @@ func parse(fset *token.FileSet, filename string, src []byte, stdin bool) (*ast.F
 	file, err = parser.ParseFile(fset, filename, fsrc, parserMode)
 	if err == nil {
 		adjust := func(src []byte, indent int) []byte {
+			// Cap adjusted indent to zero.
+			if indent < 0 {
+				indent = 0
+			}
 			// Remove the wrapping.
 			// Gofmt has turned the ; into a \n\n.
-			src = src[2*indent+len("package p\n\nfunc _() {"):] // There will be two non-blank lines with indent, hence 2*indent.
+			// There will be two non-blank lines with indent, hence 2*indent.
+			src = src[2*indent+len("package p\n\nfunc _() {"):]
 			src = src[:len(src)-(indent+len("\n}\n"))]
-			// Gofmt has also indented the function body one level.
-			// Remove that indent.
-			src = bytes.Replace(src, []byte("\n\t"), []byte("\n"), -1)
 			return bytes.TrimSpace(src)
 		}
-		return file, adjust, nil
+		// Gofmt has also indented the function body one level.
+		// Remove that indent by returning adjustIndent value of -1.
+		adjustIndent := -1
+		return file, adjust, adjustIndent, nil
 	}
 
 	// Failed, and out of options.
-	return nil, nil, err
+	return nil, nil, 0, err
 }
 
 func isSpace(b byte) bool {
