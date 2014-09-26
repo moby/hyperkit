@@ -301,7 +301,7 @@ func parse(fset *token.FileSet, filename string, src []byte, fragmentOk bool) (
 ) {
 	// Try as whole source file.
 	file, err = parser.ParseFile(fset, filename, src, parserMode)
-	// If there's no error, return. If the error is that the source file didn't begin with a
+	// If there's no error, return.  If the error is that the source file didn't begin with a
 	// package line and source fragments are ok, fall through to
 	// try as a source fragment.  Stop and return on any other error.
 	if err == nil || !fragmentOk || !strings.Contains(err.Error(), "expected 'package'") {
