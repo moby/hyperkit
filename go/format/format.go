@@ -87,69 +87,7 @@ func Source(src []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var res []byte
-	if sourceAdj == nil {
-		// Complete source file.
-		ast.SortImports(fset, file)
-		var buf bytes.Buffer
-		err := config.Fprint(&buf, fset, file)
-		if err != nil {
-			return nil, err
-		}
-		res = buf.Bytes()
-
-	} else {
-		// Partial source file.
-		// Determine and prepend leading space.
-		i, j := 0, 0
-		for j < len(src) && isSpace(src[j]) {
-			if src[j] == '\n' {
-				i = j + 1 // byte offset of last line in leading space
-			}
-			j++
-		}
-		res = append(res, src[:i]...)
-
-		// Determine and prepend indentation of first code line.
-		// Spaces are ignored unless there are no tabs,
-		// in which case spaces count as one tab.
-		indent := 0
-		hasSpace := false
-		for _, b := range src[i:j] {
-			switch b {
-			case ' ':
-				hasSpace = true
-			case '\t':
-				indent++
-			}
-		}
-		if indent == 0 && hasSpace {
-			indent = 1
-		}
-		for i := 0; i < indent; i++ {
-			res = append(res, '\t')
-		}
-
-		// Format the source.
-		// Write it without any leading and trailing space.
-		cfg := config
-		cfg.Indent = indent + indentAdj
-		var buf bytes.Buffer
-		err := cfg.Fprint(&buf, fset, file)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, sourceAdj(buf.Bytes(), cfg.Indent)...)
-
-		// Determine and append trailing space.
-		i = len(src)
-		for i > 0 && isSpace(src[i-1]) {
-			i--
-		}
-		res = append(res, src[i:]...)
-	}
-
-	return res, nil
+	return format(fset, file, sourceAdj, indentAdj, src)
 }
 
 func hasUnsortedImports(file *ast.File) bool {
@@ -236,6 +174,69 @@ func parse(fset *token.FileSet, filename string, src []byte, fragmentOk bool) (
 
 	// Succeeded, or out of options.
 	return
+}
+
+func format(fset *token.FileSet, file *ast.File, sourceAdj func(src []byte, indent int) []byte, indentAdj int, src []byte) ([]byte, error) {
+	if sourceAdj == nil {
+		// Complete source file.
+		ast.SortImports(fset, file)
+		var buf bytes.Buffer
+		err := config.Fprint(&buf, fset, file)
+		if err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
+	}
+
+	// Partial source file.
+	// Determine and prepend leading space.
+	i, j := 0, 0
+	for j < len(src) && isSpace(src[j]) {
+		if src[j] == '\n' {
+			i = j + 1 // byte offset of last line in leading space
+		}
+		j++
+	}
+	var res []byte
+	res = append(res, src[:i]...)
+
+	// Determine and prepend indentation of first code line.
+	// Spaces are ignored unless there are no tabs,
+	// in which case spaces count as one tab.
+	indent := 0
+	hasSpace := false
+	for _, b := range src[i:j] {
+		switch b {
+		case ' ':
+			hasSpace = true
+		case '\t':
+			indent++
+		}
+	}
+	if indent == 0 && hasSpace {
+		indent = 1
+	}
+	for i := 0; i < indent; i++ {
+		res = append(res, '\t')
+	}
+
+	// Format the source.
+	// Write it without any leading and trailing space.
+	cfg := config
+	cfg.Indent = indent + indentAdj
+	var buf bytes.Buffer
+	err := cfg.Fprint(&buf, fset, file)
+	if err != nil {
+		return nil, err
+	}
+	res = append(res, sourceAdj(buf.Bytes(), cfg.Indent)...)
+
+	// Determine and append trailing space.
+	i = len(src)
+	for i > 0 && isSpace(src[i-1]) {
+		i--
+	}
+	return append(res, src[i:]...), nil
 }
 
 func isSpace(b byte) bool {
