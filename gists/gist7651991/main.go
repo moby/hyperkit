@@ -67,7 +67,7 @@ func GoReduceLinesFromReader(r io.Reader, numWorkers int, reduceFunc func(string
 	return outChan
 }
 
-func GoReduceLinesFromSlice(inSlice []string, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
+func GoReduceLinesFromSlice(inSlice []string, numWorkers int, reduceFunc func(string) interface{}) <-chan interface{} {
 	inChan := make(chan interface{})
 	go func() { // This needs to happen in the background because sending input will be blocked on reading output.
 		for _, in := range inSlice {
@@ -75,7 +75,8 @@ func GoReduceLinesFromSlice(inSlice []string, numWorkers int, reduceFunc func(in
 		}
 		close(inChan)
 	}()
-	outChan := GoReduce(inChan, numWorkers, reduceFunc)
+	reduceFuncWrapper := func(in interface{}) interface{} { return reduceFunc(in.(string)) }
+	outChan := GoReduce(inChan, numWorkers, reduceFuncWrapper)
 
 	return outChan
 }
