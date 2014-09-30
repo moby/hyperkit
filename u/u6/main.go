@@ -2,6 +2,7 @@ package u6
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 
@@ -66,7 +67,8 @@ func Branches(repo *exp13.VcsState) string {
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
 			if err != nil {
-				return []byte(err.Error())
+				log.Printf("error running %v: %v\n", cmd.Args, err)
+				return []byte(fmt.Sprintf("%s | ? | ?\n", branch))
 			}
 
 			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
@@ -117,7 +119,8 @@ func BranchesRemote(repo *exp13.VcsState) string {
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
 			if err != nil {
-				return []byte(err.Error())
+				// This usually happens when the upstream branch is gone.
+				return []byte(fmt.Sprintf("%s | ~~%s~~ | | \n", branch, upstream))
 			}
 
 			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
