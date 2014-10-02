@@ -62,22 +62,21 @@ func Branches(repo *exp13.VcsState) string {
 	case vcs.Git:
 		branchInfo := func(line []byte) []byte {
 			branch := TrimLastNewline(string(line))
+			branchDisplay := branch
+			if branch == repo.VcsLocal.LocalBranch {
+				branchDisplay = "**" + branch + "**"
+			}
 
 			cmd := exec.Command("git", "rev-list", "--count", "--left-right", "master..."+branch)
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
 			if err != nil {
 				log.Printf("error running %v: %v\n", cmd.Args, err)
-				return []byte(fmt.Sprintf("%s | ? | ?\n", branch))
+				return []byte(fmt.Sprintf("%s | ? | ?\n", branchDisplay))
 			}
 
 			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
-
-			if branch == repo.VcsLocal.LocalBranch {
-				return []byte(fmt.Sprintf("**%s** | %s | %s\n", branch, behindAhead[0], behindAhead[1]))
-			} else {
-				return []byte(fmt.Sprintf("%s | %s | %s\n", branch, behindAhead[0], behindAhead[1]))
-			}
+			return []byte(fmt.Sprintf("%s | %s | %s\n", branchDisplay, behindAhead[0], behindAhead[1]))
 		}
 
 		p := pipe.Script(
@@ -110,9 +109,14 @@ func BranchesRemote(repo *exp13.VcsState) string {
 			}
 
 			branch := branchUpstream[0]
+			branchDisplay := branch
+			if branch == repo.VcsLocal.LocalBranch {
+				branchDisplay = "**" + branch + "**"
+			}
+
 			upstream := branchUpstream[1]
 			if upstream == "" {
-				return []byte(fmt.Sprintf("%s | | | \n", branch))
+				return []byte(fmt.Sprintf("%s | | | \n", branchDisplay))
 			}
 
 			cmd := exec.Command("git", "rev-list", "--count", "--left-right", upstream+"..."+branch)
@@ -120,16 +124,12 @@ func BranchesRemote(repo *exp13.VcsState) string {
 			out, err := cmd.Output()
 			if err != nil {
 				// This usually happens when the upstream branch is gone.
-				return []byte(fmt.Sprintf("%s | ~~%s~~ | | \n", branch, upstream))
+				upstreamDisplay := "~~" + upstream + "~~"
+				return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, upstreamDisplay))
 			}
 
 			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
-
-			if branch == repo.VcsLocal.LocalBranch {
-				return []byte(fmt.Sprintf("**%s** | %s | %s | %s\n", branch, upstream, behindAhead[0], behindAhead[1]))
-			} else {
-				return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branch, upstream, behindAhead[0], behindAhead[1]))
-			}
+			return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, upstream, behindAhead[0], behindAhead[1]))
 		}
 
 		p := pipe.Script(
