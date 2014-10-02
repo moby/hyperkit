@@ -96,6 +96,8 @@ func ProcessHtml(r io.Reader) *bytes.Buffer {
 			return &bytes.Buffer{}
 		}
 
+		raw := string(tokenizer.Raw())
+
 		token := tokenizer.Token()
 		switch token.Type {
 		case html.DoctypeToken:
@@ -126,7 +128,7 @@ func ProcessHtml(r io.Reader) *bytes.Buffer {
 			if insideTextGo {
 				buf.WriteString(handleJsError(goToJs(token.Data)))
 			} else {
-				buf.WriteString(token.Data)
+				buf.WriteString(raw)
 			}
 		default:
 			panic("unknown token type")
