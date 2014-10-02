@@ -28,7 +28,7 @@ func rec(out chan<- ImportPathFound, importPathFound ImportPathFound) {
 	entries, err := ioutil.ReadDir(importPathFound.FullPath())
 	if err == nil {
 		for _, v := range entries {
-			if v.IsDir() && !strings.HasPrefix(v.Name(), ".") && !strings.HasPrefix(v.Name(), "_") {
+			if v.IsDir() && !strings.HasPrefix(v.Name(), ".") && !strings.HasPrefix(v.Name(), "_") || v.Name() == "testdata" {
 				rec(out, NewImportPathFound(filepath.Join(importPathFound.ImportPath(), v.Name()), importPathFound.GopathEntry()))
 			}
 		}
@@ -80,7 +80,7 @@ func getGoPackagesB(out chan<- ImportPathFound) {
 			if !fi.IsDir() {
 				return nil
 			}
-			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") {
+			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
 				return filepath.SkipDir
 			}
 			importPath, err := filepath.Rel(root, path)
@@ -110,7 +110,7 @@ func GetGoPackages(out chan<- *GoPackage) {
 				return nil
 			case path == root:
 				return nil
-			case strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_"):
+			case strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata":
 				return filepath.SkipDir
 			default:
 				importPath, err := filepath.Rel(root, path)
@@ -144,7 +144,7 @@ func GetGopathGoPackages(out chan<- *GoPackage) {
 			if !fi.IsDir() {
 				return nil
 			}
-			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") {
+			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
 				return filepath.SkipDir
 			}
 			importPath, err := filepath.Rel(root, path)
@@ -177,7 +177,7 @@ func getGoPackagesC(out chan<- ImportPathFound) {
 			if !fi.IsDir() {
 				return nil
 			}
-			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") {
+			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
 				return filepath.SkipDir
 			}
 			bpkg, err := BuildPackageFromSrcDir(path)
