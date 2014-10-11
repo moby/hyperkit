@@ -126,8 +126,8 @@ func (_ *renderer) BlockCode(out *bytes.Buffer, text []byte, lang string) {
 		out.WriteString("<pre><code>")
 	}
 
-	if formattedCode, ok := formatCode(text, lang); ok {
-		out.Write(formattedCode)
+	if highlightedCode, ok := highlightCode(text, lang); ok {
+		out.Write(highlightedCode)
 	} else {
 		attrEscape(out, text)
 	}
@@ -155,7 +155,7 @@ var gfmHtmlConfig = syntaxhighlight.HTMLConfig{
 }
 
 // TODO: Support highlighting for more languages.
-func formatCode(src []byte, lang string) (formattedCode []byte, ok bool) {
+func highlightCode(src []byte, lang string) (highlightedCode []byte, ok bool) {
 	switch lang {
 	// TODO: Use a highlighter based on go/scanner for Go code.
 	case "Go", "go":
