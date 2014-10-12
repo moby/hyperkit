@@ -8,6 +8,14 @@ import (
 	"github.com/bradfitz/iter"
 )
 
+// IndentString indents string s by indent. Only non-empty lines get indented.
+/*func IndentString(s string, indent int) string {
+	var buf bytes.Buffer
+	iw := New(&buf, indent)
+	iw.WriteString(s)
+	return buf.String()
+}*/
+
 type indentWriter struct {
 	w      io.Writer
 	indent int
