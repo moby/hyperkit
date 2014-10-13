@@ -10,6 +10,18 @@ const (
 	Hg
 )
 
+// VcsType returns a vcsType string compatible with github.com/sourcegraph/go-vcs notation.
+func (t Type) VcsType() (vcsType string) {
+	switch t {
+	case Git:
+		return "git"
+	case Hg:
+		return "hg"
+	default:
+		panic("bad vcs.Type")
+	}
+}
+
 // TODO: Add comments.
 type Vcs interface {
 	RootPath() string
@@ -51,6 +63,19 @@ func New(path string) Vcs {
 	}
 
 	return nil
+}
+
+// Experimental, NewFromType returns a Vcs repository of the specified type without a local representation.
+// Operations that require a local repository will fail.
+func NewFromType(t Type) Vcs {
+	switch t {
+	case Git:
+		return &gitVcs{}
+	case Hg:
+		return &hgVcs{}
+	default:
+		panic("bad vcs.Type")
+	}
 }
 
 type vcsProvider func(path string) Vcs
