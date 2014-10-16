@@ -49,7 +49,7 @@ func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
 	}
 
 	if bpkg.ConflictDir != "" {
-		fmt.Fprintf(os.Stderr, "warning: ConflictDir=%q (Dir=%q)", bpkg.ConflictDir, bpkg.Dir)
+		fmt.Fprintf(os.Stderr, "warning: ConflictDir=%q (Dir=%q)\n", bpkg.ConflictDir, bpkg.Dir)
 		return nil
 	}
 
