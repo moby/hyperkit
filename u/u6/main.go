@@ -98,43 +98,43 @@ func Branches(repo *exp13.VcsState) string {
 	}
 }
 
-// Branches returns a Markdown table of branches with ahead/behind information relative to upstream.
+// Branches returns a Markdown table of branches with ahead/behind information relative to remote.
 func BranchesRemote(repo *exp13.VcsState) string {
 	switch repo.Vcs.Type() {
 	case vcs.Git:
 		branchInfo := func(line []byte) []byte {
-			branchUpstream := strings.Split(TrimLastNewline(string(line)), "\t")
-			if len(branchUpstream) != 2 {
-				return []byte("error: len(branchUpstream) != 2")
+			branchRemote := strings.Split(TrimLastNewline(string(line)), "\t")
+			if len(branchRemote) != 2 {
+				return []byte("error: len(branchRemote) != 2")
 			}
 
-			branch := branchUpstream[0]
+			branch := branchRemote[0]
 			branchDisplay := branch
 			if branch == repo.VcsLocal.LocalBranch {
 				branchDisplay = "**" + branch + "**"
 			}
 
-			upstream := branchUpstream[1]
-			if upstream == "" {
+			remote := branchRemote[1]
+			if remote == "" {
 				return []byte(fmt.Sprintf("%s | | | \n", branchDisplay))
 			}
 
-			cmd := exec.Command("git", "rev-list", "--count", "--left-right", upstream+"..."+branch)
+			cmd := exec.Command("git", "rev-list", "--count", "--left-right", remote+"..."+branch)
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
 			if err != nil {
-				// This usually happens when the upstream branch is gone.
-				upstreamDisplay := "~~" + upstream + "~~"
-				return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, upstreamDisplay))
+				// This usually happens when the remote branch is gone.
+				remoteDisplay := "~~" + remote + "~~"
+				return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, remoteDisplay))
 			}
 
 			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
-			return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, upstream, behindAhead[0], behindAhead[1]))
+			return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, remote, behindAhead[0], behindAhead[1]))
 		}
 
 		p := pipe.Script(
-			pipe.Println("Branch | Upstream | Behind | Ahead"),
-			pipe.Println("-------|----------|-------:|:-----"),
+			pipe.Println("Branch | Remote | Behind | Ahead"),
+			pipe.Println("-------|--------|-------:|:-----"),
 			pipe.Line(
 				pipe.Exec("git", "for-each-ref", "--format=%(refname:short)\t%(upstream:short)", "refs/heads"),
 				pipe.Replace(branchInfo),
