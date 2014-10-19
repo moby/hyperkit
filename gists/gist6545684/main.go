@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/shurcooL/go/gists/gist5286084"
-
 	"github.com/go-gl/mathgl/mgl64"
 	"github.com/shurcooL/go-goon"
 )
@@ -22,7 +20,9 @@ func ReadGpcFile(path string) Polygon {
 	p := Polygon{}
 
 	file, err := os.Open(path)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	defer file.Close()
 
 	var numContours uint64

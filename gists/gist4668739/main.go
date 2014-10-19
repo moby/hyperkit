@@ -4,19 +4,23 @@ package gist4668739
 import (
 	"io/ioutil"
 	"net/http"
-
-	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
+// DEPRECATED.
 func HttpGet(url string) string {
 	return string(HttpGetB(url))
 }
 
+// DEPRECATED.
 func HttpGetB(url string) []byte {
 	r, err := http.Get(url)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	return b
 }

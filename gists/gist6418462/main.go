@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"runtime"
 
-	. "github.com/shurcooL/go/gists/gist5286084"
 	. "github.com/shurcooL/go/gists/gist5639599"
 	. "github.com/shurcooL/go/gists/gist6433744"
 	. "github.com/shurcooL/go/gists/gist6445065"
@@ -31,13 +30,17 @@ func GetSourceAsString(f interface{}) string {
 	var startIndex, endIndex int
 	{
 		b, err := ioutil.ReadFile(file)
-		CheckError(err)
+		if err != nil {
+			return "<file not found>"
+		}
 		startIndex, endIndex = GetLineStartEndIndicies(b, line-1)
 	}
 
 	fs := token.NewFileSet()
 	fileAst, err := parser.ParseFile(fs, file, nil, 0*parser.ParseComments)
-	CheckError(err)
+	if err != nil {
+		return "<ParseFile failed>"
+	}
 
 	// TODO: Consider using ast.Walk() instead of custom FindFirst()
 	query := func(i interface{}) bool {

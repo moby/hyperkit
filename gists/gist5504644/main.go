@@ -8,8 +8,6 @@ import (
 	"go/token"
 	"path/filepath"
 	"sync"
-
-	. "github.com/shurcooL/go/gists/gist5286084"
 )
 
 // ParseFiles parses the Go source files files within directory dir
@@ -101,7 +99,9 @@ func GetDocPackageFromFiles(paths ...string) (dpkg *doc.Package) {
 
 func main() {
 	dpkg, err := GetDocPackage(BuildPackageFromImportPath("os"))
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	println(dpkg.Consts[0].Names[0])
 	println(dpkg.Types[0].Name)
 	println(dpkg.Vars[0].Names[0])

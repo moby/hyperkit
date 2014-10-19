@@ -16,7 +16,6 @@ import (
 	//"code.google.com/p/go.tools/go/types"
 	//"honnef.co/go/importer"
 
-	. "github.com/shurcooL/go/gists/gist5286084"
 	. "github.com/shurcooL/go/gists/gist5504644"
 	. "github.com/shurcooL/go/gists/gist5639599"
 
@@ -59,10 +58,14 @@ func InlineDotImports(w io.Writer, importPath string) {
 	conf.Import(importPath)
 
 	prog, err := conf.Load()
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 
 	/*pi, err := imp.ImportPackage(importPath)
-	CheckError(err)
+	if err != nil {
+		panic(err)
+	}
 	_ = pi*/
 
 	pi := prog.Imported[importPath]

@@ -7,12 +7,7 @@ import (
 	"io/ioutil"
 
 	. "github.com/shurcooL/go/gists/gist5092053"
-	. "github.com/shurcooL/go/gists/gist5286084"
-	. "github.com/shurcooL/go/gists/gist5571468"
 )
-
-var _ = ioutil.ReadFile
-var _ = CheckError
 
 func PrintRuneStats(s string) {
 	r := []rune(s)
@@ -34,7 +29,11 @@ func PrintRuneStats(s string) {
 
 func main() {
 	//s := "abc   Z"
-	s := MustReadFile("/Users/Dmitri/Desktop/1.txt")
+	b, err := ioutil.ReadFile("/Users/Dmitri/Desktop/1.txt")
+	if err != nil {
+		panic(err)
+	}
+	s := string(b)
 
 	PrintRuneStats(s)
 }
