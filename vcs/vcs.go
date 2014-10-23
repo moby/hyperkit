@@ -92,7 +92,7 @@ func init() {
 	// git
 	if _, err := exec.LookPath("git"); err == nil {
 		addVcsProvider(func(path string) Vcs {
-			if isRepo, rootPath := GetGitRepoRoot(path); isRepo {
+			if isRepo, rootPath := getGitRepoRoot(path); isRepo {
 				return &gitVcs{commonVcs{rootPath: rootPath}}
 			}
 			return nil

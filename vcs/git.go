@@ -13,7 +13,7 @@ type gitVcs struct {
 func (this *gitVcs) Type() Type { return Git }
 
 func (this *gitVcs) GetStatus() string {
-	_, status := IsFolderGitRepo(this.rootPath)
+	_, status := isFolderGitRepo(this.rootPath)
 	return status
 }
 
@@ -44,15 +44,15 @@ func (this *gitVcs) GetDefaultBranch() string {
 }
 
 func (this *gitVcs) GetLocalBranch() string {
-	return CheckGitRepoLocalBranch(this.rootPath)
+	return checkGitRepoLocalBranch(this.rootPath)
 }
 
 func (this *gitVcs) GetLocalRev() string {
-	return CheckGitRepoLocal(this.rootPath, this.GetDefaultBranch())
+	return checkGitRepoLocal(this.rootPath, this.GetDefaultBranch())
 }
 
 func (this *gitVcs) GetRemoteRev() string {
-	return CheckGitRepoRemote(this.rootPath, this.GetDefaultBranch())
+	return checkGitRepoRemote(this.rootPath, this.GetDefaultBranch())
 }
 
 func (this *gitVcs) IsContained(rev string) bool {
@@ -69,7 +69,7 @@ func (this *gitVcs) IsContained(rev string) bool {
 
 // ---
 
-func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
+func getGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	cmd.Dir = path
 
@@ -80,7 +80,7 @@ func GetGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
 	}
 }
 
-func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
+func isFolderGitRepo(path string) (isGitRepo bool, status string) {
 	// Alternative: git rev-parse
 	// For individual files: git ls-files --error-unmatch -- 'Filename', return code == 0
 	cmd := exec.Command("git", "status", "--porcelain")
@@ -93,7 +93,7 @@ func IsFolderGitRepo(path string) (isGitRepo bool, status string) {
 	}
 }
 
-func CheckGitRepoLocalBranch(path string) string {
+func checkGitRepoLocalBranch(path string) string {
 	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
 	cmd.Dir = path
 
@@ -107,7 +107,7 @@ func CheckGitRepoLocalBranch(path string) string {
 // Length of a git revision hash.
 const gitRevisionLength = 40
 
-func CheckGitRepoLocal(path, branch string) string {
+func checkGitRepoLocal(path, branch string) string {
 	cmd := exec.Command("git", "rev-parse", branch)
 	cmd.Dir = path
 
@@ -118,7 +118,7 @@ func CheckGitRepoLocal(path, branch string) string {
 	}
 }
 
-func CheckGitRepoRemote(path, branch string) string {
+func checkGitRepoRemote(path, branch string) string {
 	// true here is not a boolean value, but a command /bin/true that will make git think it asked for a password,
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
 	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", branch)
