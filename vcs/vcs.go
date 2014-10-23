@@ -22,21 +22,20 @@ func (t Type) VcsType() (vcsType string) {
 	}
 }
 
-// TODO: Add comments.
 type Vcs interface {
-	RootPath() string
-	Type() Type
+	RootPath() string // Returns the full path to the root of the repo.
+	Type() Type       // Returns the type of vcs implementation.
 
-	GetStatus() string
-	GetStash() string
+	GetStatus() string // Returns empty string if no outstanding status.
+	GetStash() string  // Returns empty string if no stash.
 
-	GetRemote() string // Get primary remote repository Url.
+	GetRemote() string // Get primary remote repository url.
 
-	GetDefaultBranch() string
-	GetLocalBranch() string
+	GetDefaultBranch() string // Get default branch name for this vcs.
+	GetLocalBranch() string   // Get currently checked out local branch name.
 
-	GetLocalRev() string
-	GetRemoteRev() string
+	GetLocalRev() string  // Get current local revision of default branch.
+	GetRemoteRev() string // Get latest remote revision of default branch.
 
 	// Returns true if given commit is contained in the default local branch.
 	IsContained(rev string) bool
@@ -52,7 +51,6 @@ func (this *commonVcs) RootPath() string {
 
 // New returns a new Vcs if path is under version control, otherwise nil.
 // It should be a valid path.
-// TODO: Use a better type for path, e.g., github.com/shurcooL/go/path.
 func New(path string) Vcs {
 	// TODO: Try to figure out vcs provider with a more constant-time operation.
 	// TODO: Potentially check in parallel.
@@ -89,7 +87,7 @@ func addVcsProvider(s vcsProvider) {
 func init() {
 	// As an optimization, add Vcs providers sorted by the most likely first.
 
-	// git
+	// git.
 	if _, err := exec.LookPath("git"); err == nil {
 		addVcsProvider(func(path string) Vcs {
 			if isRepo, rootPath := getGitRepoRoot(path); isRepo {
@@ -99,7 +97,7 @@ func init() {
 		})
 	}
 
-	// hg
+	// hg.
 	if _, err := exec.LookPath("hg"); err == nil {
 		addVcsProvider(func(path string) Vcs {
 			if isRepo, rootPath := getHgRepoRoot(path); isRepo {
