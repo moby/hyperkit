@@ -31,11 +31,10 @@ func (f *rawFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	serveFile(w, r, f.root, path.Clean(r.URL.Path))
 }
 
-func dirList(w http.ResponseWriter, f http.File) {
+func dirList(w http.ResponseWriter, f http.File, name string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, "<pre>\n")
-	// TODO: Implement link.
-	fmt.Fprintf(w, "<a>%s</a>\n", "..")
+	fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", path.Clean(name+"/.."), "..")
 	for {
 		dirs, err := f.Readdir(100)
 		if err != nil || len(dirs) == 0 {
@@ -92,7 +91,7 @@ func serveFile(w http.ResponseWriter, r *http.Request, fs http.FileSystem, name 
 		/*if checkLastModified(w, r, d.ModTime()) {
 			return
 		}*/
-		dirList(w, f)
+		dirList(w, f, name)
 		return
 	}
 
