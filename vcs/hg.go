@@ -87,7 +87,7 @@ func (this *hgVcs) GetRemoteRev() string {
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
-		// Get the last line of output
+		// Get the last line of output.
 		if lines := GetLines(TrimLastNewline(string(out))); len(lines) > 0 {
 			return lines[len(lines)-1]
 		}
@@ -96,6 +96,6 @@ func (this *hgVcs) GetRemoteRev() string {
 }
 
 func (this *hgVcs) IsContained(rev string) bool {
-	// TODO
+	// TODO.
 	return false
 }
