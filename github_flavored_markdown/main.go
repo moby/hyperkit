@@ -19,10 +19,10 @@ import (
 	"sort"
 	"strings"
 	"text/template"
-	"unicode"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
+	"github.com/shurcooL/go/github_flavored_markdown/sanitized_anchor_name"
 	"github.com/shurcooL/go/u/u7"
 	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"
@@ -74,30 +74,11 @@ func (_ *renderer) Header(out *bytes.Buffer, text func() bool, level int, _ stri
 	textString := out.String()[marker:]
 	out.Truncate(marker)
 
-	anchorName := createSanitizedAnchorName(html.UnescapeString(textString))
+	anchorName := sanitized_anchor_name.Create(html.UnescapeString(textString))
 
 	out.WriteString(fmt.Sprintf(`<h%d><a name="%s" class="anchor" href="#%s" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>`, level, anchorName, anchorName))
 	out.WriteString(textString)
 	out.WriteString(fmt.Sprintf("</h%d>\n", level))
-}
-
-// HeaderLink returns a relative link to the anchor of the given header.
-func HeaderLink(header string) (link string) {
-	return "#" + createSanitizedAnchorName(header)
-}
-
-// Returns an anchor name for the given header text.
-func createSanitizedAnchorName(text string) string {
-	var anchorName []rune
-	for _, r := range []rune(text) {
-		switch {
-		case r == ' ':
-			anchorName = append(anchorName, '-')
-		case unicode.IsLetter(r) || unicode.IsNumber(r):
-			anchorName = append(anchorName, unicode.ToLower(r))
-		}
-	}
-	return string(anchorName)
 }
 
 // TODO: Clean up and improve this code.
