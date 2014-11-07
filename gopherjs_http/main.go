@@ -2,6 +2,7 @@ package gopherjs_http
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"html/template"
 	"io"
@@ -62,6 +63,42 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	ProcessHtml(file).WriteTo(w)
 }
 
+// https://gist.github.com/the42/1956518
+func compress(s string) string {
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	_, err := io.WriteString(gw, s)
+	if err != nil {
+		panic(err)
+	}
+	err = gw.Close()
+	if err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
+
+// StaticGoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
+//
+// It reads files from disk and recompiles on startup only.
+func StaticGoFiles(goFiles ...string) http.Handler {
+	content := handleJsError(goFilesToJs(goFiles))
+	return &staticGoFiles{gzipContent: compress(content)}
+}
+
+type staticGoFiles struct {
+	gzipContent string
+}
+
+func (this *staticGoFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Header().Set("Content-Encoding", "gzip") // TODO: Check "Accept-Encoding"?
+	_, err := io.WriteString(w, this.gzipContent)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // GoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
 //
 // It reads files from disk and recompiles on every request.
@@ -75,7 +112,11 @@ type goFiles struct {
 
 func (this *goFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	io.WriteString(w, handleJsError(goFilesToJs(this.goFiles)))
+	w.Header().Set("Content-Encoding", "gzip") // TODO: Check "Accept-Encoding"?
+	_, err := io.WriteString(w, compress(handleJsError(goFilesToJs(this.goFiles))))
+	if err != nil {
+		panic(err)
+	}
 }
 
 // ProcessHtml takes HTML with "text/go" script tags and replaces them with compiled JavaScript script tags.
