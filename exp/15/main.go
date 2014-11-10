@@ -1,4 +1,4 @@
-// Hacked up copy of code.google.com/p/go.tools/imports/sortimports.go.
+// Hacked up copy of golang.org/x/tools/imports/sortimports.go.
 
 package exp15
 
@@ -15,12 +15,12 @@ import (
 	"strconv"
 	"strings"
 
-	"code.google.com/p/go.tools/astutil"
+	"golang.org/x/tools/astutil"
 
 	. "github.com/shurcooL/go/gists/gist5639599"
 )
 
-// TODO: Replace with go/ast.SortImports or code.google.com/p/go.tools/imports.SortImports whenever it's possible.
+// TODO: Replace with go/ast.SortImports or golang.org/x/tools/imports.SortImports whenever it's possible.
 func SortImports(fset *token.FileSet, f *ast.File) {
 	sortImports(fset, f)
 }

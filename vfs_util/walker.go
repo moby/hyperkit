@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"code.google.com/p/go.tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs"
 )
 
 func Walk(fs vfs.FileSystem, root string, walkFn filepath.WalkFunc) error {

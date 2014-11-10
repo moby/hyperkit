@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"code.google.com/p/go.tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs"
 
 	"github.com/shurcooL/go/gists/gist6418290"
 )

@@ -9,8 +9,8 @@ import (
 	"path"
 	"strings"
 
-	"code.google.com/p/go.tools/godoc/vfs"
-	"code.google.com/p/go.tools/godoc/vfs/httpfs"
+	"golang.org/x/tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs/httpfs"
 )
 
 type rawFileServer struct {

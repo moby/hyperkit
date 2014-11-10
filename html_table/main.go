@@ -1,7 +1,7 @@
 package html_table
 
 import (
-	"code.google.com/p/go.net/html"
+	"golang.org/x/net/html"
 
 	"github.com/shurcooL/go/html_to_markdown"
 )

@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go.net/html"
-	"code.google.com/p/go.net/html/atom"
 	"github.com/go-on/gopherjslib"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 // StaticHtmlFile returns a handler that statically serves the given .html file, with the "text/go" script tags compiled to JavaScript via GopherJS.

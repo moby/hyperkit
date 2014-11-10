@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"code.google.com/p/go.tools/godoc/vfs"
+	"golang.org/x/tools/godoc/vfs"
 )
 
 type rootedFileSystem struct {

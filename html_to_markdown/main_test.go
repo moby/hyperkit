@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"code.google.com/p/go.net/html"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/html_to_markdown"
+	"golang.org/x/net/html"
 )
 
 func Test1(t *testing.T) {

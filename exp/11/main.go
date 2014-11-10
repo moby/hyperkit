@@ -10,10 +10,10 @@ import (
 	"os"
 	"strings"
 
-	"code.google.com/p/go.tools/go/loader"
-	"code.google.com/p/go.tools/imports"
+	"golang.org/x/tools/go/loader"
+	"golang.org/x/tools/imports"
 
-	//"code.google.com/p/go.tools/go/types"
+	//"golang.org/x/tools/go/types"
 	//"honnef.co/go/importer"
 
 	. "github.com/shurcooL/go/gists/gist5504644"

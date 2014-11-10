@@ -41,7 +41,7 @@ func ParseFiles(fset *token.FileSet, dir string, files ...string) ([]*ast.File, 
 // ---
 
 func AstPackageFromBuildPackage(bpkg *build.Package) (apkg *ast.Package, err error) {
-	// TODO: Either find a way to use code.google.com/p/go.tools/importer directly, or do file AST parsing in parallel like it does
+	// TODO: Either find a way to use golang.org/x/tools/importer directly, or do file AST parsing in parallel like it does
 	filenames := append(bpkg.GoFiles, bpkg.CgoFiles...)
 	files := make(map[string]*ast.File, len(filenames))
 	fset := token.NewFileSet()
@@ -84,7 +84,7 @@ func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package, err2 e
 
 /* Commented out because it's not in use anywhere, candidate for removal
 func GetDocPackageFromFiles(paths ...string) (dpkg *doc.Package) {
-	// TODO: Either find a way to use code.google.com/p/go.tools/importer directly, or do file AST parsing in parallel like it does
+	// TODO: Either find a way to use golang.org/x/tools/importer directly, or do file AST parsing in parallel like it does
 	files := make(map[string]*ast.File, len(paths))
 	fset := token.NewFileSet()
 	for _, path := range paths {
