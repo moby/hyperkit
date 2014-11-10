@@ -24,6 +24,13 @@ func New(root vfs.FileSystem) http.Handler {
 	return &rawFileServer{httpfs.New(root)}
 }
 
+// NewUsingHttpFs returns a raw file server.
+//
+// TODO: Remove when this is no longer neccessary.
+func NewUsingHttpFs(root http.FileSystem) http.Handler {
+	return &rawFileServer{root}
+}
+
 func (f *rawFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, "/") {
 		r.URL.Path = "/" + r.URL.Path
