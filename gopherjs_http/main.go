@@ -83,20 +83,21 @@ func compress(s string) string {
 // It reads files from disk and recompiles on startup only.
 func StaticGoFiles(goFiles ...string) http.Handler {
 	content := handleJsError(goFilesToJs(goFiles))
-	return &staticGoFiles{gzipContent: compress(content)}
+	return &staticGoFiles{
+		gzipContent: strings.NewReader(compress(content)),
+		modtime:     time.Now(),
+	}
 }
 
 type staticGoFiles struct {
-	gzipContent string
+	gzipContent io.ReadSeeker
+	modtime     time.Time
 }
 
 func (this *staticGoFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Content-Encoding", "gzip") // TODO: Check "Accept-Encoding"?
-	_, err := io.WriteString(w, this.gzipContent)
-	if err != nil {
-		panic(err)
-	}
+	http.ServeContent(w, req, "", this.modtime, this.gzipContent)
 }
 
 // GoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
