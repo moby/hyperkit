@@ -20,6 +20,7 @@ func PrintPackageFullSummary(dpkg *doc.Package) {
 func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 	for _, v := range dpkg.Vars {
 		for _, spec := range v.Decl.Specs {
+			spec.(*ast.ValueSpec).Doc = nil
 			spec.(*ast.ValueSpec).Comment = nil
 		}
 		fmt.Fprintln(w, SprintAstBare(v.Decl))
@@ -27,6 +28,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 	for _, t := range dpkg.Types {
 		for _, v := range t.Vars {
 			for _, spec := range v.Decl.Specs {
+				spec.(*ast.ValueSpec).Doc = nil
 				spec.(*ast.ValueSpec).Comment = nil
 			}
 			fmt.Fprintln(w, SprintAstBare(v.Decl))
@@ -48,6 +50,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 	for _, c := range dpkg.Consts {
 		for _, spec := range c.Decl.Specs {
 			spec.(*ast.ValueSpec).Values = nil
+			spec.(*ast.ValueSpec).Doc = nil
 			spec.(*ast.ValueSpec).Comment = nil
 		}
 		fmt.Fprintln(w, SprintAstBare(c.Decl))
@@ -57,6 +60,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 		for _, c := range t.Consts {
 			for _, spec := range c.Decl.Specs {
 				spec.(*ast.ValueSpec).Values = nil
+				spec.(*ast.ValueSpec).Doc = nil
 				spec.(*ast.ValueSpec).Comment = nil
 			}
 			fmt.Fprintln(w, SprintAstBare(c.Decl))
@@ -150,7 +154,7 @@ func PrintPackageSummariesInDir(dirname string) {
 func main() {
 	//PrintPackageSummary("gist.github.com/5639599.git"); return
 	//PrintPackageSummariesInDir("gist.github.com")
-	dpkg, err := GetDocPackageAll(BuildPackageFromImportPath("github.com/shurcooL/Conception-go"))
+	dpkg, err := GetDocPackageAll(BuildPackageFromImportPath("github.com/microcosm-cc/bluemonday"))
 	if err != nil {
 		panic(err)
 	}
