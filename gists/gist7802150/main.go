@@ -163,7 +163,16 @@ type ViewGroupI interface {
 	DepNode2ManualI
 }
 
+// FileUri represents a URI with a protocol notation.
+//
+// For example, "file:///tmp/foo" or "memory://???".
 type FileUri string
+
+// Path returns the path of URI, without the protocol notation.
+func (u FileUri) Path() string {
+	i := strings.Index(string(u), "://") + len("://")
+	return string(u)[i:]
+}
 
 type ViewGroup struct {
 	all *map[ViewGroupI]bool
