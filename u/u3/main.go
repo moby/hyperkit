@@ -20,7 +20,7 @@ func DisplayMarkdownInBrowser(markdown []byte) {
 	}
 
 	http.HandleFunc("/index", handler)
-	http.Handle("/favicon.ico", http.NotFoundHandler())
+	http.Handle("/favicon.ico/", http.NotFoundHandler())
 
 	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
 	// TODO: Consider using httptest.NewServer.
