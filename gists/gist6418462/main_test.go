@@ -1,14 +1,21 @@
 package gist6418462
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
+)
 
-var f2 = func() { panic(1337) }
-
-func Example1() {
-	f := func() {
-		println("Hello from anon func!") // Comments are currently not preserved
+func ExampleGetSourceAsString() {
+	var f func()
+	f1 := func() {
+		panic(123)
 	}
-	if 5*5 > 26 {
+	f2 := func() {
+		println("Hello from anon func!") // Comments are currently not preserved.
+	}
+	if 5*5 > 30 {
+		f = f1
+	} else {
 		f = f2
 	}
 
@@ -21,12 +28,12 @@ func Example1() {
 }
 
 func Example2() {
-	f2 := func(a int, b int) int {
+	f := func(a int, b int) int {
 		c := a + b
 		return c
 	}
 
-	fmt.Println(GetSourceAsString(f2))
+	fmt.Println(GetSourceAsString(f))
 
 	// Output:
 	//func(a int, b int) int {
@@ -42,4 +49,21 @@ func ExampleNil() {
 
 	// Output:
 	//nil
+}
+
+func ExampleGetFuncValueSourceAsString() {
+	f := func(a int, b int) int {
+		c := a + b
+		return c
+	}
+
+	fv := reflect.ValueOf(f)
+
+	fmt.Println(GetFuncValueSourceAsString(fv))
+
+	// Output:
+	//func(a int, b int) int {
+	//	c := a + b
+	//	return c
+	//}
 }

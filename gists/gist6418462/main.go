@@ -16,11 +16,22 @@ import (
 
 // GetSourceAsString returns the source of the func f.
 func GetSourceAsString(f interface{}) string {
-	v := reflect.ValueOf(f)
-	if v.IsNil() {
+	// No need to check for f being nil, since that's handled below.
+	fv := reflect.ValueOf(f)
+	return GetFuncValueSourceAsString(fv)
+}
+
+// GetFuncValueSourceAsString returns the source of the func value fv.
+func GetFuncValueSourceAsString(fv reflect.Value) string {
+	// Checking the kind catches cases where f was nil, resulting in fv being a zero Value (i.e. invalid kind),
+	// as well as when fv is non-func.
+	if fv.Kind() != reflect.Func {
+		return "kind not func"
+	}
+	pc := fv.Pointer()
+	if pc == 0 {
 		return "nil"
 	}
-	pc := v.Pointer()
 	function := runtime.FuncForPC(pc)
 	if function == nil {
 		return "nil"
