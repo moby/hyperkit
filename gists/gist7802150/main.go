@@ -120,13 +120,13 @@ func (this *DepNode2Manual) manual()                { panic("") }
 // merge takes other and merges it (along with its current sinks) into this.
 // Afterwards, both pointers point to a single unified DepNode2Manual struct.
 func (this *DepNode2Manual) merge(other **DepNode2Manual) {
-	presentSinks := map[*DepNode2]bool{}
+	presentSinks := make(map[*DepNode2]struct{})
 	for _, sink := range this.sinks {
-		presentSinks[sink] = true
+		presentSinks[sink] = struct{}{}
 	}
 
 	for _, sink := range (*other).sinks {
-		if !presentSinks[sink] {
+		if _, present := presentSinks[sink]; !present {
 			this.sinks = append(this.sinks, sink)
 		}
 	}
@@ -175,7 +175,7 @@ func (u FileUri) Path() string {
 }
 
 type ViewGroup struct {
-	all *map[ViewGroupI]bool
+	all *map[ViewGroupI]struct{}
 	uri FileUri
 
 	*DepNode2Manual
@@ -188,7 +188,7 @@ func (this *ViewGroup) getViewGroup() *ViewGroup {
 // InitViewGroup must be called after creating a new ViewGroupI,
 // before any other ViewGroup method or ViewGroupI func.
 func (this *ViewGroup) InitViewGroup(self ViewGroupI, uri FileUri) {
-	this.all = &map[ViewGroupI]bool{self: true}
+	this.all = &map[ViewGroupI]struct{}{self: struct{}{}}
 	this.uri = uri
 	this.DepNode2Manual = &DepNode2Manual{}
 }
@@ -201,7 +201,7 @@ func (this *ViewGroup) AddAndSetViewGroup(other ViewGroupI, thisCurrent string) 
 	}
 	ExternallyUpdated(other.getViewGroup().DepNode2Manual) // Notify whatever depended on the other ViewGroupI that it's been updated
 
-	(*this.all)[other] = true
+	(*this.all)[other] = struct{}{}
 	other.getViewGroup().all = this.all
 	this.DepNode2Manual.merge(&other.getViewGroup().DepNode2Manual)
 }
