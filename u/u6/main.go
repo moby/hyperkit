@@ -98,46 +98,73 @@ func Branches(repo *exp13.VcsState) string {
 	}
 }
 
+// Input is a line containing tab-separated local branch and remote branch.
+// For example, "master\torigin/master".
+func branchRemoteInfo(repo *exp13.VcsState) func(line []byte) []byte {
+	return func(line []byte) []byte {
+		branchRemote := strings.Split(TrimLastNewline(string(line)), "\t")
+		if len(branchRemote) != 2 {
+			return []byte("error: len(branchRemote) != 2")
+		}
+
+		branch := branchRemote[0]
+		branchDisplay := branch
+		if branch == repo.VcsLocal.LocalBranch {
+			branchDisplay = "**" + branch + "**"
+		}
+
+		remote := branchRemote[1]
+		if remote == "" {
+			return []byte(fmt.Sprintf("%s | | | \n", branchDisplay))
+		}
+
+		cmd := exec.Command("git", "rev-list", "--count", "--left-right", remote+"..."+branch)
+		cmd.Dir = repo.Vcs.RootPath()
+		out, err := cmd.Output()
+		if err != nil {
+			// This usually happens when the remote branch is gone.
+			remoteDisplay := "~~" + remote + "~~"
+			return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, remoteDisplay))
+		}
+
+		behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
+		return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, remote, behindAhead[0], behindAhead[1]))
+	}
+}
+
 // Branches returns a Markdown table of branches with ahead/behind information relative to remote.
 func BranchesRemote(repo *exp13.VcsState) string {
 	switch repo.Vcs.Type() {
 	case vcs.Git:
-		branchInfo := func(line []byte) []byte {
-			branchRemote := strings.Split(TrimLastNewline(string(line)), "\t")
-			if len(branchRemote) != 2 {
-				return []byte("error: len(branchRemote) != 2")
-			}
-
-			branch := branchRemote[0]
-			branchDisplay := branch
-			if branch == repo.VcsLocal.LocalBranch {
-				branchDisplay = "**" + branch + "**"
-			}
-
-			remote := branchRemote[1]
-			if remote == "" {
-				return []byte(fmt.Sprintf("%s | | | \n", branchDisplay))
-			}
-
-			cmd := exec.Command("git", "rev-list", "--count", "--left-right", remote+"..."+branch)
-			cmd.Dir = repo.Vcs.RootPath()
-			out, err := cmd.Output()
-			if err != nil {
-				// This usually happens when the remote branch is gone.
-				remoteDisplay := "~~" + remote + "~~"
-				return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, remoteDisplay))
-			}
-
-			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
-			return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, remote, behindAhead[0], behindAhead[1]))
-		}
-
 		p := pipe.Script(
 			pipe.Println("Branch | Remote | Behind | Ahead"),
 			pipe.Println("-------|--------|-------:|:-----"),
 			pipe.Line(
 				pipe.Exec("git", "for-each-ref", "--format=%(refname:short)\t%(upstream:short)", "refs/heads"),
-				pipe.Replace(branchInfo),
+				pipe.Replace(branchRemoteInfo(repo)),
+			),
+		)
+
+		out, err := pipe_util.OutputDir(p, repo.Vcs.RootPath())
+		if err != nil {
+			return err.Error()
+		}
+		return string(out)
+	default:
+		return ""
+	}
+}
+
+// Branches returns a Markdown table of branches with ahead/behind information relative to the specified remote.
+func BranchesRemoteCustom(repo *exp13.VcsState, remote string) string {
+	switch repo.Vcs.Type() {
+	case vcs.Git:
+		p := pipe.Script(
+			pipe.Println("Branch | Remote | Behind | Ahead"),
+			pipe.Println("-------|--------|-------:|:-----"),
+			pipe.Line(
+				pipe.Exec("git", "for-each-ref", "--format=%(refname:short)\t"+remote+"/%(refname:short)", "refs/heads"),
+				pipe.Replace(branchRemoteInfo(repo)),
 			),
 		)
 
