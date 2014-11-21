@@ -56,6 +56,45 @@ func GoPackageWorkingDiff(goPackage *GoPackage) string {
 	return ""
 }
 
+// Show the difference between the working directory and master branch.
+// Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
+func GoPackageWorkingDiffMaster(goPackage *GoPackage) string {
+	if goPackage.Dir.Repo.VcsLocal.Status != "" && goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() {
+		switch goPackage.Dir.Repo.Vcs.Type() {
+		case vcs.Git:
+			newFileDiff := func(line []byte) []byte {
+				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", TrimLastNewline(string(line)))
+				cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
+				out, err := cmd.Output()
+				if len(out) > 0 {
+					// diff exits with a non-zero status when the files don't match.
+					// Ignore that failure as long as we get output.
+					err = nil
+				}
+				if err != nil {
+					return []byte(err.Error())
+				}
+				return out
+			}
+
+			p := pipe.Script(
+				pipe.Exec("git", "diff", "--no-ext-diff", "master"),
+				pipe.Line(
+					pipe.Exec("git", "ls-files", "--others", "--exclude-standard"),
+					pipe.Replace(newFileDiff),
+				),
+			)
+
+			out, err := pipe_util.OutputDir(p, goPackage.Dir.Repo.Vcs.RootPath())
+			if err != nil {
+				return err.Error()
+			}
+			return string(out)
+		}
+	}
+	return ""
+}
+
 // Branches returns a Markdown table of branches with ahead/behind information relative to master branch.
 func Branches(repo *exp13.VcsState) string {
 	switch repo.Vcs.Type() {
