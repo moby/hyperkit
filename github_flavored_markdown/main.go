@@ -125,7 +125,7 @@ var gfmHtmlConfig = syntaxhighlight.HTMLConfig{
 	Keyword:       "k",
 	Comment:       "c",
 	Type:          "n",
-	Literal:       "lit",
+	Literal:       "o",
 	Punctuation:   "p",
 	Plaintext:     "n",
 	Tag:           "tag",

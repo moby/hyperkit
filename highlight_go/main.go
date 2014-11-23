@@ -12,12 +12,17 @@ import (
 
 func tokenKind(tok token.Token, lit string) int {
 	switch {
-	case tok.IsKeyword() || tok.IsOperator() && tok < token.LPAREN:
+	case tok.IsKeyword() || (tok.IsOperator() && tok < token.LPAREN):
 		return syntaxhighlight.KEYWORD
-	case tok.IsLiteral() && tok != token.IDENT:
+
+	// Literals.
+	case tok == token.INT || tok == token.FLOAT || tok == token.IMAG:
+		return syntaxhighlight.DECIMAL
+	case tok == token.STRING || tok == token.CHAR:
 		return syntaxhighlight.STRING
-	case lit == "false" || lit == "true":
-		return syntaxhighlight.STRING
+	case lit == "true" || lit == "false" || lit == "iota":
+		return syntaxhighlight.LITERAL
+
 	case tok == token.COMMENT:
 		return syntaxhighlight.COMMENT
 	default:
