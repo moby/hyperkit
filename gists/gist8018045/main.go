@@ -117,6 +117,11 @@ func GetGoPackages(out chan<- *GoPackage) {
 				if err != nil {
 					return nil
 				}
+				// Prune search if we encounter any of these import paths.
+				switch importPath {
+				case "builtin":
+					return nil
+				}
 				if goPackage := GoPackageFromImportPath(importPath); goPackage != nil {
 					out <- goPackage
 				}
