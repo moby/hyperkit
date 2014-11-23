@@ -23,6 +23,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/shurcooL/go/github_flavored_markdown/sanitized_anchor_name"
+	"github.com/shurcooL/go/highlight_go"
 	"github.com/shurcooL/go/u/u7"
 	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"
@@ -137,8 +138,14 @@ var gfmHtmlConfig = syntaxhighlight.HTMLConfig{
 // TODO: Support highlighting for more languages.
 func highlightCode(src []byte, lang string) (highlightedCode []byte, ok bool) {
 	switch lang {
-	// TODO: Use a highlighter based on go/scanner for Go code.
-	case "Go", "go":
+	case "Go":
+		var buf bytes.Buffer
+		err := highlight_go.Print(src, &buf, syntaxhighlight.HTMLPrinter(gfmHtmlConfig))
+		if err != nil {
+			return nil, false
+		}
+		return buf.Bytes(), true
+	case "Go-old":
 		var buf bytes.Buffer
 		err := syntaxhighlight.Print(syntaxhighlight.NewScanner(src), &buf, syntaxhighlight.HTMLPrinter(gfmHtmlConfig))
 		if err != nil {
