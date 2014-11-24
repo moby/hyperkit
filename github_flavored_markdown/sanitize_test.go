@@ -123,7 +123,7 @@ func ExampleSanitizeAnchorName() {
 	os.Stdout.Write(Markdown(text))
 
 	// Output:
-	//<h2><a name="did-you-just-steal-this-template-from-toms-toml" class="anchor" href="#did-you-just-steal-this-template-from-toms-toml" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>Did you just steal this template from Tom&#39;s TOML?</h2>
+	//<h2><a name="did-you-just-steal-this-template-from-tom-s-toml" class="anchor" href="#did-you-just-steal-this-template-from-tom-s-toml" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>Did you just steal this template from Tom&#39;s TOML?</h2>
 }
 
 func ExampleSanitizeAnchorName2() {
@@ -132,7 +132,7 @@ func ExampleSanitizeAnchorName2() {
 	os.Stdout.Write(Markdown(text))
 
 	// Output:
-	//<h2><a name="what-about-quotes--things" class="anchor" href="#what-about-quotes--things" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>What about &#34;quotes&#34; &amp; things?</h2>
+	//<h2><a name="what-about-quotes-things" class="anchor" href="#what-about-quotes-things" rel="nofollow" aria-hidden="true"><span class="octicon octicon-link"></span></a>What about &#34;quotes&#34; &amp; things?</h2>
 }
 
 // TODO: Factor out.
