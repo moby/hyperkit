@@ -1,7 +1,9 @@
 package exp14
 
 import (
+	"fmt"
 	"io"
+	"time"
 
 	"github.com/shurcooL/go/gists/gist7480523"
 	"github.com/shurcooL/go/gists/gist7651991"
@@ -26,6 +28,11 @@ type GoPackages struct {
 
 func (this *GoPackages) Update() {
 	// TODO: Have a source?
+
+	started := time.Now()
+	defer func() {
+		fmt.Printf("GoPackages.Update: %v ms; %v packages.\n", time.Since(started).Seconds()*1000, len(this.Entries))
+	}()
 
 	// TODO: Make it load in background, without blocking, etc.
 	{
