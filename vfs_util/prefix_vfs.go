@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/sourcegraph/go-vcs/vcs/util"
+	"sourcegraph.com/sourcegraph/go-vcs/vcs/util"
 
 	"golang.org/x/tools/godoc/vfs"
 )

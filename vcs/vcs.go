@@ -10,7 +10,7 @@ const (
 	Hg
 )
 
-// VcsType returns a vcsType string compatible with github.com/sourcegraph/go-vcs notation.
+// VcsType returns a vcsType string compatible with sourcegraph.com/sourcegraph/go-vcs notation.
 func (t Type) VcsType() (vcsType string) {
 	switch t {
 	case Git:
