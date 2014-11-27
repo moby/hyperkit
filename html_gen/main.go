@@ -1,4 +1,5 @@
-// Package html_gen contains helper funcs for generating HTML nodes and rendering them.
+// Package html_gen contains helper funcs for generating HTML nodes and rendering them, safe against code injection.
+// Context-aware escaping is done just like in html/template.
 package html_gen
 
 import (
@@ -25,6 +26,7 @@ func A(s string, href template.URL) *html.Node {
 }
 
 // RenderNodes renders a list of HTML nodes.
+// Context-aware escaping is done just like in html/template when rendering nodes.
 func RenderNodes(nodes ...*html.Node) (template.HTML, error) {
 	var buf bytes.Buffer
 	for _, node := range nodes {
