@@ -18,11 +18,12 @@ func Text(s string) *html.Node {
 
 // A returns an anchor element <a href="{{.href}}">{{.s}}</a>.
 func A(s string, href template.URL) *html.Node {
-	return &html.Node{
+	n := &html.Node{
 		Type: html.ElementNode, Data: "a",
-		Attr:       []html.Attribute{{Key: "href", Val: string(href)}},
-		FirstChild: Text(s),
+		Attr: []html.Attribute{{Key: "href", Val: string(href)}},
 	}
+	n.AppendChild(Text(s))
+	return n
 }
 
 // RenderNodes renders a list of HTML nodes.
