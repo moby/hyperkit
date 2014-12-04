@@ -5,7 +5,7 @@ import (
 )
 
 type state struct {
-	Visited map[uintptr]bool
+	Visited map[uintptr]struct{}
 }
 
 func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) interface{} {
@@ -35,8 +35,8 @@ func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) inter
 		}
 	case reflect.Ptr:
 		if !v.IsNil() {
-			if !s.Visited[v.Pointer()] {
-				s.Visited[v.Pointer()] = true
+			if _, visited := s.Visited[v.Pointer()]; !visited {
+				s.Visited[v.Pointer()] = struct{}{}
 				if q := s.findFirst(v.Elem(), query); q != nil {
 					return q
 				}
@@ -54,13 +54,13 @@ func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) inter
 }
 
 func FindFirst(d interface{}, query func(i interface{}) bool) interface{} {
-	s := state{Visited: make(map[uintptr]bool)}
+	s := state{Visited: make(map[uintptr]struct{})}
 	return s.findFirst(reflect.ValueOf(d), query)
 }
 
 type state2 struct {
 	state
-	Found map[interface{}]bool
+	Found map[interface{}]struct{}
 }
 
 func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
@@ -75,7 +75,7 @@ func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
 
 	// TODO: Should I check v.CanInterface()? It seems like I might be able to get away without it...
 	if query(v.Interface()) {
-		s.Found[v.Interface()] = true
+		s.Found[v.Interface()] = struct{}{}
 	}
 
 	switch v.Kind() {
@@ -93,8 +93,8 @@ func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
 		}
 	case reflect.Ptr:
 		if !v.IsNil() {
-			if !s.Visited[v.Pointer()] {
-				s.Visited[v.Pointer()] = true
+			if _, visited := s.Visited[v.Pointer()]; !visited {
+				s.Visited[v.Pointer()] = struct{}{}
 				s.findAll(v.Elem(), query)
 			}
 		}
@@ -105,8 +105,8 @@ func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
 	}
 }
 
-func FindAll(d interface{}, query func(i interface{}) bool) map[interface{}]bool {
-	s := state2{state: state{Visited: make(map[uintptr]bool)}, Found: make(map[interface{}]bool)}
+func FindAll(d interface{}, query func(i interface{}) bool) map[interface{}]struct{} {
+	s := state2{state: state{Visited: make(map[uintptr]struct{})}, Found: make(map[interface{}]struct{})}
 	s.findAll(reflect.ValueOf(d), query)
 	return s.Found
 }
