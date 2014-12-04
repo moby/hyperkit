@@ -13,15 +13,16 @@ func (cw ChanWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// Credit to Tarmigan
+// Credit to Tarmigan.
+// TODO: Delete this? It's not used anywhere.
 func ByteReader(r io.Reader) <-chan []byte {
 	ch := make(chan []byte)
-
 	go func() {
 		for {
 			buf := make([]byte, 2048)
 			s := 0
-		inner:
+
+		Inner:
 			for {
 				n, err := r.Read(buf[s:])
 				if n > 0 {
@@ -33,7 +34,7 @@ func ByteReader(r io.Reader) <-chan []byte {
 					return
 				}
 				if s >= len(buf) {
-					break inner
+					break Inner
 				}
 			}
 		}
@@ -44,18 +45,18 @@ func ByteReader(r io.Reader) <-chan []byte {
 
 func LineReader(r io.Reader) <-chan []byte {
 	ch := make(chan []byte)
-
 	go func() {
 		br := bufio.NewReader(r)
+
 		for {
 			line, err := br.ReadBytes('\n')
-			if err == nil {
-				ch <- line[:len(line)-1] // Trim last newline
-			} else {
+			if err != nil {
 				ch <- line
 				close(ch)
 				return
 			}
+
+			ch <- line[:len(line)-1] // Trim last newline.
 		}
 	}()
 
