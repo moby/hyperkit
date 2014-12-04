@@ -136,15 +136,3 @@ func GetParentArgExprAllAsString() []string {
 func getMySecondArgExprAsString(int, int) string {
 	return GetParentArgExprAsString(1)
 }
-
-func main() {
-	var thisIsAFunkyVarName int
-	println("Name of var:", GetExprAsString(thisIsAFunkyVarName))
-	var name string = GetExprAsString(thisIsAFunkyVarName)
-	println("Name of var:", name)
-	println("Some func name:", GetExprAsString(strings.HasPrefix))
-	println("Name of second arg:", getMySecondArgExprAsString(5, thisIsAFunkyVarName))
-	println("1 2 3 4:", getMySecondArgExprAsString(1, 2), getMySecondArgExprAsString(3, 4)) // TODO: This should be 2, 4, not 2, 2
-	println("Name of second arg:",                                                          // TODO: This should work
-		getMySecondArgExprAsString(5, thisIsAFunkyVarName))
-}
