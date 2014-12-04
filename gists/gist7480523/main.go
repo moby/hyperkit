@@ -9,7 +9,6 @@ import (
 	"github.com/shurcooL/go/exp/12"
 
 	. "github.com/shurcooL/go/gists/gist5504644"
-	. "github.com/shurcooL/go/gists/gist7519227"
 	. "github.com/shurcooL/go/gists/gist7802150"
 )
 
