@@ -3,6 +3,7 @@ package gist5645828
 import (
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/doc"
 	"io"
 	"io/ioutil"
@@ -75,7 +76,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 }
 
 func printPackageSummary(dpkg *doc.Package) {
-	fmt.Println(`import . "` + dpkg.ImportPath + `"`)
+	fmt.Println(`import "` + dpkg.ImportPath + `"`)
 	for _, f := range dpkg.Funcs {
 		fmt.Print("\t")
 		PrintlnAstBare(f.Decl)
@@ -94,6 +95,7 @@ func printPackageSummary(dpkg *doc.Package) {
 	fmt.Println()
 }
 
+// hasAnyFuncs returns true if the package has any funcs or methods.
 func hasAnyFuncs(dpkg *doc.Package) bool {
 	if len(dpkg.Funcs) > 0 {
 		return true
@@ -108,8 +110,8 @@ func hasAnyFuncs(dpkg *doc.Package) bool {
 	return false
 }
 
-func PrintPackageSummary(ImportPath string) {
-	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+func PrintPackageSummary(importPath string) {
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath(importPath))
 	if err != nil {
 		return
 	}
@@ -119,8 +121,8 @@ func PrintPackageSummary(ImportPath string) {
 	printPackageSummary(dpkg)
 }
 
-func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
-	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+func PrintPackageSummaryWithPath(importPath, fullPath string) {
+	dpkg, err := GetDocPackage(BuildPackageFromImportPath(importPath))
 	if err != nil {
 		return
 	}
@@ -132,7 +134,7 @@ func PrintPackageSummaryWithPath(ImportPath, fullPath string) {
 }
 
 func PrintPackageSummariesInDir(dirname string) {
-	gopathEntries := filepath.SplitList(os.Getenv("GOPATH"))
+	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
 		path0 := filepath.Join(gopathEntry, "src")
 		entries, err := ioutil.ReadDir(filepath.Join(path0, dirname))
