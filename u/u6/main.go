@@ -11,8 +11,8 @@ import (
 	"github.com/shurcooL/go/vcs"
 	"gopkg.in/pipe.v2"
 
-	"github.com/shurcooL/go/trim"
 	. "github.com/shurcooL/go/gists/gist7480523"
+	"github.com/shurcooL/go/trim"
 )
 
 // Show the difference between the working directory and the most recent commit.
