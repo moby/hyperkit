@@ -11,7 +11,7 @@ import (
 	"github.com/shurcooL/go/vcs"
 	"gopkg.in/pipe.v2"
 
-	. "github.com/shurcooL/go/gists/gist5892738"
+	"github.com/shurcooL/go/trim"
 	. "github.com/shurcooL/go/gists/gist7480523"
 )
 
@@ -24,7 +24,7 @@ func GoPackageWorkingDiff(goPackage *GoPackage) string {
 		switch goPackage.Dir.Repo.Vcs.Type() {
 		case vcs.Git:
 			newFileDiff := func(line []byte) []byte {
-				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", TrimLastNewline(string(line)))
+				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", trim.LastNewline(string(line)))
 				cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
 				out, err := cmd.Output()
 				if len(out) > 0 {
@@ -63,7 +63,7 @@ func GoPackageWorkingDiffMaster(goPackage *GoPackage) string {
 		switch goPackage.Dir.Repo.Vcs.Type() {
 		case vcs.Git:
 			newFileDiff := func(line []byte) []byte {
-				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", TrimLastNewline(string(line)))
+				cmd := exec.Command("git", "diff", "--no-ext-diff", "--", "/dev/null", trim.LastNewline(string(line)))
 				cmd.Dir = goPackage.Dir.Repo.Vcs.RootPath()
 				out, err := cmd.Output()
 				if len(out) > 0 {
@@ -100,7 +100,7 @@ func Branches(repo *exp13.VcsState) string {
 	switch repo.Vcs.Type() {
 	case vcs.Git:
 		branchInfo := func(line []byte) []byte {
-			branch := TrimLastNewline(string(line))
+			branch := trim.LastNewline(string(line))
 			branchDisplay := branch
 			if branch == repo.VcsLocal.LocalBranch {
 				branchDisplay = "**" + branch + "**"
@@ -114,7 +114,7 @@ func Branches(repo *exp13.VcsState) string {
 				return []byte(fmt.Sprintf("%s | ? | ?\n", branchDisplay))
 			}
 
-			behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
+			behindAhead := strings.Split(trim.LastNewline(string(out)), "\t")
 			return []byte(fmt.Sprintf("%s | %s | %s\n", branchDisplay, behindAhead[0], behindAhead[1]))
 		}
 
@@ -141,7 +141,7 @@ func Branches(repo *exp13.VcsState) string {
 // For example, "master\torigin/master".
 func branchRemoteInfo(repo *exp13.VcsState) func(line []byte) []byte {
 	return func(line []byte) []byte {
-		branchRemote := strings.Split(TrimLastNewline(string(line)), "\t")
+		branchRemote := strings.Split(trim.LastNewline(string(line)), "\t")
 		if len(branchRemote) != 2 {
 			return []byte("error: len(branchRemote) != 2")
 		}
@@ -166,7 +166,7 @@ func branchRemoteInfo(repo *exp13.VcsState) func(line []byte) []byte {
 			return []byte(fmt.Sprintf("%s | %s | | \n", branchDisplay, remoteDisplay))
 		}
 
-		behindAhead := strings.Split(TrimLastNewline(string(out)), "\t")
+		behindAhead := strings.Split(trim.LastNewline(string(out)), "\t")
 		return []byte(fmt.Sprintf("%s | %s | %s | %s\n", branchDisplay, remote, behindAhead[0], behindAhead[1]))
 	}
 }

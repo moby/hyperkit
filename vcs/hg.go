@@ -4,7 +4,7 @@ import (
 	"os/exec"
 
 	. "github.com/shurcooL/go/gists/gist5258650"
-	. "github.com/shurcooL/go/gists/gist5892738"
+	trim "github.com/shurcooL/go/trim"
 )
 
 func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {
@@ -12,7 +12,7 @@ func getHgRepoRoot(path string) (isHgRepo bool, rootPath string) {
 	cmd.Dir = path
 
 	if out, err := cmd.Output(); err == nil {
-		return true, TrimLastNewline(string(out))
+		return true, trim.LastNewline(string(out))
 	} else {
 		return false, ""
 	}
@@ -45,7 +45,7 @@ func (this *hgVcs) GetRemote() string {
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
-		return TrimLastNewline(string(out))
+		return trim.LastNewline(string(out))
 	} else {
 		return ""
 	}
@@ -60,7 +60,7 @@ func (this *hgVcs) GetLocalBranch() string {
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
-		return TrimLastNewline(string(out))
+		return trim.LastNewline(string(out))
 	} else {
 		return ""
 	}
@@ -88,7 +88,7 @@ func (this *hgVcs) GetRemoteRev() string {
 
 	if out, err := cmd.Output(); err == nil {
 		// Get the last line of output.
-		if lines := GetLines(TrimLastNewline(string(out))); len(lines) > 0 {
+		if lines := GetLines(trim.LastNewline(string(out))); len(lines) > 0 {
 			return lines[len(lines)-1]
 		}
 	}

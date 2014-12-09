@@ -3,7 +3,7 @@ package vcs
 import (
 	"os/exec"
 
-	. "github.com/shurcooL/go/gists/gist5892738"
+	"github.com/shurcooL/go/trim"
 )
 
 type gitVcs struct {
@@ -39,7 +39,7 @@ func (this *gitVcs) GetRemote() string {
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
-		return TrimLastNewline(string(out))
+		return trim.LastNewline(string(out))
 	} else {
 		return ""
 	}
@@ -55,7 +55,7 @@ func (this *gitVcs) GetLocalBranch() string {
 
 	if out, err := cmd.Output(); err == nil {
 		// Since rev-parse is considered porcelain and may change, need to error-check its output.
-		return TrimLastNewline(string(out))
+		return trim.LastNewline(string(out))
 	} else {
 		return ""
 	}
@@ -93,7 +93,7 @@ func (this *gitVcs) IsContained(rev string) bool {
 	cmd.Dir = this.rootPath
 
 	if out, err := cmd.Output(); err == nil {
-		if len(out) >= 2 && TrimLastNewline(string(out[2:])) == this.GetDefaultBranch() {
+		if len(out) >= 2 && trim.LastNewline(string(out[2:])) == this.GetDefaultBranch() {
 			return true
 		}
 	}
@@ -108,7 +108,7 @@ func getGitRepoRoot(path string) (isGitRepo bool, rootPath string) {
 
 	if out, err := cmd.Output(); err == nil {
 		// Since rev-parse is considered porcelain and may change, need to error-check its output
-		return true, TrimLastNewline(string(out))
+		return true, trim.LastNewline(string(out))
 	} else {
 		return false, ""
 	}
