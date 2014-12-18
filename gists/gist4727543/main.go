@@ -4,11 +4,20 @@ package gist4727543
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
-	. "github.com/shurcooL/go/gists/gist5210270"
-	. "github.com/shurcooL/go/gists/gist5504644"
+	"github.com/shurcooL/go/gists/gist5504644"
 )
+
+// tryUnquote returns the unquoted string, or the original string if unquoting fails.
+func tryUnquote(s string) string {
+	t, err := strconv.Unquote(s)
+	if err != nil {
+		return s
+	}
+	return t
+}
 
 // Generates an anonymous usage for the given import statement to avoid "imported and not used" errors
 //
@@ -23,9 +32,9 @@ func GetForcedUseFromImport(Import string) (out string) {
 	ImportParts := strings.Split(Import, " ")
 	switch len(ImportParts) {
 	case 1:
-		return GetForcedUse(TrimQuotes(ImportParts[0]))
+		return GetForcedUse(tryUnquote(ImportParts[0]))
 	case 2:
-		return GetForcedUseRenamed(TrimQuotes(ImportParts[1]), ImportParts[0])
+		return GetForcedUseRenamed(tryUnquote(ImportParts[1]), ImportParts[0])
 	default:
 		panic("Invalid import string.")
 	}
@@ -42,7 +51,7 @@ func GetForcedUse(ImportPath string) string {
 //
 // e.g. `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`
 func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
-	dpkg, err := GetDocPackage(BuildPackageFromImportPath(ImportPath))
+	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(ImportPath))
 	if err != nil {
 		return fmt.Sprintf("Package %q not valid (doesn't exist or can't be built).", ImportPath)
 	}
@@ -76,17 +85,4 @@ func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
 	default:
 		return Prefix + LocalPackageName + "." + Usage
 	}
-}
-
-func main() {
-	println(GetForcedUse("io/ioutil"))
-	println(GetForcedUseRenamed("io/ioutil", ""))
-	println(GetForcedUseRenamed("io/ioutil", "RenamedPkg"))
-	println(GetForcedUseRenamed("io/ioutil", "."))
-	println()
-	println(GetForcedUseFromImport(`gist.github.com/5210270.git`))
-	println(GetForcedUseFromImport(`"gist.github.com/5210270.git"`))
-	println(GetForcedUseFromImport(`. "gist.github.com/5210270.git"`))
-	println(GetForcedUseFromImport(`bad bad bad`))
-	println(GetForcedUseFromImport(`bad`))
 }
