@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/exp/12"
+	"golang.org/x/tools/go/vcs"
 
 	. "github.com/shurcooL/go/gists/gist5504644"
 	. "github.com/shurcooL/go/gists/gist7802150"
@@ -82,6 +83,11 @@ func (this *GoPackage) UpdateVcsFields() {
 	if this.Dir.Repo != nil {
 		MakeUpdated(this.Dir.Repo.VcsLocal)
 		MakeUpdated(this.Dir.Repo.VcsRemote)
+
+		repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
+		if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {
+			this.Dir.Repo.RepoRoot = repoRoot
+		}
 	}
 }
 

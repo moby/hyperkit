@@ -4,6 +4,8 @@ import (
 	. "github.com/shurcooL/go/gists/gist7802150"
 
 	"github.com/shurcooL/go/vcs"
+
+	go_vcs "golang.org/x/tools/go/vcs"
 )
 
 type VcsState struct {
@@ -11,6 +13,8 @@ type VcsState struct {
 
 	VcsLocal  *VcsLocal
 	VcsRemote *VcsRemote
+
+	RepoRoot *go_vcs.RepoRoot
 
 	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
 	// TODO: No need for this to have a DepNode2Manual, remove it.
