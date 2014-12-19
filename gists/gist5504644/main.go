@@ -56,11 +56,15 @@ func AstPackageFromBuildPackage(bpkg *build.Package) (apkg *ast.Package, err err
 }
 
 func BuildPackageFromImportPath(importPath string) (bpkg *build.Package, err error) {
-	return build.Import(importPath, "", build.ImportComment)
+	return build.Import(importPath, "", importMode)
 }
 
 func BuildPackageFromSrcDir(srcDir string) (bpkg *build.Package, err error) {
-	return build.ImportDir(srcDir, build.ImportComment)
+	return build.ImportDir(srcDir, importMode)
+}
+
+func BuildPackageFromPath(path, srcDir string) (bpkg *build.Package, err error) {
+	return build.Import(path, srcDir, importMode)
 }
 
 func getDocPackageMode(bpkg *build.Package, err error, mode doc.Mode) (dpkg *doc.Package, err2 error) {

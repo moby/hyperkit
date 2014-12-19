@@ -36,7 +36,7 @@ func GoPackageFromImportPath(importPath string) *GoPackage {
 }
 
 func GoPackageFromPath(path, srcDir string) (*GoPackage, error) {
-	bpkg, err := build.Import(path, srcDir, build.ImportComment)
+	bpkg, err := BuildPackageFromPath(path, srcDir)
 	if err != nil {
 		if _, noGo := err.(*build.NoGoError); noGo || bpkg.Dir == "" {
 			return nil, err
