@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-on/gopherjslib"
+	"github.com/shurcooL/gopherjslib"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
