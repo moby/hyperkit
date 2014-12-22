@@ -20,7 +20,7 @@ func tokenKind(tok token.Token, lit string) int {
 		return syntaxhighlight.DECIMAL
 	case tok == token.STRING || tok == token.CHAR:
 		return syntaxhighlight.STRING
-	case lit == "true" || lit == "false" || lit == "iota":
+	case lit == "true" || lit == "false" || lit == "iota" || lit == "nil":
 		return syntaxhighlight.LITERAL
 
 	case tok == token.COMMENT:
