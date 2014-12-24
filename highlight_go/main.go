@@ -12,13 +12,13 @@ import (
 
 func tokenKind(tok token.Token, lit string) int {
 	switch {
-	case tok.IsKeyword() || (tok.IsOperator() && tok < token.LPAREN):
+	case tok.IsKeyword() || (tok.IsOperator() && tok <= token.ELLIPSIS):
 		return syntaxhighlight.KEYWORD
 
 	// Literals.
-	case tok == token.INT || tok == token.FLOAT || tok == token.IMAG:
+	case tok == token.INT || tok == token.FLOAT || tok == token.IMAG || tok == token.CHAR:
 		return syntaxhighlight.DECIMAL
-	case tok == token.STRING || tok == token.CHAR:
+	case tok == token.STRING:
 		return syntaxhighlight.STRING
 	case lit == "true" || lit == "false" || lit == "iota" || lit == "nil":
 		return syntaxhighlight.LITERAL
