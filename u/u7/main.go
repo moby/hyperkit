@@ -1,3 +1,8 @@
+// Package u7 provides syntaxhighlight.Printer and syntaxhighlight.Annotator implementations
+// for diff format. It implements intra-block character-level inner diff highlighting.
+//
+// It uses GitHub Flavored Markdown .css class names "gi", "gd", "gu", "gh" for outer blocks,
+// "x" for inner emphasis blocks.
 package u7
 
 import (
@@ -41,7 +46,7 @@ type HTMLConfig []string
 
 type HTMLPrinter HTMLConfig
 
-func (p HTMLPrinter) Print(w io.Writer, kind int, tokText string) error {
+func (p HTMLPrinter) Print(w io.Writer, kind syntaxhighlight.Kind, tokText string) error {
 	class := HTMLConfig(p)[kind]
 	if class != "" {
 		_, err := w.Write([]byte(`<span class="`))
@@ -84,8 +89,8 @@ func (s *Scanner) Scan() bool {
 	return err == nil
 }
 
-func (s *Scanner) Token() ([]byte, int) {
-	var kind int
+func (s *Scanner) Token() ([]byte, syntaxhighlight.Kind) {
+	var kind syntaxhighlight.Kind
 	switch {
 	// The backslash is to detect "\ No newline at end of file" lines.
 	case len(s.line) == 0 || s.line[0] == ' ' || s.line[0] == '\\':
@@ -112,7 +117,7 @@ func (s *Scanner) Err() error {
 
 type HTMLAnnotator HTMLConfig
 
-func (a HTMLAnnotator) Annotate(start int, kind int, tokText string) (*annotate.Annotation, error) {
+func (a HTMLAnnotator) Annotate(start int, kind syntaxhighlight.Kind, tokText string) (*annotate.Annotation, error) {
 	class := HTMLConfig(a)[kind]
 	if class != "" {
 		left := []byte(`<span class="`)

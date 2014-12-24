@@ -11,23 +11,23 @@ import (
 )
 
 // TokenKind returns a syntaxhighlight token kind value for the given tok and lit.
-func TokenKind(tok token.Token, lit string) int {
+func TokenKind(tok token.Token, lit string) syntaxhighlight.Kind {
 	switch {
 	case tok.IsKeyword() || (tok.IsOperator() && tok <= token.ELLIPSIS):
-		return syntaxhighlight.KEYWORD
+		return syntaxhighlight.Keyword
 
 	// Literals.
 	case tok == token.INT || tok == token.FLOAT || tok == token.IMAG || tok == token.CHAR:
-		return syntaxhighlight.DECIMAL
+		return syntaxhighlight.Decimal
 	case tok == token.STRING:
-		return syntaxhighlight.STRING
+		return syntaxhighlight.String
 	case lit == "true" || lit == "false" || lit == "iota" || lit == "nil":
-		return syntaxhighlight.LITERAL
+		return syntaxhighlight.Literal
 
 	case tok == token.COMMENT:
-		return syntaxhighlight.COMMENT
+		return syntaxhighlight.Comment
 	default:
-		return syntaxhighlight.PLAINTEXT
+		return syntaxhighlight.Plaintext
 	}
 }
 
