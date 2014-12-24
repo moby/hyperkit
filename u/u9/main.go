@@ -18,6 +18,7 @@ func AddTabSupport(textArea *dom.HTMLTextAreaElement) {
 
 			event.PreventDefault()
 
+			// Trigger "input" event listeners.
 			inputEvent := js.Global.Get("CustomEvent").New("input")
 			textArea.Underlying().Call("dispatchEvent", inputEvent)
 		}
