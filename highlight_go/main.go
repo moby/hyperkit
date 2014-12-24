@@ -10,7 +10,8 @@ import (
 	"github.com/sourcegraph/syntaxhighlight"
 )
 
-func tokenKind(tok token.Token, lit string) int {
+// TokenKind returns a syntaxhighlight token kind value for the given tok and lit.
+func TokenKind(tok token.Token, lit string) int {
 	switch {
 	case tok.IsKeyword() || (tok.IsOperator() && tok <= token.ELLIPSIS):
 		return syntaxhighlight.KEYWORD
@@ -64,7 +65,7 @@ func Print(src []byte, w io.Writer, p syntaxhighlight.Printer) error {
 		lastOffset = offset + len(tokString)
 		tokString = whitespace + tokString
 
-		err := p.Print(w, tokenKind(tok, lit), tokString)
+		err := p.Print(w, TokenKind(tok, lit), tokString)
 		if err != nil {
 			return err
 		}
@@ -102,7 +103,7 @@ func Annotate(src []byte, a syntaxhighlight.Annotator) (annotate.Annotations, er
 			continue
 		}
 
-		ann, err := a.Annotate(offset, tokenKind(tok, lit), tokString)
+		ann, err := a.Annotate(offset, TokenKind(tok, lit), tokString)
 		if err != nil {
 			return nil, err
 		}
