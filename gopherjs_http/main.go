@@ -60,7 +60,7 @@ func (this *htmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer file.Close()
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	ProcessHtml(file).WriteTo(w)
+	io.Copy(w, ProcessHtml(file))
 }
 
 // https://gist.github.com/the42/1956518
