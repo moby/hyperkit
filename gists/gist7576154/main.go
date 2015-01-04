@@ -4,8 +4,8 @@ import (
 	"io"
 	"os/exec"
 
-	. "github.com/shurcooL/go/gists/gist7729255"
-	. "github.com/shurcooL/go/gists/gist7802150"
+	"github.com/shurcooL/go/gists/gist7729255"
+	"github.com/shurcooL/go/gists/gist7802150"
 
 	"gopkg.in/pipe.v2"
 )
@@ -42,12 +42,12 @@ func (ct CmdTemplate) NewCommand() *exec.Cmd {
 // ---
 
 type CmdTemplateDynamic struct {
-	NameArgs Strings
-	Dir      String
+	NameArgs gist7729255.Strings
+	Dir      gist7729255.String
 	Stdin    func() io.Reader
 }
 
-func NewCmdTemplateDynamic(nameArgs Strings) CmdTemplateDynamic {
+func NewCmdTemplateDynamic(nameArgs gist7729255.Strings) CmdTemplateDynamic {
 	return CmdTemplateDynamic{
 		NameArgs: nameArgs,
 	}
@@ -70,7 +70,7 @@ func (ct CmdTemplateDynamic) NewCommand() *exec.Cmd {
 type CmdTemplateDynamic2 struct {
 	Template CmdTemplate
 
-	DepNode2Func
+	gist7802150.DepNode2Func
 }
 
 // TODO: See if there's some way to initialize DepNode2Func.UpdateFunc through NewCmdTemplateDynamic2().
@@ -79,7 +79,7 @@ func NewCmdTemplateDynamic2() *CmdTemplateDynamic2 {
 }
 
 func (this *CmdTemplateDynamic2) NewCommand() *exec.Cmd {
-	MakeUpdated(this)
+	gist7802150.MakeUpdated(this)
 	return this.Template.NewCommand()
 }
 
@@ -123,7 +123,7 @@ func (this *pipeTemplate) NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.P
 type pipeTemplateDynamic struct {
 	Template *pipeTemplate
 
-	DepNode2Func
+	gist7802150.DepNode2Func
 }
 
 func NewPipeTemplateDynamic() *pipeTemplateDynamic {
@@ -131,6 +131,6 @@ func NewPipeTemplateDynamic() *pipeTemplateDynamic {
 }
 
 func (this *pipeTemplateDynamic) NewPipe(stdout, stderr io.Writer) (*pipe.State, pipe.Pipe) {
-	MakeUpdated(this)
+	gist7802150.MakeUpdated(this)
 	return this.Template.NewPipe(stdout, stderr)
 }
