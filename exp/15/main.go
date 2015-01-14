@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/tools/astutil"
+	"golang.org/x/tools/go/ast/astutil"
 
 	. "github.com/shurcooL/go/gists/gist5639599"
 )
