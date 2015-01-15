@@ -63,9 +63,11 @@ func Print(src []byte, w io.Writer, p syntaxhighlight.Printer) error {
 		// TODO: Clean this up.
 		whitespace := string(src[lastOffset:offset])
 		lastOffset = offset + len(tokString)
-		tokString = whitespace + tokString
-
-		err := p.Print(w, TokenKind(tok, lit), tokString)
+		err := p.Print(w, syntaxhighlight.Whitespace, whitespace)
+		if err != nil {
+			return err
+		}
+		err = p.Print(w, TokenKind(tok, lit), tokString)
 		if err != nil {
 			return err
 		}
