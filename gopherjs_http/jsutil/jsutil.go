@@ -40,7 +40,7 @@ func Wrap(fn interface{}) func(...js.Object) {
 			// Unmarshal incoming encoded JSON into the Go type.
 			default:
 				p := reflect.New(t)
-				err := json.Unmarshal([]byte(args[i].Str()), p.Interface())
+				err := json.Unmarshal([]byte(args[i].String()), p.Interface())
 				if err != nil {
 					panic(err)
 				}
