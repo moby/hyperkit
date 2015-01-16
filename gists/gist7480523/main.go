@@ -81,14 +81,16 @@ func (this *GoPackage) UpdateVcs() {
 }
 
 func (this *GoPackage) UpdateVcsFields() {
-	if this.Dir.Repo != nil {
-		MakeUpdated(this.Dir.Repo.VcsLocal)
-		MakeUpdated(this.Dir.Repo.VcsRemote)
+	if this.Dir.Repo == nil {
+		return
+	}
 
-		repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
-		if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {
-			this.Dir.Repo.RepoRoot = repoRoot
-		}
+	MakeUpdated(this.Dir.Repo.VcsLocal)
+	MakeUpdated(this.Dir.Repo.VcsRemote)
+
+	repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
+	if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {
+		this.Dir.Repo.RepoRoot = repoRoot
 	}
 }
 
@@ -112,7 +114,7 @@ func GetRepoImportPath(repoPath, srcRoot string) string {
 
 	return strings.TrimPrefix(repoPath, srcRoot+"/")
 }
-func GetRepoImportPathPattern(repoPath, srcRoot string) (repoImportPathPattern string) {
+func GetRepoImportPathPattern(repoPath, srcRoot string) string {
 	return GetRepoImportPath(repoPath, srcRoot) + "/..."
 }
 
