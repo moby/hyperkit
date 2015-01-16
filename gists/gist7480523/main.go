@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/build"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/shurcooL/go/exp/12"
@@ -80,18 +81,31 @@ func (this *GoPackage) UpdateVcs() {
 }
 
 func (this *GoPackage) UpdateVcsFields() {
-	if this.Dir.Repo != nil {
-		MakeUpdated(this.Dir.Repo.VcsLocal)
-		MakeUpdated(this.Dir.Repo.VcsRemote)
+	if this.Dir.Repo == nil {
+		return
+	}
 
-		repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
-		if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {
-			this.Dir.Repo.RepoRoot = repoRoot
-		}
+	MakeUpdated(this.Dir.Repo.VcsLocal)
+	MakeUpdated(this.Dir.Repo.VcsRemote)
+
+	repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
+	if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {
+		this.Dir.Repo.RepoRoot = repoRoot
 	}
 }
 
-func GetRepoImportPath(repoPath, srcRoot string) (repoImportPath string) {
+func GetRepoImportPath(repoPath, srcRoot string) string {
+	if s, err := filepath.EvalSymlinks(repoPath); err == nil {
+		repoPath = s
+	} else {
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink")
+	}
+	if s, err := filepath.EvalSymlinks(srcRoot); err == nil {
+		srcRoot = s
+	} else {
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink")
+	}
+
 	// Detect and handle case mismatch in prefix.
 	if prefixLen := len(srcRoot + "/"); len(repoPath) >= prefixLen && srcRoot+"/" != repoPath[:prefixLen] && strings.EqualFold(srcRoot+"/", repoPath[:prefixLen]) {
 		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match")
@@ -100,7 +114,7 @@ func GetRepoImportPath(repoPath, srcRoot string) (repoImportPath string) {
 
 	return strings.TrimPrefix(repoPath, srcRoot+"/")
 }
-func GetRepoImportPathPattern(repoPath, srcRoot string) (repoImportPathPattern string) {
+func GetRepoImportPathPattern(repoPath, srcRoot string) string {
 	return GetRepoImportPath(repoPath, srcRoot) + "/..."
 }
 
