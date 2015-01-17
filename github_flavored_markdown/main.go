@@ -22,7 +22,7 @@ import (
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
-	"github.com/shurcooL/go/github_flavored_markdown/sanitized_anchor_name"
+	"github.com/shurcooL/sanitized_anchor_name"
 	"github.com/shurcooL/go/highlight_go"
 	"github.com/shurcooL/go/u/u7"
 	"github.com/sourcegraph/annotate"
