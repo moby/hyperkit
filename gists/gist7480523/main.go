@@ -108,7 +108,7 @@ func GetRepoImportPath(repoPath, srcRoot string) string {
 
 	// Detect and handle case mismatch in prefix.
 	if prefixLen := len(srcRoot + "/"); len(repoPath) >= prefixLen && srcRoot+"/" != repoPath[:prefixLen] && strings.EqualFold(srcRoot+"/", repoPath[:prefixLen]) {
-		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match")
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match:", srcRoot+"/", repoPath[:prefixLen])
 		return repoPath[prefixLen:]
 	}
 
