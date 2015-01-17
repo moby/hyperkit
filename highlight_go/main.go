@@ -45,8 +45,6 @@ func Print(src []byte, w io.Writer, p syntaxhighlight.Printer) error {
 			break
 		}
 
-		offset := int(fset.Position(pos).Offset)
-
 		var tokString string
 		if lit != "" {
 			tokString = lit
@@ -60,12 +58,25 @@ func Print(src []byte, w io.Writer, p syntaxhighlight.Printer) error {
 			continue
 		}
 
-		// TODO: Clean this up.
-		whitespace := string(src[lastOffset:offset])
+		// Whitespace between previous and current tokens.
+		offset := int(fset.Position(pos).Offset)
+		if whitespace := string(src[lastOffset:offset]); whitespace != "" {
+			err := p.Print(w, syntaxhighlight.Whitespace, whitespace)
+			if err != nil {
+				return err
+			}
+		}
 		lastOffset = offset + len(tokString)
-		tokString = whitespace + tokString
 
 		err := p.Print(w, TokenKind(tok, lit), tokString)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Print final whitespace after the last token.
+	if whitespace := string(src[lastOffset:]); whitespace != "" {
+		err := p.Print(w, syntaxhighlight.Whitespace, whitespace)
 		if err != nil {
 			return err
 		}
