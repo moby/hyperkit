@@ -98,12 +98,12 @@ func GetRepoImportPath(repoPath, srcRoot string) string {
 	if s, err := filepath.EvalSymlinks(repoPath); err == nil {
 		repoPath = s
 	} else {
-		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink")
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink:", err)
 	}
 	if s, err := filepath.EvalSymlinks(srcRoot); err == nil {
 		srcRoot = s
 	} else {
-		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink")
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink:", err)
 	}
 
 	// Detect and handle case mismatch in prefix.
