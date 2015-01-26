@@ -2,11 +2,12 @@
 
 package main
 
-import . "gist.github.com/7802150.git"
-
 import (
+	. "github.com/shurcooL/go/gists/gist7802150"
+
 	"fmt"
-	. "gist.github.com/6418290.git"
+
+	"github.com/shurcooL/go/gists/gist6418290"
 )
 
 type file struct {
@@ -14,7 +15,7 @@ type file struct {
 }
 
 func (*file) SetSelf(s string) {
-	fmt.Println(GetParentFuncAsString())
+	fmt.Println(gist6418290.GetParentFuncAsString())
 }
 
 type websocket struct {
@@ -22,7 +23,7 @@ type websocket struct {
 }
 
 func (*websocket) SetSelf(s string) {
-	fmt.Println(GetParentFuncAsString())
+	fmt.Println(gist6418290.GetParentFuncAsString())
 }
 
 type memory struct {
@@ -30,16 +31,16 @@ type memory struct {
 }
 
 func (*memory) SetSelf(s string) {
-	fmt.Println(GetParentFuncAsString())
+	fmt.Println(gist6418290.GetParentFuncAsString())
 }
 
 func main() {
 	f := file{}
-	f.InitViewGroup(&f)
+	f.InitViewGroup(&f, "memory://???")
 	w := websocket{}
-	w.InitViewGroup(&w)
+	w.InitViewGroup(&w, "memory://???")
 	m := memory{}
-	m.InitViewGroup(&m)
+	m.InitViewGroup(&m, "memory://???")
 
 	f.AddAndSetViewGroup(&w, "")
 	f.AddAndSetViewGroup(&m, "")

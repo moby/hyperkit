@@ -2,9 +2,9 @@
 
 package main
 
-import . "gist.github.com/7802150.git"
-
 import (
+	. "github.com/shurcooL/go/gists/gist7802150"
+
 	"fmt"
 	"os"
 	"time"
