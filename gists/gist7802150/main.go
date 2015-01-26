@@ -131,22 +131,6 @@ func (this *DepNode2Manual) merge(other **DepNode2Manual) {
 		}
 	}
 
-	// TODO: Disabled for now because it doesn't seem to have any effect; investigate why and whether this is needed at all.
-	// Update all sinks to have the updated unified source.
-	/*fmt.Println("this.sinks:", len(this.sinks))
-	for _, sink := range this.sinks {
-		fmt.Println("sink.sources:", len(sink.sources))
-		for i, source := range sink.sources {
-			fmt.Printf("%p %p %p\n", this, *other, &sink.sources[i])
-			//if source == *other {
-			if s, ok := source.(*DepNode2Manual); ok && s == *other {
-				//sink.sources[i] = this
-				_ = i
-				panic("DepNode2Manual.merge: updated all sinks to have updated unified source triggered")
-			}
-		}
-	}*/
-
 	*other = this
 }
 
