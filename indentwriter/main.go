@@ -3,64 +3,46 @@
 package indentwriter
 
 import (
+	"bytes"
 	"io"
-
-	"github.com/bradfitz/iter"
 )
-
-// IndentString indents string s by indent. Only non-empty lines get indented.
-/*func IndentString(s string, indent int) string {
-	var buf bytes.Buffer
-	iw := New(&buf, indent)
-	iw.WriteString(s)
-	return buf.String()
-}*/
 
 type indentWriter struct {
 	w      io.Writer
-	indent int
+	prefix []byte
 
 	wroteIndent bool
 }
 
-func New(w io.Writer, indent int) *indentWriter {
-	return &indentWriter{w: w, indent: indent}
+// New creates a new indent writer that indents non-empty lines with indent number of tabs.
+func New(w io.Writer, indent int) io.Writer {
+	return &indentWriter{
+		w:      w,
+		prefix: bytes.Repeat([]byte{'\t'}, indent),
+	}
 }
 
 func (iw *indentWriter) Write(p []byte) (n int, err error) {
-	//strings.Repeat("\t", mr.listDepth)
-	//return iw.w.Write(bytes.Replace(p, []byte("\n"), []byte("\n\t"), -1))
-	for _, b := range p {
-		err = iw.WriteByte(b)
+	for i, c := range p {
+		if c == '\n' {
+			iw.wroteIndent = false
+		} else {
+			if !iw.wroteIndent {
+				_, err := iw.w.Write(iw.prefix)
+				if err != nil {
+					return n, err
+				}
+				iw.wroteIndent = true
+			}
+		}
+		_, err := iw.w.Write(p[i : i+1])
 		if err != nil {
-			return
+			return n, err
 		}
 		n++
 	}
 	if n != len(p) {
-		err = io.ErrShortWrite
-		return
+		return n, io.ErrShortWrite
 	}
 	return len(p), nil
-}
-
-func (iw *indentWriter) WriteString(s string) (n int, err error) {
-	return iw.Write([]byte(s))
-}
-
-func (iw *indentWriter) WriteByte(c byte) error {
-	//return iw.Write([]byte{b})
-
-	if c == '\n' {
-		iw.wroteIndent = false
-	} else {
-		if !iw.wroteIndent {
-			iw.wroteIndent = true
-			for _, _ = range iter.N(iw.indent) {
-				iw.w.Write([]byte{'\t'})
-			}
-		}
-	}
-	_, err := iw.w.Write([]byte{c})
-	return err
 }
