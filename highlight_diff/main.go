@@ -1,9 +1,9 @@
-// Package u7 provides syntaxhighlight.Printer and syntaxhighlight.Annotator implementations
+// Package highlight_diff provides syntaxhighlight.Printer and syntaxhighlight.Annotator implementations
 // for diff format. It implements intra-block character-level inner diff highlighting.
 //
 // It uses GitHub Flavored Markdown .css class names "gi", "gd", "gu", "gh" for outer blocks,
 // "x" for inner emphasis blocks.
-package u7
+package highlight_diff
 
 import (
 	"bufio"

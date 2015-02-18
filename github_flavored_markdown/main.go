@@ -22,8 +22,8 @@ import (
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
+	"github.com/shurcooL/go/highlight_diff"
 	"github.com/shurcooL/go/highlight_go"
-	"github.com/shurcooL/go/u/u7"
 	"github.com/shurcooL/sanitized_anchor_name"
 	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"
@@ -156,7 +156,7 @@ func highlightCode(src []byte, lang string) (highlightedCode []byte, ok bool) {
 		switch 2 {
 		default:
 			var buf bytes.Buffer
-			err := u7.Print(u7.NewScanner(src), &buf)
+			err := highlight_diff.Print(highlight_diff.NewScanner(src), &buf)
 			if err != nil {
 				return nil, false
 			}
@@ -165,7 +165,7 @@ func highlightCode(src []byte, lang string) (highlightedCode []byte, ok bool) {
 			lines := bytes.Split(src, []byte("\n"))
 			return bytes.Join(lines, []byte("\n")), true
 		case 2:
-			anns, err := u7.Annotate(src)
+			anns, err := highlight_diff.Annotate(src)
 			if err != nil {
 				return nil, false
 			}
@@ -224,7 +224,7 @@ func highlightCode(src []byte, lang string) (highlightedCode []byte, ok bool) {
 							}
 
 							var sectionSegments [2][]*annotate.Annotation
-							u7.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
+							highlight_diff.HighlightedDiffFunc(leftContent, rightContent, &sectionSegments, [2]int{beginOffsetLeft, beginOffsetRight})
 
 							anns = append(anns, sectionSegments[0]...)
 							anns = append(anns, sectionSegments[1]...)
