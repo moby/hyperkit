@@ -7,7 +7,7 @@ import (
 	"go/token"
 )
 
-// Consistent with the default gofmt behavior
+// Consistent with the default gofmt behavior.
 var config = &printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}
 
 func SprintAst(fset *token.FileSet, node interface{}) string {
