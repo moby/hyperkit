@@ -4,8 +4,8 @@ package gist4737109
 import (
 	"encoding/json"
 	"fmt"
-
-	. "github.com/shurcooL/go/gists/gist4668739"
+	"io/ioutil"
+	"net/http"
 )
 
 /* TODO: Probably want to change interface to return error, etc. But it's worth doing when these funcs are used, not sooner.
@@ -25,7 +25,7 @@ func GistIdCommitIdToGistContents(gistId, commitId string) string {
 		Files map[string]struct{ Content string }
 		//History []struct{ Version string }
 	}
-	err := json.Unmarshal(HttpGetB(gistUrl), &gistJson)
+	err := json.Unmarshal(httpGetB(gistUrl), &gistJson)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
@@ -41,7 +41,7 @@ func GistIdToUsername(gistId string) (string, error) {
 	var gistJson struct {
 		Owner struct{ Login string }
 	}
-	err := json.Unmarshal(HttpGetB(gistUrl), &gistJson)
+	err := json.Unmarshal(httpGetB(gistUrl), &gistJson)
 	if err != nil {
 		return "", err
 	}
@@ -55,4 +55,19 @@ func main() {
 	fmt.Println(GistIdToUsername(gistId))
 	//println(GistIdCommitIdToGistContents(gistId, commitId))
 	//println(GistIdToGistContents(gistId))
+}
+
+// ---
+
+func httpGetB(url string) []byte {
+	r, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
