@@ -8,13 +8,18 @@ import (
 	"net/http"
 )
 
+// GistIdToUsername returns the GitHub username owner of gist with given gistId.
 func GistIdToUsername(gistId string) (string, error) {
 	gistUrl := "https://api.github.com/gists/" + gistId
 
+	gistBytes, err := httpGet(gistUrl)
+	if err != nil {
+		return "", err
+	}
 	var gistJson struct {
 		Owner struct{ Login string }
 	}
-	err := json.Unmarshal(httpGetB(gistUrl), &gistJson)
+	err = json.Unmarshal(gistBytes, &gistJson)
 	if err != nil {
 		return "", err
 	}
@@ -29,15 +34,18 @@ func main() {
 
 // ---
 
-func httpGetB(url string) []byte {
-	r, err := http.Get(url)
+func httpGet(url string) ([]byte, error) {
+	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non-200 status code: %v", resp.StatusCode)
+	}
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return b
+	return b, nil
 }

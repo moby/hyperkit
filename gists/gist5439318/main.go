@@ -3,6 +3,7 @@ package gist5439318
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -10,9 +11,12 @@ import (
 )
 
 func GetTweet(id string) map[string]interface{} {
-	tweetBytes := httpGetB("https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true")
+	tweetBytes, err := httpGet("https://api.twitter.com/1/statuses/oembed.json?id=" + id + "&omit_script=true")
+	if err != nil {
+		panic(err)
+	}
 	var tweetJson map[string]interface{}
-	err := json.Unmarshal(tweetBytes, &tweetJson)
+	err = json.Unmarshal(tweetBytes, &tweetJson)
 	if err != nil {
 		panic(err)
 	}
@@ -31,15 +35,18 @@ func main() {
 
 // ---
 
-func httpGetB(url string) []byte {
-	r, err := http.Get(url)
+func httpGet(url string) ([]byte, error) {
+	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("non-200 status code: %v", resp.StatusCode)
+	}
+	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return b
+	return b, nil
 }
