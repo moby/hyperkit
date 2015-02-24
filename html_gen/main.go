@@ -39,3 +39,12 @@ func RenderNodes(nodes ...*html.Node) (template.HTML, error) {
 
 	return template.HTML(buf.String()), nil
 }
+
+// Must is a helper that wraps a call to a function returning (template.HTML, error)
+// and panics if the error is non-nil.
+func Must(html template.HTML, err error) template.HTML {
+	if err != nil {
+		panic(err)
+	}
+	return html
+}
