@@ -102,6 +102,9 @@ func serveFile(w http.ResponseWriter, r *http.Request, fs http.FileSystem, name 
 		return
 	}
 
+	if _, plain := r.URL.Query()["plain"]; plain {
+		w.Header().Set("Content-Type", "text/plain")
+	}
 	http.ServeContent(w, r, d.Name(), d.ModTime(), f)
 }
 
