@@ -6,7 +6,9 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"golang.org/x/tools/godoc/vfs"
@@ -47,6 +49,7 @@ func dirList(w http.ResponseWriter, f http.File, name string) {
 		if err != nil || len(dirs) == 0 {
 			break
 		}
+		sort.Sort(byName(dirs))
 		for _, d := range dirs {
 			name := d.Name()
 			if d.IsDir() {
@@ -117,3 +120,10 @@ func localRedirect(w http.ResponseWriter, r *http.Request, newPath string) {
 	w.Header().Set("Location", newPath)
 	w.WriteHeader(http.StatusMovedPermanently)
 }
+
+// byName implements sort.Interface.
+type byName []os.FileInfo
+
+func (f byName) Len() int           { return len(f) }
+func (f byName) Less(i, j int) bool { return f[i].Name() < f[j].Name() }
+func (f byName) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
