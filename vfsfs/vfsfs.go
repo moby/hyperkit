@@ -30,6 +30,7 @@ func (v *vfsFS) Stat(path string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer fi.Close()
 	return fi.Stat()
 }
 
@@ -38,6 +39,7 @@ func (v *vfsFS) ReadDir(path string) ([]os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer fi.Close()
 	return fi.Readdir(0)
 }
 
