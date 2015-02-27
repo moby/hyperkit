@@ -78,7 +78,6 @@ func glob(fs vfs.FileSystem, dir, pattern string, matches []string) (m []string,
 
 	for _, fi := range fis {
 		n := fi.Name()
-		//goon.DumpExpr("path.Match", pattern, n)
 		matched, err := path.Match(path.Clean(pattern), n)
 		if err != nil {
 			return m, err
