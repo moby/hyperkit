@@ -83,9 +83,7 @@ func (p *prefixFileSystem) String() string {
 }
 
 func antibase(name string) string {
-	if strings.HasPrefix(name, "/") {
-		name = name[1:]
-	}
+	name = strings.TrimPrefix(name, "/")
 	if i := strings.Index(name, "/"); i != -1 {
 		name = name[:i]
 	}
