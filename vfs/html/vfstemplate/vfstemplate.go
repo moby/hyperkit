@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"path"
 
-	"github.com/shurcooL/go/vfs/io/vfsioutil"
 	"github.com/shurcooL/go/vfs/path/vfspath"
 	"golang.org/x/tools/godoc/vfs"
 )
@@ -35,7 +34,7 @@ func parseFiles(fs vfs.FileSystem, t *template.Template, filenames ...string) (*
 		return nil, fmt.Errorf("vfs/html/vfstemplate: no files named in call to ParseFiles")
 	}
 	for _, filename := range filenames {
-		b, err := vfsioutil.ReadFile(fs, filename)
+		b, err := vfs.ReadFile(fs, filename)
 		if err != nil {
 			return nil, err
 		}
