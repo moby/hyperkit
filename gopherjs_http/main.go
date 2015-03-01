@@ -113,10 +113,17 @@ type goFiles struct {
 
 func (this *goFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Content-Encoding", "gzip") // TODO: Check "Accept-Encoding"?
-	_, err := io.WriteString(w, compress(handleJsError(goFilesToJs(this.goFiles))))
-	if err != nil {
-		panic(err)
+	if isGzipEncodingAccepted(req) {
+		w.Header().Set("Content-Encoding", "gzip")
+		_, err := io.WriteString(w, compress(handleJsError(goFilesToJs(this.goFiles))))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		_, err := io.WriteString(w, handleJsError(goFilesToJs(this.goFiles)))
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -249,4 +256,13 @@ func goToJs(goCode string) (jsCode string, err error) {
 	}
 
 	return out.String(), nil
+}
+
+func isGzipEncodingAccepted(req *http.Request) bool {
+	for _, v := range strings.Split(req.Header.Get("Accept-Encoding"), ",") {
+		if strings.TrimSpace(v) == "gzip" {
+			return true
+		}
+	}
+	return false
 }
