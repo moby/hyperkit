@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	. "github.com/shurcooL/go/gists/gist5092053"
+	"github.com/shurcooL/go/gists/gist5092053"
 )
 
 func PrintRuneStats(s string) {
@@ -19,7 +19,7 @@ func PrintRuneStats(s string) {
 	}
 	fmt.Printf("Total unique runes: %v\n\n", len(m))
 
-	sm := SortMapByKey(m, true)
+	sm := gist5092053.SortMapByKey(m, true)
 
 	//for i := len(sm) - 1; i >= 0; i-- { v := sm[i]
 	for _, v := range sm {

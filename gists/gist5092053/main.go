@@ -59,17 +59,3 @@ func SortMapByKey(m map[rune]int, rev bool) RuneIntPairList {
 	}
 	return sm
 }
-
-func main() {
-	m := map[string]int{
-		"blah": 5,
-		"boo":  9,
-		"yah":  1,
-	}
-
-	sm := SortMapByValue(m)
-
-	for _, v := range sm {
-		println(v.Value, v.Key)
-	}
-}
