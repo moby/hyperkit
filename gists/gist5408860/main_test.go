@@ -13,7 +13,7 @@ func Example() {
 	sort.Sort(sort.IntSlice(s))
 	fmt.Println(s)
 
-	sort.Sort(gist5408860.Reverse{sort.IntSlice(s)})
+	sort.Sort(gist5408860.Reverse{Interface: sort.IntSlice(s)})
 	fmt.Println(s)
 
 	// Output:
