@@ -1,4 +1,4 @@
-// Displays Go package source code with dot imports inlined.
+// Package exp11 displays Go package source code with dot imports inlined.
 package exp11
 
 import (

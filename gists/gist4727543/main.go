@@ -1,5 +1,7 @@
-// Given an import path, it will generate an anonymous usage of the package
+// Package gist4727543 generates an anonymous usage of the package for given import path
 // to avoid "imported and not used" errors.
+//
+// This is largely unneeded now that goimports exists.
 package gist4727543
 
 import (
@@ -19,7 +21,7 @@ func tryUnquote(s string) string {
 	return t
 }
 
-// Generates an anonymous usage for the given import statement to avoid "imported and not used" errors
+// GetForcedUseFromImport generates an anonymous usage for the given import statement to avoid "imported and not used" errors
 //
 // e.g. `. "io/ioutil"` -> `var _ = NopCloser`
 func GetForcedUseFromImport(Import string) (out string) {
@@ -40,14 +42,14 @@ func GetForcedUseFromImport(Import string) (out string) {
 	}
 }
 
-// Generates an anonymous usage of the package to avoid "imported and not used" errors
+// GetForcedUse generates an anonymous usage of the package to avoid "imported and not used" errors
 //
 // e.g. `io/ioutil` -> `var _ = ioutil.NopCloser`
 func GetForcedUse(ImportPath string) string {
 	return GetForcedUseRenamed(ImportPath, "")
 }
 
-// Generates an anonymous usage of a renamed imported package
+// GetForcedUseRenamed generates an anonymous usage of a renamed imported package
 //
 // e.g. `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`
 func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
