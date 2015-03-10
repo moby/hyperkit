@@ -62,7 +62,7 @@ func RemoveRepo(importPathPattern string) error {
 		return errors.New("non-clean status: " + status.PorcelainPresenter(firstGoPackage))
 	}
 
-	err := trash.MoveToTrash(firstGoPackage.Dir.Repo.Vcs.RootPath())
+	err := trash.MoveTo(firstGoPackage.Dir.Repo.Vcs.RootPath())
 	return err
 
 	// TODO: Clean up /pkg folder contents, if any, etc.

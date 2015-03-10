@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 )
 
-// TODO: Use better type than string.
-// MoveToTrash moves name to trash.
-func MoveToTrash(name string) error {
+// MoveTo moves named file or directory to trash.
+func MoveTo(name string) error {
 	name = filepath.Clean(name)
 	home := os.Getenv("HOME")
 	dir, file := filepath.Split(name)

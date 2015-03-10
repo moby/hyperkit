@@ -4,8 +4,7 @@ package trash
 
 import "errors"
 
-// TODO: Use better type than string.
-// MoveToTrash moves name to trash.
-func MoveToTrash(name string) error {
+// MoveTo moves named file or directory to trash.
+func MoveTo(name string) error {
 	return errors.New("MoveToTrash: not yet implemented on non-darwin")
 }
