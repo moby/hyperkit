@@ -6,7 +6,7 @@ import (
 	"html/template"
 	"path"
 
-	"github.com/shurcooL/go/vfs/path/vfspath"
+	"github.com/shurcooL/go/vfs/godocfs/path/vfspath"
 	"golang.org/x/tools/godoc/vfs"
 )
 
