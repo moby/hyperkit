@@ -10,8 +10,8 @@ import (
 	"github.com/shurcooL/go/exp/12"
 	"golang.org/x/tools/go/vcs"
 
-	. "github.com/shurcooL/go/gists/gist5504644"
-	. "github.com/shurcooL/go/gists/gist7802150"
+	"github.com/shurcooL/go/gists/gist5504644"
+	"github.com/shurcooL/go/gists/gist7802150"
 )
 
 type GoPackageStringer func(*GoPackage) string
@@ -27,17 +27,17 @@ type GoPackage struct {
 }
 
 func GoPackageFromImportPathFound(importPathFound ImportPathFound) *GoPackage {
-	bpkg, err := BuildPackageFromSrcDir(importPathFound.FullPath())
+	bpkg, err := gist5504644.BuildPackageFromSrcDir(importPathFound.FullPath())
 	return goPackageFromBuildPackage(bpkg, err)
 }
 
 func GoPackageFromImportPath(importPath string) *GoPackage {
-	bpkg, err := BuildPackageFromImportPath(importPath)
+	bpkg, err := gist5504644.BuildPackageFromImportPath(importPath)
 	return goPackageFromBuildPackage(bpkg, err)
 }
 
 func GoPackageFromPath(path, srcDir string) (*GoPackage, error) {
-	bpkg, err := BuildPackageFromPath(path, srcDir)
+	bpkg, err := gist5504644.BuildPackageFromPath(path, srcDir)
 	if err != nil {
 		if _, noGo := err.(*build.NoGoError); noGo || bpkg.Dir == "" {
 			return nil, err
@@ -76,7 +76,7 @@ func goPackageFromBuildPackage(bpkg *build.Package, bpkgErr error) *GoPackage {
 // Actually, not completely okay because MakeUpdated technology is not thread-safe.
 func (this *GoPackage) UpdateVcs() {
 	if this.Bpkg.Goroot == false { // Optimization that assume packages under Goroot are not under vcs
-		MakeUpdated(this.Dir)
+		gist7802150.MakeUpdated(this.Dir)
 	}
 }
 
@@ -85,8 +85,8 @@ func (this *GoPackage) UpdateVcsFields() {
 		return
 	}
 
-	MakeUpdated(this.Dir.Repo.VcsLocal)
-	MakeUpdated(this.Dir.Repo.VcsRemote)
+	gist7802150.MakeUpdated(this.Dir.Repo.VcsLocal)
+	gist7802150.MakeUpdated(this.Dir.Repo.VcsRemote)
 
 	repoImportPath := GetRepoImportPath(this.Dir.Repo.Vcs.RootPath(), this.Bpkg.SrcRoot)
 	if repoRoot, err := vcs.RepoRootForImportPath(repoImportPath, false); err == nil {

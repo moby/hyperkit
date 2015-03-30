@@ -10,8 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
-	. "github.com/shurcooL/go/gists/gist5504644"
-	. "github.com/shurcooL/go/gists/gist5639599"
+	"github.com/shurcooL/go/gists/gist5504644"
+	"github.com/shurcooL/go/gists/gist5639599"
 )
 
 func PrintPackageFullSummary(dpkg *doc.Package) {
@@ -24,7 +24,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 			spec.(*ast.ValueSpec).Doc = nil
 			spec.(*ast.ValueSpec).Comment = nil
 		}
-		fmt.Fprintln(w, SprintAstBare(v.Decl))
+		fmt.Fprintln(w, gist5639599.SprintAstBare(v.Decl))
 	}
 	for _, t := range dpkg.Types {
 		for _, v := range t.Vars {
@@ -32,19 +32,19 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 				spec.(*ast.ValueSpec).Doc = nil
 				spec.(*ast.ValueSpec).Comment = nil
 			}
-			fmt.Fprintln(w, SprintAstBare(v.Decl))
+			fmt.Fprintln(w, gist5639599.SprintAstBare(v.Decl))
 		}
 	}
 	fmt.Fprintln(w)
 	for _, f := range dpkg.Funcs {
-		fmt.Fprintln(w, SprintAstBare(f.Decl))
+		fmt.Fprintln(w, gist5639599.SprintAstBare(f.Decl))
 	}
 	for _, t := range dpkg.Types {
 		for _, f := range t.Funcs {
-			fmt.Fprintln(w, SprintAstBare(f.Decl))
+			fmt.Fprintln(w, gist5639599.SprintAstBare(f.Decl))
 		}
 		for _, m := range t.Methods {
-			fmt.Fprintln(w, SprintAstBare(m.Decl))
+			fmt.Fprintln(w, gist5639599.SprintAstBare(m.Decl))
 		}
 	}
 	fmt.Fprintln(w)
@@ -54,7 +54,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 			spec.(*ast.ValueSpec).Doc = nil
 			spec.(*ast.ValueSpec).Comment = nil
 		}
-		fmt.Fprintln(w, SprintAstBare(c.Decl))
+		fmt.Fprintln(w, gist5639599.SprintAstBare(c.Decl))
 		//fmt.Fprintln(w, "const", strings.Join(c.Names, "\n"))
 	}
 	for _, t := range dpkg.Types {
@@ -64,13 +64,13 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 				spec.(*ast.ValueSpec).Doc = nil
 				spec.(*ast.ValueSpec).Comment = nil
 			}
-			fmt.Fprintln(w, SprintAstBare(c.Decl))
+			fmt.Fprintln(w, gist5639599.SprintAstBare(c.Decl))
 			//fmt.Fprintln(w, "const", strings.Join(c.Names, "\n"))
 		}
 	}
 	fmt.Fprintln(w)
 	for _, t := range dpkg.Types {
-		//fmt.Fprintln(w, SprintAstBare(t.Decl))
+		//fmt.Fprintln(w, gist5639599.SprintAstBare(t.Decl))
 		fmt.Fprintln(w, "type", t.Name)
 	}
 }
@@ -79,17 +79,17 @@ func printPackageSummary(dpkg *doc.Package) {
 	fmt.Println(`import "` + dpkg.ImportPath + `"`)
 	for _, f := range dpkg.Funcs {
 		fmt.Print("\t")
-		PrintlnAstBare(f.Decl)
+		gist5639599.PrintlnAstBare(f.Decl)
 	}
 	for _, t := range dpkg.Types {
 		for _, f := range t.Funcs {
 			fmt.Print("\t")
-			PrintlnAstBare(f.Decl)
+			gist5639599.PrintlnAstBare(f.Decl)
 		}
 		// THINK: Do I want to include methods?
 		/*for _, m := range t.Methods {
 			fmt.Print("\t")
-			PrintlnAstBare(m.Decl)
+			gist5639599.PrintlnAstBare(m.Decl)
 		}*/
 	}
 	fmt.Println()
@@ -111,7 +111,7 @@ func hasAnyFuncs(dpkg *doc.Package) bool {
 }
 
 func PrintPackageSummary(importPath string) {
-	dpkg, err := GetDocPackage(BuildPackageFromImportPath(importPath))
+	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(importPath))
 	if err != nil {
 		return
 	}
@@ -122,7 +122,7 @@ func PrintPackageSummary(importPath string) {
 }
 
 func PrintPackageSummaryWithPath(importPath, fullPath string) {
-	dpkg, err := GetDocPackage(BuildPackageFromImportPath(importPath))
+	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(importPath))
 	if err != nil {
 		return
 	}
@@ -156,7 +156,7 @@ func PrintPackageSummariesInDir(dirname string) {
 func main() {
 	//PrintPackageSummary("gist.github.com/5639599.git"); return
 	//PrintPackageSummariesInDir("gist.github.com")
-	dpkg, err := GetDocPackageAll(BuildPackageFromImportPath("github.com/microcosm-cc/bluemonday"))
+	dpkg, err := gist5504644.GetDocPackageAll(gist5504644.BuildPackageFromImportPath("github.com/microcosm-cc/bluemonday"))
 	if err != nil {
 		panic(err)
 	}
