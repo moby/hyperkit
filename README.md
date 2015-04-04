@@ -2,3 +2,8 @@ go [![Build Status](https://travis-ci.org/shurcooL/go.svg?branch=master)](https:
 ==
 
 Common Go code.
+
+License
+-------
+
+- [MIT License](http://opensource.org/licenses/mit-license.php)
