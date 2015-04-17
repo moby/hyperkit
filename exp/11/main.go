@@ -51,8 +51,7 @@ func InlineDotImports(w io.Writer, importPath string) {
 	_ = cfg*/
 
 	conf := loader.Config{
-		//TypeChecker:   cfg,
-		ImportFromBinary: false,
+	//TypeChecker:   cfg,
 	}
 
 	conf.Import(importPath)
