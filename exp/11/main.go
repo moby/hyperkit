@@ -36,7 +36,7 @@ func findDotImports(prog *loader.Program, pi *loader.PackageInfo) {
 		for _, importSpec := range file.Imports {
 			if importSpec.Name != nil && importSpec.Name.Name == "." {
 				dotImportImportPath := strings.Trim(importSpec.Path.Value, `"`)
-				dotImportPi := prog.AllPackages[prog.ImportMap[dotImportImportPath]]
+				dotImportPi := prog.Package(dotImportImportPath)
 				dotImports = append(dotImports, dotImportPi)
 				findDotImports(prog, dotImportPi)
 			}
