@@ -13,8 +13,8 @@ func Example() {
 	fmt.Printf("%q\n", trim.LastNewline("\n"))
 
 	// Output:
-	//"String"
-	//"String"
-	//""
-	//""
+	// "String"
+	// "String"
+	// ""
+	// ""
 }
