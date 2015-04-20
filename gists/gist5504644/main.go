@@ -86,21 +86,6 @@ func GetDocPackageAll(bpkg *build.Package, err error) (dpkg *doc.Package, err2 e
 	return getDocPackageMode(bpkg, err, doc.AllDecls|doc.AllMethods)
 }
 
-/* Commented out because it's not in use anywhere, candidate for removal
-func GetDocPackageFromFiles(paths ...string) (dpkg *doc.Package) {
-	// TODO: Either find a way to use golang.org/x/tools/importer directly, or do file AST parsing in parallel like it does
-	files := make(map[string]*ast.File, len(paths))
-	fset := token.NewFileSet()
-	for _, path := range paths {
-		fileAst, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		CheckError(err)
-		files[filepath.Base(path)] = fileAst // TODO: Figure out if filename or full path are to be used (the key of this map doesn't seem to be used anywhere!)
-	}
-	// TODO: Figure out an import path, package name
-	apkg := &ast.Package{Name: "bpkg.Name", Files: files}
-	return doc.New(apkg, "ImportPath", 0)
-}*/
-
 func main() {
 	dpkg, err := GetDocPackage(BuildPackageFromImportPath("os"))
 	if err != nil {
