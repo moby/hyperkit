@@ -11,6 +11,14 @@ import (
 	"github.com/shurcooL/go/vfs/httpfs/vfsutil"
 )
 
+// ParseFiles creates a new Template if t is nil and parses the template definitions from
+// the named files. The returned template's name will have the (base) name and
+// (parsed) contents of the first file. There must be at least one file.
+// If an error occurs, parsing stops and the returned *Template is nil.
+func ParseFiles(fs http.FileSystem, t *template.Template, filenames ...string) (*template.Template, error) {
+	return parseFiles(fs, t, filenames...)
+}
+
 // ParseGlob parses the template definitions in the files identified by the
 // pattern and associates the resulting templates with t. The pattern is
 // processed by vfspath.Glob and must match at least one file. ParseGlob is
