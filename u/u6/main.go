@@ -96,8 +96,19 @@ func GoPackageWorkingDiffMaster(goPackage *GoPackage) string {
 	return ""
 }
 
+type BranchesOptions struct {
+	Base string // Base branch to compare against (if blank, defaults to "master").
+}
+
+func (bo *BranchesOptions) defaults() {
+	if bo.Base == "" {
+		bo.Base = "master"
+	}
+}
+
 // Branches returns a Markdown table of branches with ahead/behind information relative to master branch.
-func Branches(repo *exp13.VcsState) string {
+func Branches(repo *exp13.VcsState, opt BranchesOptions) string {
+	opt.defaults()
 	switch repo.Vcs.Type() {
 	case vcs.Git:
 		branchInfo := func(line []byte) []byte {
@@ -107,7 +118,7 @@ func Branches(repo *exp13.VcsState) string {
 				branchDisplay = "**" + branch + "**"
 			}
 
-			cmd := exec.Command("git", "rev-list", "--count", "--left-right", "master..."+branch)
+			cmd := exec.Command("git", "rev-list", "--count", "--left-right", opt.Base+"..."+branch)
 			cmd.Dir = repo.Vcs.RootPath()
 			out, err := cmd.Output()
 			if err != nil {
