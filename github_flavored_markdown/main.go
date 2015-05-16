@@ -22,8 +22,8 @@ import (
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
-	"github.com/shurcooL/go/highlight_diff"
-	"github.com/shurcooL/go/highlight_go"
+	"github.com/shurcooL/highlight_diff"
+	"github.com/shurcooL/highlight_go"
 	"github.com/shurcooL/sanitized_anchor_name"
 	"github.com/sourcegraph/annotate"
 	"github.com/sourcegraph/syntaxhighlight"

@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/shurcooL/go/github_flavored_markdown"
+	"github.com/shurcooL/github_flavored_markdown"
 )
 
 // Convert GitHub Flavored Markdown to full HTML page and write to w.
