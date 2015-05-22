@@ -20,7 +20,7 @@ type GoPackageStringer func(*GoPackage) string
 // This is partially a copy of "cmd/go".Package, except it can be imported and reused. =.=
 // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#24
 type GoPackage struct {
-	Bpkg    *build.Package
+	Bpkg    *build.Package // Bpkg is not nil.
 	BpkgErr error
 
 	Dir *exp12.Directory

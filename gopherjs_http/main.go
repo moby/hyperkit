@@ -258,6 +258,7 @@ func goToJs(goCode string) (jsCode string, err error) {
 	return out.String(), nil
 }
 
+// isGzipEncodingAccepted returns true if the request includes "gzip" under Accept-Encoding header.
 func isGzipEncodingAccepted(req *http.Request) bool {
 	for _, v := range strings.Split(req.Header.Get("Accept-Encoding"), ",") {
 		if strings.TrimSpace(v) == "gzip" {
