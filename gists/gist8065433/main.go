@@ -8,28 +8,23 @@ func GetPublicIps() (publicIps []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	for _, ifi := range ifis {
 		addrs, err := ifi.Addrs()
 		if err != nil {
 			return nil, err
 		}
-
 		for _, addr := range addrs {
 			ipNet, ok := addr.(*net.IPNet)
 			if !ok {
 				continue
 			}
-
 			ip4 := ipNet.IP.To4()
 			if ip4 == nil || ip4.IsLoopback() {
 				continue
 			}
-
 			publicIps = append(publicIps, ipNet.IP.String())
 		}
 	}
-
 	return publicIps, nil
 }
 
@@ -39,27 +34,22 @@ func GetAllIps() (ips []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-
 	for _, ifi := range ifis {
 		addrs, err := ifi.Addrs()
 		if err != nil {
 			return nil, err
 		}
-
 		for _, addr := range addrs {
 			ipNet, ok := addr.(*net.IPNet)
 			if !ok {
 				continue
 			}
-
 			ip4 := ipNet.IP.To4()
 			if ip4 == nil {
 				continue
 			}
-
 			ips = append(ips, ipNet.IP.String())
 		}
 	}
-
 	return ips, nil
 }
