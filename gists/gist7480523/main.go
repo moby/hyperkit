@@ -5,6 +5,7 @@ import (
 	"go/build"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/shurcooL/go/exp/12"
@@ -122,6 +123,13 @@ func (this *GoPackage) String() string {
 	return this.Bpkg.ImportPath
 }
 
+// byImportPath implements sort.Interface for sorting Go packages by their import path.
+type byImportPath []*GoPackage
+
+func (v byImportPath) Len() int           { return len(v) }
+func (v byImportPath) Less(i, j int) bool { return v[i].Bpkg.ImportPath < v[j].Bpkg.ImportPath }
+func (v byImportPath) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
+
 // =====
 
 // GoPackageRepo represents a collection of Go packages contained by one VCS repository.
@@ -130,7 +138,9 @@ type GoPackageRepo struct {
 	goPackages []*GoPackage
 }
 
+// NewGoPackageRepo sorts goPackages by import path and returns a GoPackageRepo.
 func NewGoPackageRepo(rootPath string, goPackages []*GoPackage) GoPackageRepo {
+	sort.Sort(byImportPath(goPackages))
 	return GoPackageRepo{rootPath, goPackages}
 }
 
