@@ -14,11 +14,29 @@ import (
 	"github.com/shurcooL/go/gists/gist5639599"
 )
 
+type sectionWriter struct {
+	Writer         io.Writer
+	writtenSection bool
+}
+
+func (sw *sectionWriter) Write(p []byte) (n int, err error) {
+	sw.writtenSection = true
+	return sw.Writer.Write(p)
+}
+
+func (sw *sectionWriter) WriteBreak() {
+	if sw.writtenSection {
+		io.WriteString(sw.Writer, "\n")
+		sw.writtenSection = false
+	}
+}
+
 func PrintPackageFullSummary(dpkg *doc.Package) {
 	FprintPackageFullSummary(os.Stdout, dpkg)
 }
 
-func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
+func FprintPackageFullSummary(wr io.Writer, dpkg *doc.Package) {
+	w := &sectionWriter{Writer: wr}
 	for _, v := range dpkg.Vars {
 		for _, spec := range v.Decl.Specs {
 			spec.(*ast.ValueSpec).Doc = nil
@@ -35,7 +53,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 			fmt.Fprintln(w, gist5639599.SprintAstBare(v.Decl))
 		}
 	}
-	fmt.Fprintln(w)
+	w.WriteBreak()
 	for _, f := range dpkg.Funcs {
 		fmt.Fprintln(w, gist5639599.SprintAstBare(f.Decl))
 	}
@@ -47,7 +65,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 			fmt.Fprintln(w, gist5639599.SprintAstBare(m.Decl))
 		}
 	}
-	fmt.Fprintln(w)
+	w.WriteBreak()
 	for _, c := range dpkg.Consts {
 		for _, spec := range c.Decl.Specs {
 			spec.(*ast.ValueSpec).Values = nil
@@ -68,7 +86,7 @@ func FprintPackageFullSummary(w io.Writer, dpkg *doc.Package) {
 			//fmt.Fprintln(w, "const", strings.Join(c.Names, "\n"))
 		}
 	}
-	fmt.Fprintln(w)
+	w.WriteBreak()
 	for _, t := range dpkg.Types {
 		//fmt.Fprintln(w, gist5639599.SprintAstBare(t.Decl))
 		fmt.Fprintln(w, "type", t.Name)
