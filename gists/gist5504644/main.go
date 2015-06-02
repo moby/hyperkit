@@ -55,6 +55,12 @@ func AstPackageFromBuildPackage(bpkg *build.Package) (apkg *ast.Package, err err
 	return &ast.Package{Name: bpkg.Name, Files: files}, nil
 }
 
+func BuildPackageFromImportPathBuildTags(importPath string, buildTags []string) (bpkg *build.Package, err error) {
+	c := build.Default
+	c.BuildTags = buildTags
+	return c.Import(importPath, "", importMode)
+}
+
 func BuildPackageFromImportPath(importPath string) (bpkg *build.Package, err error) {
 	return build.Import(importPath, "", importMode)
 }

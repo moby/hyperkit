@@ -128,6 +128,17 @@ func hasAnyFuncs(dpkg *doc.Package) bool {
 	return false
 }
 
+func PrintPackageSummaryBuildTags(importPath string, buildTags []string) {
+	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPathBuildTags(importPath, buildTags))
+	if err != nil {
+		return
+	}
+	if !hasAnyFuncs(dpkg) {
+		return
+	}
+	printPackageSummary(dpkg)
+}
+
 func PrintPackageSummary(importPath string) {
 	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(importPath))
 	if err != nil {
