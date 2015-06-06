@@ -82,11 +82,12 @@ func extractList(n *html.Node, listType atom.Atom) (out string) {
 	return out
 }
 
-// Paragraph renders a single paragraph html node to Markdown.
+// Paragraph converts a single paragraph html node to Markdown.
 func Paragraph(paragraph *html.Node) (markdown string) {
 	return clean(extract(paragraph))
 }
 
-func Unnamed1(x *html.Node) (markdown string) {
-	return extract(x)
+// Document converts a full document html node to Markdown.
+func Document(document *html.Node) (markdown string) {
+	return extract(document)
 }

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func Test1(t *testing.T) {
+func TestDocument(t *testing.T) {
 	const markdownIn = `This is Markdown.
 
 - Item
@@ -35,7 +35,7 @@ Cool.
 		panic(err)
 	}
 
-	markdownOut := html_to_markdown.Unnamed1(parsedHtml)
+	markdownOut := html_to_markdown.Document(parsedHtml)
 
 	if markdownIn != markdownOut {
 		goon.DumpExpr(markdownIn, markdownOut)
