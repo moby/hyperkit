@@ -6,8 +6,8 @@ func Example() {
 	fmt.Print(Underline("Underline Test") + "\nstuff that goes here")
 
 	// Output:
-	//Underline Test
-	//--------------
+	// Underline Test
+	// --------------
 	//
-	//stuff that goes here
+	// stuff that goes here
 }
