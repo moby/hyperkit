@@ -1,6 +1,8 @@
 package html_to_markdown
 
 import (
+	"strings"
+
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
@@ -52,6 +54,13 @@ func extract(n *html.Node) (out string) {
 			out += extractList(c, c.DataAtom)
 		} else if c.Type == html.ElementNode && (c.DataAtom == atom.B || c.DataAtom == atom.Strong) {
 			out += "**" + extract(c) + "**"
+		} else if c.Type == html.ElementNode && c.DataAtom == atom.H3 {
+			out += "\n### " + extract(c)
+		} else if c.Type == html.ElementNode && c.DataAtom == atom.P {
+			if out != "" && !strings.HasSuffix(out, "\n\n") {
+				out += "\n"
+			}
+			out += clean(extract(c))
 		} else {
 			out += extract(c)
 		}
