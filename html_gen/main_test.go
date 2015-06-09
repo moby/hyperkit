@@ -2,6 +2,7 @@ package html_gen_test
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/shurcooL/go/html_gen"
 )
@@ -13,13 +14,12 @@ func ExampleRenderNodes() {
 		html_gen.A("Gophers", "https://golang.org/"),
 		html_gen.Text("? <script> is a cool gopher."),
 	)
-
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(html)
+	fmt.Fprintln(os.Stdout, html)
 
 	// Output:
-	//Hi &amp; how are you, <a href="https://golang.org/">Gophers</a>? &lt;script&gt; is a cool gopher.
+	// Hi &amp; how are you, <a href="https://golang.org/">Gophers</a>? &lt;script&gt; is a cool gopher.
 }
