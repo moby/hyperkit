@@ -107,13 +107,15 @@ func GetRepoImportPath(repoPath, srcRoot string) string {
 		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: can't resolve symlink:", err)
 	}
 
+	sep := string(filepath.Separator)
+
 	// Detect and handle case mismatch in prefix.
-	if prefixLen := len(srcRoot + "/"); len(repoPath) >= prefixLen && srcRoot+"/" != repoPath[:prefixLen] && strings.EqualFold(srcRoot+"/", repoPath[:prefixLen]) {
-		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match:", srcRoot+"/", repoPath[:prefixLen])
-		return repoPath[prefixLen:]
+	if prefixLen := len(srcRoot + sep); len(repoPath) >= prefixLen && srcRoot+sep != repoPath[:prefixLen] && strings.EqualFold(srcRoot+sep, repoPath[:prefixLen]) {
+		fmt.Fprintln(os.Stderr, "warning: GetRepoImportPath: prefix case doesn't match:", srcRoot+sep, repoPath[:prefixLen])
+		return filepath.ToSlash(repoPath[prefixLen:])
 	}
 
-	return strings.TrimPrefix(repoPath, srcRoot+"/")
+	return filepath.ToSlash(strings.TrimPrefix(repoPath, srcRoot+sep))
 }
 func GetRepoImportPathPattern(repoPath, srcRoot string) string {
 	return GetRepoImportPath(repoPath, srcRoot) + "/..."
