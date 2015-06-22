@@ -18,7 +18,12 @@ func addSegment(inout, seg []rune) []rune {
 	if len(inout) != 0 {
 		inout = append(inout, '_')
 	}
-	inout = append(inout, seg...)
+	initialism := strings.ToUpper(string(seg))
+	if _, ok := initialisms[initialism]; ok {
+		inout = append(inout, []rune(initialism)...)
+	} else {
+		inout = append(inout, seg...)
+	}
 	return inout
 }
 
@@ -35,4 +40,59 @@ func CamelCaseToUnderscoreSep(s string) string {
 	}
 	out = addSegment(out, seg)
 	return string(out)
+}
+
+// UnderscoreSepToMixedCaps converts "string_URL_append" to "StringURLAppend" form.
+func UnderscoreSepToMixedCaps(in string) string {
+	var out string
+	ss := strings.Split(in, "_")
+	for _, s := range ss {
+		initialism := strings.ToUpper(s)
+		if _, ok := initialisms[initialism]; ok {
+			out += initialism
+		} else {
+			out += strings.Title(s)
+		}
+	}
+	return out
+}
+
+// initialisms is the set of initialisms in Go-style Mixed Caps case.
+var initialisms = map[string]struct{}{
+	"API":   {},
+	"ASCII": {},
+	"CPU":   {},
+	"CSS":   {},
+	"DNS":   {},
+	"EOF":   {},
+	"GUID":  {},
+	"HTML":  {},
+	"HTTP":  {},
+	"HTTPS": {},
+	"ID":    {},
+	"IP":    {},
+	"JSON":  {},
+	"LHS":   {},
+	"QPS":   {},
+	"RAM":   {},
+	"RHS":   {},
+	"RPC":   {},
+	"SLA":   {},
+	"SMTP":  {},
+	"SQL":   {},
+	"SSH":   {},
+	"TCP":   {},
+	"TLS":   {},
+	"TTL":   {},
+	"UDP":   {},
+	"UI":    {},
+	"UID":   {},
+	"UUID":  {},
+	"URI":   {},
+	"URL":   {},
+	"UTF8":  {},
+	"VM":    {},
+	"XML":   {},
+	"XSRF":  {},
+	"XSS":   {},
 }
