@@ -1,4 +1,4 @@
-// Package gist6003701 implements functions for converting between camelCase and underscore_separated forms for identifier names.
+// Package gist6003701 implements functions for converting between CamelCase, snake_case and MixedCaps forms for identifier names.
 package gist6003701
 
 import (
@@ -55,6 +55,38 @@ func UnderscoreSepToMixedCaps(in string) string {
 		}
 	}
 	return out
+}
+
+// MixedCapsToUnderscoreSep converts "StringURLAppend" to "string_URL_append" form.
+func MixedCapsToUnderscoreSep(in string) string {
+	var out []rune
+	var seg []rune
+	for _, r := range in {
+		if !unicode.IsLower(r) {
+			out = addSegment(out, seg)
+			seg = nil
+		}
+		seg = append(seg, unicode.ToLower(r))
+	}
+	out = addSegment(out, seg)
+	// This is awful. You're welcome to make it better.
+	// For each supported initialism, do a strings.Replace to fix up bad output like "_u_r_l_" with "_URL_".
+	s := string(out)
+	for initialism := range initialisms {
+		ruinedInitialism := ruinedInitialism(initialism)
+		s = strings.Replace(s, ruinedInitialism, "_"+initialism+"_", -1)
+	}
+	return s
+}
+
+// ruinedInitialism returns "_u_r_l_" form that CamelCaseToUnderscoreSep generates for initialism "URL".
+func ruinedInitialism(initialism string) string {
+	var out = []rune{'_'}
+	for _, r := range initialism {
+		out = append(out, unicode.ToLower(r))
+		out = append(out, '_')
+	}
+	return string(out)
 }
 
 // initialisms is the set of initialisms in Go-style Mixed Caps case.
