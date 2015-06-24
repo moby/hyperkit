@@ -22,7 +22,7 @@ func NewPrefixFS(real vfs.FileSystem, prefix string) *prefixFileSystem {
 
 func (p *prefixFileSystem) Open(name string) (vfs.ReadSeekCloser, error) {
 	if strings.HasPrefix(name, p.prefix) {
-		return p.real.Open(name[len(p.prefix):])
+		return p.real.Open(p.innerPath(name))
 	}
 	return nil, errors.New(name + " doesn't exist")
 }
@@ -33,7 +33,7 @@ func (p *prefixFileSystem) Lstat(name string) (os.FileInfo, error) {
 
 func (p *prefixFileSystem) Stat(name string) (os.FileInfo, error) {
 	if strings.HasPrefix(name, p.prefix) {
-		return p.real.Stat(name[len(p.prefix):])
+		return p.real.Stat(p.innerPath(name))
 	}
 
 	if !strings.HasPrefix(p.prefix, name) {
@@ -52,8 +52,8 @@ func (p *prefixFileSystem) Stat(name string) (os.FileInfo, error) {
 
 func (p *prefixFileSystem) ReadDir(name string) ([]os.FileInfo, error) {
 	if strings.HasPrefix(name, p.prefix) {
-		return p.real.ReadDir(name[len(p.prefix):])
-		/*fis, err := p.real.ReadDir(name[len(p.prefix):])
+		return p.real.ReadDir(p.innerPath(name))
+		/*fis, err := p.real.ReadDir(p.innerPath(name))
 		goon.DumpExpr(len(fis))
 		goon.DumpExpr(fis[0].Name())
 		goon.DumpExpr(fis[0].Size())
@@ -80,6 +80,17 @@ func (p *prefixFileSystem) ReadDir(name string) ([]os.FileInfo, error) {
 
 func (p *prefixFileSystem) String() string {
 	return "prefixFileSystem{" + p.real.String() + "}"
+}
+
+// innerPath returns an inner path for outer path.
+//
+// Precondition is that strings.HasPrefix(outerPath, p.prefix) is true.
+func (p *prefixFileSystem) innerPath(outerPath string) string {
+	path := outerPath[len(p.prefix):]
+	if path == "" {
+		path = "/"
+	}
+	return path
 }
 
 func antibase(name string) string {
