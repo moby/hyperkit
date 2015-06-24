@@ -2,7 +2,7 @@
 package vfs_util
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"golang.org/x/tools/godoc/vfs"
@@ -19,26 +19,26 @@ func NewDebugFS(real vfs.FileSystem) *debugFileSystem {
 }
 
 func (dfs *debugFileSystem) Open(name string) (vfs.ReadSeekCloser, error) {
-	fmt.Println(gist6418290.GetParentFuncArgsAsString(name))
+	log.Println(gist6418290.GetParentFuncArgsAsString(name))
 	return dfs.real.Open(name)
 }
 
 func (dfs *debugFileSystem) Lstat(path string) (os.FileInfo, error) {
-	fmt.Println(gist6418290.GetParentFuncArgsAsString(path))
+	log.Println(gist6418290.GetParentFuncArgsAsString(path))
 	return dfs.real.Lstat(path)
 }
 
 func (dfs *debugFileSystem) Stat(path string) (os.FileInfo, error) {
-	fmt.Println(gist6418290.GetParentFuncArgsAsString(path))
+	log.Println(gist6418290.GetParentFuncArgsAsString(path))
 	return dfs.real.Stat(path)
 }
 
 func (dfs *debugFileSystem) ReadDir(path string) ([]os.FileInfo, error) {
-	fmt.Println(gist6418290.GetParentFuncArgsAsString(path))
+	log.Println(gist6418290.GetParentFuncArgsAsString(path))
 	return dfs.real.ReadDir(path)
 }
 
 func (dfs *debugFileSystem) String() string {
-	fmt.Println(gist6418290.GetParentFuncArgsAsString())
+	log.Println(gist6418290.GetParentFuncArgsAsString())
 	return dfs.real.String()
 }
