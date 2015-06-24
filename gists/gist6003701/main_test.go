@@ -22,6 +22,11 @@ func ExampleUnderscoreSepToMixedCaps() {
 
 func ExampleMixedCapsToUnderscoreSep() {
 	fmt.Println(MixedCapsToUnderscoreSep("StringURLAppend"))
+	fmt.Println(MixedCapsToUnderscoreSep("URLFrom"))
+	fmt.Println(MixedCapsToUnderscoreSep("SetURLHTML"))
 
-	// Output: string_URL_append
+	// Output:
+	// string_URL_append
+	// URL_from
+	// set_URL_HTML
 }

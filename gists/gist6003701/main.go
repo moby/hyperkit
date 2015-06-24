@@ -71,12 +71,12 @@ func MixedCapsToUnderscoreSep(in string) string {
 	out = addSegment(out, seg)
 	// This is awful. You're welcome to make it better.
 	// For each supported initialism, do a strings.Replace to fix up bad output like "_u_r_l_" with "_URL_".
-	s := string(out)
+	s := "_" + string(out) + "_"
 	for initialism := range initialisms {
 		ruinedInitialism := ruinedInitialism(initialism)
 		s = strings.Replace(s, ruinedInitialism, "_"+initialism+"_", -1)
 	}
-	return s
+	return s[1 : len(s)-1]
 }
 
 // ruinedInitialism returns "_u_r_l_" form that CamelCaseToUnderscoreSep generates for initialism "URL".
