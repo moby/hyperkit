@@ -43,7 +43,12 @@ func (f *rawFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func dirList(w http.ResponseWriter, f http.File, name string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprintf(w, "<pre>\n")
-	fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", path.Clean(name+"/.."), "..")
+	switch name {
+	case "/":
+		fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", "/", ".")
+	default:
+		fmt.Fprintf(w, "<a href=\"%s\">%s</a>\n", path.Clean(name+"/.."), "..")
+	}
 	for {
 		dirs, err := f.Readdir(100)
 		if err != nil || len(dirs) == 0 {
