@@ -8,6 +8,10 @@ import (
 	"golang.org/x/tools/godoc/vfs"
 )
 
+// Walk walks the filesystem rooted at root, calling walkFn for each file or
+// directory in the filesystem, including root. All errors that arise visiting files
+// and directories are filtered by walkFn. The files are walked in lexical
+// order.
 func Walk(fs vfs.FileSystem, root string, walkFn filepath.WalkFunc) error {
 	info, err := fs.Lstat(root)
 	if err != nil {
