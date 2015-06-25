@@ -4,10 +4,13 @@ package union
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/shurcooL/go/vfs/httpfs/vfsutil"
 )
 
 // New creates an union filesystem with the provided mapping of mount points to filesystems.
@@ -19,7 +22,7 @@ func New(mapping map[string]http.FileSystem) http.FileSystem {
 		root: &dirInfo{
 			name:    "/",
 			entries: []os.FileInfo{}, // Not nil.
-			modTime: time.Time{},     // TODO: What should this time be?
+			modTime: time.Time{},     // An empty union filesystem has never been modified.
 		},
 	}
 	for mountPoint, fs := range mapping {
@@ -36,12 +39,22 @@ type unionFS struct {
 // bind mounts fs at mountPoint.
 // mountPoint must be of form "/mydir". It must start with a '/', and contain a single directory name.
 func (u *unionFS) bind(mountPoint string, fs http.FileSystem) {
+	fi, err := vfsutil.Stat(fs, "/")
+	if err != nil {
+		log.Fatalln("can't stat root directory of provided filesystem:", err)
+	}
+	modTime := fi.ModTime()
+
 	u.ns[mountPoint] = fs
 	u.root.entries = append(u.root.entries, &dirInfo{
 		name:    mountPoint[1:],
-		entries: nil,         // entries is nil, not needed because this acts as a os.FileInfo only, not an openable dir.
-		modTime: time.Time{}, // TODO: What should this time be?
+		entries: nil, // entries is nil, not needed because this acts as a os.FileInfo only, not an openable dir.
+		modTime: modTime,
 	})
+
+	if modTime.After(u.root.modTime) {
+		u.root.modTime = modTime
+	}
 }
 
 // Open opens the named file.
