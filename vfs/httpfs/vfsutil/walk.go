@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"sort"
 
@@ -57,7 +58,7 @@ func walk(fs http.FileSystem, path string, info os.FileInfo, walkFn filepath.Wal
 	}
 
 	for _, name := range names {
-		filename := filepath.Join(path, name)
+		filename := pathpkg.Join(path, name)
 		fileInfo, err := Stat(fs, filename)
 		if err != nil {
 			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
@@ -112,7 +113,7 @@ func walkFiles(fs http.FileSystem, path string, info os.FileInfo, file vfs.ReadS
 	}
 
 	for _, name := range names {
-		filename := filepath.Join(path, name)
+		filename := pathpkg.Join(path, name)
 		file, fileInfo, err := openStat(fs, filename)
 		if err != nil {
 			if err := walkFn(filename, nil, nil, err); err != nil && err != filepath.SkipDir {

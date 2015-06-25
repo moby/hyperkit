@@ -2,6 +2,7 @@ package vfsutil
 
 import (
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"sort"
 
@@ -55,7 +56,7 @@ func walk(fs vfs.FileSystem, path string, info os.FileInfo, walkFn filepath.Walk
 	}
 
 	for _, name := range names {
-		filename := filepath.Join(path, name)
+		filename := pathpkg.Join(path, name)
 		fileInfo, err := fs.Lstat(filename)
 		if err != nil {
 			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
