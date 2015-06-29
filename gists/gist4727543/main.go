@@ -14,77 +14,71 @@ import (
 
 // tryUnquote returns the unquoted string, or the original string if unquoting fails.
 func tryUnquote(s string) string {
-	t, err := strconv.Unquote(s)
-	if err != nil {
-		return s
+	if t, err := strconv.Unquote(s); err == nil {
+		return t
 	}
-	return t
+	return s
 }
 
-// GetForcedUseFromImport generates an anonymous usage for the given import statement to avoid "imported and not used" errors
+// GetForcedUseFromImport generates an anonymous usage for the given import spec to avoid "imported and not used" errors.
 //
-// e.g. `. "io/ioutil"` -> `var _ = NopCloser`
-func GetForcedUseFromImport(Import string) (out string) {
-	defer func() {
-		e := recover()
-		if nil != e {
-			out = fmt.Sprint(e)
-		}
-	}()
-	ImportParts := strings.Split(Import, " ")
-	switch len(ImportParts) {
+// E.g., `io/ioutil` -> `var _ = ioutil.NopCloser`.
+// E.g., `renamed "io/ioutil"` -> `var _ = renamed.NopCloser`.
+// E.g., `. "io/ioutil"` -> `var _ = NopCloser`.
+func GetForcedUseFromImport(importSpec string) (out string) {
+	switch parts := strings.Split(importSpec, " "); len(parts) {
 	case 1:
-		return GetForcedUse(tryUnquote(ImportParts[0]))
+		return GetForcedUse(tryUnquote(parts[0]))
 	case 2:
-		return GetForcedUseRenamed(tryUnquote(ImportParts[1]), ImportParts[0])
+		return GetForcedUseRenamed(tryUnquote(parts[1]), parts[0])
 	default:
-		panic("Invalid import string.")
+		return "Invalid import string."
 	}
 }
 
 // GetForcedUse generates an anonymous usage of the package to avoid "imported and not used" errors
 //
-// e.g. `io/ioutil` -> `var _ = ioutil.NopCloser`
-func GetForcedUse(ImportPath string) string {
-	return GetForcedUseRenamed(ImportPath, "")
+// E.g., `io/ioutil` -> `var _ = ioutil.NopCloser`.
+func GetForcedUse(importPath string) string {
+	return GetForcedUseRenamed(importPath, "")
 }
 
-// GetForcedUseRenamed generates an anonymous usage of a renamed imported package
+// GetForcedUseRenamed generates an anonymous usage of a renamed imported package.
 //
-// e.g. `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`
-func GetForcedUseRenamed(ImportPath, LocalPackageName string) string {
-	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(ImportPath))
+// E.g., `io/ioutil`, `RenamedPkg` -> `var _ = RenamedPkg.NopCloser`.
+func GetForcedUseRenamed(importPath, localPackageName string) string {
+	dpkg, err := gist5504644.GetDocPackage(gist5504644.BuildPackageFromImportPath(importPath))
 	if err != nil {
-		return fmt.Sprintf("Package %q not valid (doesn't exist or can't be built).", ImportPath)
+		return fmt.Sprintf("Package %q not valid (doesn't exist or can't be built).", importPath)
 	}
 
-	// Uncomment only for testing purposes
+	// Uncomment only for testing purposes.
 	//dpkg.Funcs = dpkg.Funcs[0:0]
 	//dpkg.Vars = dpkg.Vars[0:0]
 	//dpkg.Consts = dpkg.Consts[0:0]
 	//dpkg.Types = dpkg.Types[0:0]
 
-	Prefix := "var _ = "
-	var Usage string
+	prefix := "var _ = "
+	var usage string
 	if len(dpkg.Funcs) > 0 {
-		Usage = dpkg.Funcs[0].Name
+		usage = dpkg.Funcs[0].Name
 	} else if len(dpkg.Vars) > 0 {
-		Usage = dpkg.Vars[0].Names[0]
+		usage = dpkg.Vars[0].Names[0]
 	} else if len(dpkg.Consts) > 0 {
-		Usage = dpkg.Consts[0].Names[0]
+		usage = dpkg.Consts[0].Names[0]
 	} else if len(dpkg.Types) > 0 {
-		Usage = dpkg.Types[0].Name
-		Prefix = "var _ "
+		usage = dpkg.Types[0].Name
+		prefix = "var _ "
 	} else {
 		return "Package doesn't have a single public func, var, const or type."
 	}
 
 	switch {
-	case LocalPackageName == "":
-		return Prefix + dpkg.Name + "." + Usage
-	case LocalPackageName == ".":
-		return Prefix + Usage
+	case localPackageName == "":
+		return prefix + dpkg.Name + "." + usage
+	case localPackageName == ".":
+		return prefix + usage
 	default:
-		return Prefix + LocalPackageName + "." + Usage
+		return prefix + localPackageName + "." + usage
 	}
 }
