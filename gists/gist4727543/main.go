@@ -22,9 +22,11 @@ func tryUnquote(s string) string {
 
 // GetForcedUseFromImport generates an anonymous usage for the given import spec to avoid "imported and not used" errors.
 //
-// E.g., `io/ioutil` -> `var _ = ioutil.NopCloser`.
-// E.g., `renamed "io/ioutil"` -> `var _ = renamed.NopCloser`.
-// E.g., `. "io/ioutil"` -> `var _ = NopCloser`.
+// E.g., `io/ioutil` -> `var _ = ioutil.NopCloser`,
+//
+// `renamed "io/ioutil"` -> `var _ = renamed.NopCloser`,
+//
+// `. "io/ioutil"` -> `var _ = NopCloser`.
 func GetForcedUseFromImport(importSpec string) (out string) {
 	switch parts := strings.Split(importSpec, " "); len(parts) {
 	case 1:
