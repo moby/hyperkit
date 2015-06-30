@@ -13,16 +13,9 @@ func WriteFile(r io.Reader, filename string) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = io.Copy(f, r)
-	if err != nil {
-		return err
+	if err1 := f.Close(); err == nil {
+		err = err1
 	}
-
-	err = f.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
