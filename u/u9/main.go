@@ -9,7 +9,7 @@ import (
 func AddTabSupport(textArea *dom.HTMLTextAreaElement) {
 	textArea.AddEventListener("keydown", false, func(event dom.Event) {
 		switch ke := event.(*dom.KeyboardEvent); {
-		case ke.KeyCode == 9 && !ke.CtrlKey && !ke.AltKey && !ke.MetaKey && !ke.ShiftKey: // Tab.
+		case ke.KeyCode == '\t' && !ke.CtrlKey && !ke.AltKey && !ke.MetaKey && !ke.ShiftKey: // Tab.
 			value, start, end := textArea.Value, textArea.SelectionStart, textArea.SelectionEnd
 
 			textArea.Value = value[:start] + "\t" + value[end:]
