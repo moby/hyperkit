@@ -241,6 +241,27 @@ func goFilesToJs(goFiles []string) (jsCode string, err error) {
 	return out.String(), nil
 }
 
+func goReadersToJs(names []string, goReaders []io.Reader) (jsCode string, err error) {
+	started := time.Now()
+	defer func() { fmt.Println("goReadersToJs taken:", time.Since(started)) }()
+	gopherjslibLock.Lock()
+	defer gopherjslibLock.Unlock()
+
+	var out bytes.Buffer
+	builder := gopherjslib.NewBuilder(&out, nil)
+
+	for i, goReader := range goReaders {
+		builder.Add(names[i], goReader)
+	}
+
+	err = builder.Build()
+	if err != nil {
+		return "", err
+	}
+
+	return out.String(), nil
+}
+
 func goToJs(goCode string) (jsCode string, err error) {
 	started := time.Now()
 	defer func() { fmt.Println("goToJs taken:", time.Since(started)) }()
