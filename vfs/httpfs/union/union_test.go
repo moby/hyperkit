@@ -78,3 +78,15 @@ func ExampleEmpty() {
 	// Output:
 	// /
 }
+
+func ExampleNotExist() {
+	empty := union.New(nil)
+
+	_, err := empty.Open("/does-not-exist")
+	fmt.Println("os.IsNotExist:", os.IsNotExist(err))
+	fmt.Println(err)
+
+	// Output:
+	// os.IsNotExist: true
+	// open /does-not-exist: file does not exist
+}
