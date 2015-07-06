@@ -78,8 +78,8 @@ func (u *unionFS) Open(path string) (http.File, error) {
 // dirInfo is a static definition of a directory.
 type dirInfo struct {
 	name    string
-	entries []os.FileInfo
 	modTime time.Time
+	entries []os.FileInfo
 }
 
 func (d *dirInfo) Read([]byte) (int, error) {
