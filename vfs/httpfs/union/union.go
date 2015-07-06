@@ -21,8 +21,7 @@ func New(mapping map[string]http.FileSystem) http.FileSystem {
 		ns: make(map[string]http.FileSystem),
 		root: &dirInfo{
 			name:    "/",
-			entries: []os.FileInfo{}, // Not nil.
-			modTime: time.Time{},     // An empty union filesystem has never been modified.
+			modTime: time.Time{}, // An empty union filesystem has never been modified.
 		},
 	}
 	for mountPoint, fs := range mapping {
@@ -48,7 +47,6 @@ func (u *unionFS) bind(mountPoint string, fs http.FileSystem) {
 	u.ns[mountPoint] = fs
 	u.root.entries = append(u.root.entries, &dirInfo{
 		name:    mountPoint[1:],
-		entries: nil, // entries is nil, not needed because this acts as a os.FileInfo only, not an openable dir.
 		modTime: modTime,
 	})
 
@@ -80,7 +78,7 @@ func (u *unionFS) Open(path string) (http.File, error) {
 // dirInfo is a static definition of a directory.
 type dirInfo struct {
 	name    string
-	entries []os.FileInfo // Not nil.
+	entries []os.FileInfo
 	modTime time.Time
 }
 
@@ -100,29 +98,25 @@ func (d *dirInfo) Sys() interface{}   { return nil }
 // dir is an opened dir instance.
 type dir struct {
 	*dirInfo
-	pending []os.FileInfo
+	pos int // Position within entries for Seek and Readdir.
 }
 
 func (d *dir) Seek(offset int64, whence int) (int64, error) {
 	if offset == 0 && whence == os.SEEK_SET {
-		d.pending = nil
+		d.pos = 0
 		return 0, nil
 	}
 	return 0, fmt.Errorf("unsupported Seek in directory %s", d.dirInfo.name)
 }
 
 func (d *dir) Readdir(count int) ([]os.FileInfo, error) {
-	if d.pending == nil {
-		d.pending = d.dirInfo.entries
-	}
-
-	if len(d.pending) == 0 && count > 0 {
+	if d.pos >= len(d.dirInfo.entries) && count > 0 {
 		return nil, io.EOF
 	}
-	if count <= 0 || count > len(d.pending) {
-		count = len(d.pending)
+	if count <= 0 || count > len(d.dirInfo.entries)-d.pos {
+		count = len(d.dirInfo.entries) - d.pos
 	}
-	e := d.pending[:count]
-	d.pending = d.pending[count:]
+	e := d.dirInfo.entries[d.pos : d.pos+count]
+	d.pos += count
 	return e, nil
 }
