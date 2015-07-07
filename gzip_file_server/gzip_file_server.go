@@ -1,4 +1,5 @@
-// Package gzip_file_server provides a http.Handler that serves the given virtual file system without special handling of index.html.
+// Package gzip_file_server provides a http.Handler that serves the given virtual file system with gzip compression,
+// without special handling of index.html, and detailed HTTP error messages.
 package gzip_file_server
 
 import (
@@ -7,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,7 +35,7 @@ func (f *gzipFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // name is '/'-separated, not filepath.Separator.
-func (fs *gzipFileServer) serveFile(w http.ResponseWriter, r *http.Request, name string) {
+func (fs *gzipFileServer) serveFile(w http.ResponseWriter, req *http.Request, name string) {
 	f, err := fs.root.Open(name)
 	if err != nil {
 		msg, code := toHTTPError(err)
@@ -50,55 +52,62 @@ func (fs *gzipFileServer) serveFile(w http.ResponseWriter, r *http.Request, name
 	}
 
 	// redirect to canonical path: / at end of directory url
-	// r.URL.Path always begins with /
-	url := r.URL.Path
+	// req.URL.Path always begins with /
+	url := req.URL.Path
 	if d.IsDir() {
 		if url[len(url)-1] != '/' {
-			localRedirect(w, r, path.Base(url)+"/")
+			localRedirect(w, req, path.Base(url)+"/")
 			return
 		}
 	} else {
 		if url[len(url)-1] == '/' {
-			localRedirect(w, r, "../"+path.Base(url))
+			localRedirect(w, req, "../"+path.Base(url))
 			return
 		}
 	}
 
 	// A directory?
 	if d.IsDir() {
-		if checkLastModified(w, r, d.ModTime()) {
+		if checkLastModified(w, req, d.ModTime()) {
 			return
 		}
 		dirList(w, f, name)
 		return
 	}
 
-	if _, plain := r.URL.Query()["plain"]; plain {
+	/*if _, plain := req.URL.Query()["plain"]; plain {
 		w.Header().Set("Content-Type", "text/plain")
-	}
+	}*/
 
-	//http.ServeContent(w, r, d.Name(), d.ModTime(), f)
-
-	if _, ok := f.(notWorthGzipCompressing); ok {
-		http.ServeContent(w, r, d.Name(), d.ModTime(), f)
+	// If client doesn't accept gzip encoding, serve without compression.
+	if !isGzipEncodingAccepted(req) {
+		http.ServeContent(w, req, d.Name(), d.ModTime(), f)
 		return
 	}
-	switch gzipFile, ok := f.(gzipByter); {
-	case ok && isGzipEncodingAccepted(r):
-		w.Header().Set("Content-Encoding", "gzip")
-		http.ServeContent(w, r, d.Name(), d.ModTime(), bytes.NewReader(gzipFile.GzipBytes()))
-	case true: // Dynamic Compress.
-		rs, err := gzipCompress(f)
-		if err != nil {
-			msg, code := toHTTPError(err)
-			http.Error(w, msg, code)
-			return
-		}
-		w.Header().Set("Content-Encoding", "gzip")
-		http.ServeContent(w, r, d.Name(), d.ModTime(), rs)
-	default:
-		http.ServeContent(w, r, d.Name(), d.ModTime(), f)
+
+	// If the file is not worth gzip compressing, serve it as is.
+	if _, ok := f.(notWorthGzipCompressing); ok {
+		http.ServeContent(w, req, d.Name(), d.ModTime(), f)
+		return
 	}
+
+	// If there are gzip encoded bytes available, use them directly.
+	if gzipFile, ok := f.(gzipByter); ok {
+		w.Header().Set("Content-Encoding", "gzip")
+		http.ServeContent(w, req, d.Name(), d.ModTime(), bytes.NewReader(gzipFile.GzipBytes()))
+		return
+	}
+
+	// Perform compression and serve gzip compressed bytes.
+	log.Println("doing Dynamic gzip Compression for", d.Name())
+	rs, err := gzipCompress(f)
+	if err != nil {
+		msg, code := toHTTPError(err)
+		http.Error(w, msg, code)
+		return
+	}
+	w.Header().Set("Content-Encoding", "gzip")
+	http.ServeContent(w, req, d.Name(), d.ModTime(), rs)
 }
 
 func gzipCompress(r io.Reader) (io.ReadSeeker, error) {
