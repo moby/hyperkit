@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	pathpkg "path"
+	"strings"
 	"time"
 )
 
@@ -39,9 +40,16 @@ func (fs *gopherJSFS) openSource(path string) (http.File, error) {
 		return nil, err
 	}
 
-	if !fi.IsDir() {
+	switch {
+	// Files with .go and ".inc.js" extensions are consumed and no longer exist
+	// in output filesystem.
+	case !fi.IsDir() && pathpkg.Ext(fi.Name()) == ".go":
+		fallthrough
+	case !fi.IsDir() && strings.HasSuffix(fi.Name(), ".inc.js"):
+		f.Close()
+		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+	case !fi.IsDir():
 		return f, nil
-		//return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 	}
 	defer f.Close()
 
@@ -57,7 +65,7 @@ func (fs *gopherJSFS) openSource(path string) (http.File, error) {
 		switch {
 		case !fi.IsDir() && pathpkg.Ext(fi.Name()) == ".go":
 			haveGo = append(haveGo, fi)
-		case !fi.IsDir() && pathpkg.Ext(fi.Name()) == ".inc.js":
+		case !fi.IsDir() && strings.HasSuffix(fi.Name(), ".inc.js"):
 			// TODO: Handle ".inc.js" files correctly.
 			entries = append(entries, fi)
 		default:
