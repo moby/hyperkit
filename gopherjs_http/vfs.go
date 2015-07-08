@@ -19,51 +19,53 @@ type gopherJSFS struct {
 }
 
 func (fs *gopherJSFS) Open(path string) (http.File, error) {
-	switch {
-	case pathpkg.Ext(path) == ".js":
-		return fs.compileGoPackage(path)
+	switch dir, file := pathpkg.Split(path); {
+	case file == pathpkg.Base(dir)+".js":
+		return fs.compileGoPackage(dir)
 	default:
-		return fs.openSourceDir(path)
+		return fs.openSource(path)
 	}
 }
 
-func (fs *gopherJSFS) openSourceDir(path string) (http.File, error) {
+func (fs *gopherJSFS) openSource(path string) (http.File, error) {
 	f, err := fs.source.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
 
 	fi, err := f.Stat()
 	if err != nil {
+		f.Close()
 		return nil, err
 	}
 
 	if !fi.IsDir() {
-		return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		return f, nil
+		//return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 	}
+	defer f.Close()
 
 	fis, err := f.Readdir(0)
 	if err != nil {
 		return nil, err
 	}
 
+	// Include all subfolders, non-.go files.
 	var entries []os.FileInfo
-
-	// Include all subfolders.
-	for _, d := range fis {
-		if d.IsDir() {
-			entries = append(entries, d)
+	var haveGo []os.FileInfo
+	for _, fi := range fis {
+		switch {
+		case !fi.IsDir() && pathpkg.Ext(fi.Name()) == ".go":
+			haveGo = append(haveGo, fi)
+		case !fi.IsDir() && pathpkg.Ext(fi.Name()) == ".inc.js":
+			// TODO: Handle ".inc.js" files correctly.
+			entries = append(entries, fi)
+		default:
+			entries = append(entries, fi)
 		}
 	}
 
 	// If it has any .go files, present the Go package compiled with GopherJS as an additional virtual file.
-	var haveGo []os.FileInfo
-	for _, f := range fis {
-		if !f.IsDir() && pathpkg.Ext(f.Name()) == ".go" {
-			haveGo = append(haveGo, f)
-		}
-	}
 	if len(haveGo) > 0 {
 		entries = append(entries, &file{
 			name:    fi.Name() + ".js",
@@ -79,9 +81,7 @@ func (fs *gopherJSFS) openSourceDir(path string) (http.File, error) {
 	}, nil
 }
 
-func (fs *gopherJSFS) compileGoPackage(path string) (http.File, error) {
-	dir, _ := pathpkg.Split(path)
-
+func (fs *gopherJSFS) compileGoPackage(dir string) (http.File, error) {
 	f, err := fs.source.Open(dir)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (fs *gopherJSFS) compileGoPackage(path string) (http.File, error) {
 	}
 
 	if !fi.IsDir() {
-		return nil, fmt.Errorf("%s (parent of %s) is not a dir", dir, path)
+		return nil, fmt.Errorf("%s is not a dir", dir)
 	}
 
 	fis, err := f.Readdir(0)
@@ -109,12 +109,12 @@ func (fs *gopherJSFS) compileGoPackage(path string) (http.File, error) {
 		}
 	}
 	if len(goFiles) == 0 {
-		return nil, fmt.Errorf("%s has no .go files", path)
+		return nil, fmt.Errorf("%s has no .go files", dir)
 	}
 
 	// TODO: Clean this up.
 	{
-		name := pathpkg.Base(path)
+		name := pathpkg.Base(dir) + ".js"
 
 		var names []string
 		var goReaders []io.Reader
@@ -143,14 +143,6 @@ func (fs *gopherJSFS) compileGoPackage(path string) (http.File, error) {
 			Reader:  bytes.NewReader(content),
 		}, nil
 	}
-
-	/*content := []byte("foo bar")
-	return &file{
-		name:    fi.Name() + ".js",
-		size:    0,           // TODO.
-		modTime: time.Time{}, // TODO.
-		Reader:  bytes.NewReader(content),
-	}, nil*/
 }
 
 // file is an opened file instance.
