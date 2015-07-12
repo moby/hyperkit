@@ -11,6 +11,18 @@ import (
 	"time"
 )
 
+// NewFS returns an http.FileSystem that is exactly like source, except all Go packages are compiled to JavaScript with GopherJS.
+//
+// For example:
+//
+// 	/mypkg/foo.go
+// 	/mypkg/bar.go
+//
+// Become replaced with:
+//
+// 	/mypkg/mypkg.js
+//
+// Where mypkg.js is the result of building mypkg with GopherJS.
 func NewFS(source http.FileSystem) http.FileSystem {
 	return &gopherJSFS{source: source}
 }
