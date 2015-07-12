@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -99,7 +98,6 @@ func (fs *gzipFileServer) serveFile(w http.ResponseWriter, req *http.Request, na
 	}
 
 	// Perform compression and serve gzip compressed bytes.
-	log.Println("doing Dynamic gzip Compression for", d.Name())
 	rs, err := gzipCompress(f)
 	if err != nil {
 		msg, code := toHTTPError(err)
