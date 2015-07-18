@@ -1,4 +1,4 @@
-// Package gist7651991 provides functionality for peforming processing in parallel.
+// Package gist7651991 provides functionality for performing processing in parallel.
 package gist7651991
 
 import (
