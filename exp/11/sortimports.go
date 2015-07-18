@@ -1,6 +1,4 @@
-// Hacked up copy of golang.org/x/tools/imports/sortimports.go.
-
-package exp15
+package exp11
 
 import (
 	"bufio"
@@ -19,12 +17,11 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-// TODO: Replace with go/ast.SortImports or golang.org/x/tools/imports.SortImports whenever it's possible.
-func SortImports(fset *token.FileSet, f *ast.File) {
-	sortImports(fset, f)
-}
+// Hacked up copy of golang.org/x/tools/imports/sortimports.go.
 
-func SortImports2(fset *token.FileSet, f *ast.File) (fset2 *token.FileSet, f2 *ast.File) {
+// TODO: Replace with go/ast.SortImports or golang.org/x/tools/imports.SortImports whenever it's possible.
+
+func sortImports2(fset *token.FileSet, f *ast.File) (fset2 *token.FileSet, f2 *ast.File) {
 	sortImports(fset, f)
 	imps := astutil.Imports(fset, f)
 

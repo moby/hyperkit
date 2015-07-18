@@ -1,10 +1,9 @@
+// Package exp13 offers caching of vcs state per repository.
 package exp13
 
 import (
-	. "github.com/shurcooL/go/gists/gist7802150"
-
+	"github.com/shurcooL/go/gists/gist7802150"
 	"github.com/shurcooL/go/vcs"
-
 	go_vcs "golang.org/x/tools/go/vcs"
 )
 
@@ -19,7 +18,7 @@ type VcsState struct {
 	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
 	// TODO: No need for this to have a DepNode2Manual, remove it.
 	//       Well, the idea is I don't foresee anyone invalidating the entire VcsState.
-	DepNode2Manual
+	gist7802150.DepNode2Manual
 }
 
 func NewVcsState(vcs vcs.Vcs) *VcsState {
@@ -40,21 +39,19 @@ type VcsLocal struct {
 	LocalBranch string
 	LocalRev    string
 
-	DepNode2
+	gist7802150.DepNode2
 }
 
 func NewVcsLocal(repo *VcsState) *VcsLocal {
 	this := &VcsLocal{}
 	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
-	this.AddSources(repo, &DepNode2Manual{})
+	this.AddSources(repo, &gist7802150.DepNode2Manual{})
 	return this
 }
 
 func (this *VcsLocal) Update() {
 	// THINK: No need to add repo as a DepNode2I, just add it a plain variable. Maybe?
 	vcs := this.GetSources()[0].(*VcsState).Vcs
-
-	//fmt.Println("*VcsLocal) Update() for", vcs.RootPath())
 
 	this.Status = vcs.GetStatus()
 	this.Stash = vcs.GetStash()
@@ -69,7 +66,7 @@ type VcsRemote struct {
 	RemoteRev   string
 	IsContained bool // True if remote commit is contained in the default local branch.
 
-	DepNode2
+	gist7802150.DepNode2
 }
 
 func NewVcsRemote(repo *VcsState) *VcsRemote {
@@ -80,8 +77,6 @@ func NewVcsRemote(repo *VcsState) *VcsRemote {
 
 func (this *VcsRemote) Update() {
 	vcs := this.GetSources()[0].(*VcsState).Vcs
-
-	//fmt.Println("*VcsRemote) Update() for", vcs.RootPath())
 
 	this.RemoteRev = vcs.GetRemoteRev()
 	if this.RemoteRev != "" {

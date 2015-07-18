@@ -1,12 +1,12 @@
+// Package exp12 provides caching of vcs per directory.
 package exp12
 
 import (
 	"sync"
 
 	"github.com/shurcooL/go/exp/13"
+	"github.com/shurcooL/go/gists/gist7802150"
 	"github.com/shurcooL/go/vcs"
-
-	. "github.com/shurcooL/go/gists/gist7802150"
 )
 
 // TODO: Use FileUri or similar type instead of string for clean path to repo root.
@@ -24,7 +24,7 @@ type Directory struct {
 
 	Repo *exp13.VcsState // nil if no Vcs.
 
-	DepNode2
+	gist7802150.DepNode2
 }
 
 func (this *Directory) Update() {
