@@ -1,17 +1,17 @@
+// Package gopath_util provides tools to operate on GOPATH workspace.
 package gopath_util
 
 import (
 	"errors"
 	"strings"
 
-	. "github.com/shurcooL/go/gists/gist7480523"
-
 	"github.com/kisielk/gotool"
+	"github.com/shurcooL/go/gists/gist7480523"
 	"github.com/shurcooL/go/trash"
 	"github.com/shurcooL/gostatus/status"
 )
 
-// Moves go gettable repo with no local changes into trash.
+// RemoveRepo removes go-gettable repo with no local changes (by moving it into trash).
 // importPathPattern must match exactly with the repo root.
 // For example, "github.com/user/repo/...".
 func RemoveRepo(importPathPattern string) error {
@@ -21,9 +21,9 @@ func RemoveRepo(importPathPattern string) error {
 		return errors.New("no packages to remove")
 	}
 
-	var firstGoPackage *GoPackage
+	var firstGoPackage *gist7480523.GoPackage
 	for i, importPath := range importPaths {
-		goPackage := GoPackageFromImportPath(importPath)
+		goPackage := gist7480523.GoPackageFromImportPath(importPath)
 		if goPackage == nil {
 			return errors.New("Import Path not found: " + importPath)
 		}
@@ -47,13 +47,13 @@ func RemoveRepo(importPathPattern string) error {
 		}
 	}
 
-	if repoImportPathPattern := GetRepoImportPathPattern(firstGoPackage.Dir.Repo.Vcs.RootPath(), firstGoPackage.Bpkg.SrcRoot); repoImportPathPattern != importPathPattern {
+	if repoImportPathPattern := gist7480523.GetRepoImportPathPattern(firstGoPackage.Dir.Repo.Vcs.RootPath(), firstGoPackage.Bpkg.SrcRoot); repoImportPathPattern != importPathPattern {
 		return errors.New("importPathPattern not exact repo root match: " + importPathPattern + " != " + repoImportPathPattern)
 	}
 
 	firstGoPackage.UpdateVcsFields()
 
-	cleanStatus := func(goPackage *GoPackage) bool {
+	cleanStatus := func(goPackage *gist7480523.GoPackage) bool {
 		packageStatus := status.PlumbingPresenterV2(goPackage)[:4]
 		return packageStatus == "    " || packageStatus == "  + " // Updates are okay to ignore.
 	}

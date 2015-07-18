@@ -1,3 +1,4 @@
+// Package pipe_util provides additional functionality for gopkg.in/pipe.v2 package.
 package pipe_util
 
 import (

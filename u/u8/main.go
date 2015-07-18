@@ -1,3 +1,4 @@
+// Package u8 offers a cancellable construct, allowing performing actions after a delay with ability to cancel.
 package u8
 
 import (

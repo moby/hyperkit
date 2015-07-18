@@ -1,10 +1,10 @@
+// Package u3 displays Markdown or HTML in a new browser tab.
 package u3
 
 import (
 	"net/http"
 
 	"github.com/shurcooL/go/gists/gist7390843"
-
 	"github.com/shurcooL/go/u/u1"
 	"github.com/shurcooL/go/u/u4"
 )

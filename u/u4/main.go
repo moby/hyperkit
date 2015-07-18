@@ -1,3 +1,4 @@
+// Package u4 offers ability to open files or URLs as if user double clicked it in their OS.
 package u4
 
 import (
@@ -12,13 +13,12 @@ func Open(path string) {
 	var args []string
 	switch runtime.GOOS {
 	case "darwin":
-		args = []string{"open"}
+		args = []string{"open", path}
 	case "windows":
-		args = []string{"cmd", "/c", "start"}
+		args = []string{"cmd", "/c", "start", path}
 	default:
-		args = []string{"xdg-open"}
+		args = []string{"xdg-open", path}
 	}
-	args = append(args, path)
 	cmd := exec.Command(args[0], args[1:]...)
 	err := cmd.Run()
 	if err != nil {

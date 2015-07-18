@@ -31,5 +31,5 @@ func Example2() {
 	x.Wait() // Don't exit before x finishes its work to prevent a race.
 
 	// Output:
-	//hi
+	// hi
 }

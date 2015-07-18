@@ -1,3 +1,4 @@
+// Package u9 offers functionality to add tab support to a textarea element.
 package u9
 
 import (

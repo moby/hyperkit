@@ -1,3 +1,4 @@
+// Package html_to_markdown converts HTML nodes to Markdown.
 package html_to_markdown
 
 import (
@@ -6,6 +7,16 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )
+
+// Paragraph converts a single paragraph html node to Markdown.
+func Paragraph(paragraph *html.Node) (markdown string) {
+	return clean(extract(paragraph))
+}
+
+// Document converts a full document html node to Markdown.
+func Document(document *html.Node) (markdown string) {
+	return extract(document)
+}
 
 // clean replaces each sequence of space, \n, \r, or \t characters
 // with a single space and removes any trailing and leading spaces.
@@ -89,14 +100,4 @@ func extractList(n *html.Node, listType atom.Atom) (out string) {
 		}
 	}
 	return out
-}
-
-// Paragraph converts a single paragraph html node to Markdown.
-func Paragraph(paragraph *html.Node) (markdown string) {
-	return clean(extract(paragraph))
-}
-
-// Document converts a full document html node to Markdown.
-func Document(document *html.Node) (markdown string) {
-	return extract(document)
 }

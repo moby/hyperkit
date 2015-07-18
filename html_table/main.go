@@ -1,3 +1,4 @@
+// Package html_table provides WalkRows to walk the rows of an html table.
 package html_table
 
 import (

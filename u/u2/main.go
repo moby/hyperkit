@@ -1,3 +1,4 @@
+// Package u2 offers a TrackingWriter that tracks the last byte written on every write.
 package u2
 
 import (

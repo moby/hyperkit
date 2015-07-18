@@ -1,3 +1,4 @@
+// Package u10 provides an http.Handler with options that serves rendered Markdown.
 package u10
 
 import (

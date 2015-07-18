@@ -1,3 +1,4 @@
+// Package gopherjs_http provides helpers for compiling Go using GopherJS and serving it over HTTP.
 package gopherjs_http
 
 import (

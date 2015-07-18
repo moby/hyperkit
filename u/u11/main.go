@@ -1,3 +1,4 @@
+// Package u11 provides a WriteFile func with an io.Reader as input.
 package u11
 
 import (

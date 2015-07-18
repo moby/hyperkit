@@ -1,3 +1,4 @@
+// Package u6 implements funcs for comparing working directories and branches in vcs repositories.
 package u6
 
 import (
@@ -7,18 +8,17 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/exp/13"
+	"github.com/shurcooL/go/gists/gist7480523"
 	"github.com/shurcooL/go/pipe_util"
+	"github.com/shurcooL/go/trim"
 	"github.com/shurcooL/go/vcs"
 	"gopkg.in/pipe.v2"
-
-	. "github.com/shurcooL/go/gists/gist7480523"
-	"github.com/shurcooL/go/trim"
 )
 
 // Show the difference between the working directory and the most recent commit.
 // Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
 // TODO: Support for non-git.
-func GoPackageWorkingDiff(goPackage *GoPackage) string {
+func GoPackageWorkingDiff(goPackage *gist7480523.GoPackage) string {
 	// git diff
 	if goPackage.Dir.Repo.VcsLocal.Status != "" {
 		switch goPackage.Dir.Repo.Vcs.Type() {
@@ -59,7 +59,7 @@ func GoPackageWorkingDiff(goPackage *GoPackage) string {
 // Show the difference between the working directory and master branch.
 // It returns empty string if master branch is already checked out (this may change).
 // Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
-func GoPackageWorkingDiffMaster(goPackage *GoPackage) string {
+func GoPackageWorkingDiffMaster(goPackage *gist7480523.GoPackage) string {
 	if goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() {
 		switch goPackage.Dir.Repo.Vcs.Type() {
 		case vcs.Git:

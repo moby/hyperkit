@@ -1,3 +1,4 @@
+// Package u1 offers functionality to render GitHub Flavored Markdown to io.Writer.
 package u1
 
 import (
@@ -8,14 +9,15 @@ import (
 	"github.com/shurcooL/github_flavored_markdown"
 )
 
-// Convert GitHub Flavored Markdown to full HTML page and write to w.
+// WriteGitHubFlavoredMarkdownViaLocal converts GitHub Flavored Markdown to full HTML page and writes it to w.
 func WriteGitHubFlavoredMarkdownViaLocal(w io.Writer, markdown []byte) {
 	io.WriteString(w, `<html><head><meta charset="utf-8"><link href="https://dl.dropboxusercontent.com/u/8554242/temp/github-flavored-markdown.css" media="all" rel="stylesheet" type="text/css" /><link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" /></head><body><article class="markdown-body entry-content" style="padding: 30px;">`)
 	w.Write(github_flavored_markdown.Markdown(markdown))
 	io.WriteString(w, `</article></body></html>`)
 }
 
-// TODO: Remove once local version gives matching results.
+// WriteGitHubFlavoredMarkdownViaLocal converts GitHub Flavored Markdown to full HTML page and writes it to w
+// by using GitHub API.
 func WriteGitHubFlavoredMarkdownViaGitHub(w io.Writer, markdown []byte) {
 	io.WriteString(w, `<html><head><meta charset="utf-8"><link href="https://dl.dropboxusercontent.com/u/8554242/temp/github-flavored-markdown.css" media="all" rel="stylesheet" type="text/css" /><link href="//cdnjs.cloudflare.com/ajax/libs/octicons/2.1.2/octicons.css" media="all" rel="stylesheet" type="text/css" /></head><body><article class="markdown-body entry-content" style="padding: 30px;">`)
 
