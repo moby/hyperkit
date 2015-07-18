@@ -1,3 +1,5 @@
+// Package gist7480523 contains types and funcs for dealing with instances of a Go package found in a directory,
+// including caching of its directory entry, vcs repository, and vcs state.
 package gist7480523
 
 import (
@@ -18,7 +20,7 @@ import (
 type GoPackageStringer func(*GoPackage) string
 
 // A GoPackage describes a single package found in a directory.
-// This is partially a copy of "cmd/go".Package, except it can be imported and reused. =.=
+// This is partially a copy of "cmd/go".Package, except it can be imported and reused.
 // https://code.google.com/p/go/source/browse/src/cmd/go/pkg.go?name=release#24
 type GoPackage struct {
 	Bpkg    *build.Package // Bpkg is not nil.

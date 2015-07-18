@@ -1,3 +1,4 @@
+// Package gist6418290 implements ability to get name of caller funcs and parameters.
 package gist6418290
 
 import (

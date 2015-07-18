@@ -1,103 +1,20 @@
+// Package gist8018045 provides funcs to get a list of all local Go packages in GOPATH workspaces and GOROOT.
 package gist8018045
 
 import (
-	"fmt"
 	"go/build"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/shurcooL/go-goon"
-
-	. "github.com/shurcooL/go/gists/gist5504644"
-	. "github.com/shurcooL/go/gists/gist7480523"
+	"github.com/shurcooL/go/gists/gist5504644"
+	"github.com/shurcooL/go/gists/gist7480523"
 )
 
-var _ = fmt.Print
-var _ = goon.Dump
-
-func rec(out chan<- ImportPathFound, importPathFound ImportPathFound) {
-	if goPackage := GoPackageFromImportPathFound(importPathFound); goPackage != nil {
-		out <- importPathFound
-	}
-
-	entries, err := ioutil.ReadDir(importPathFound.FullPath())
-	if err == nil {
-		for _, v := range entries {
-			if v.IsDir() && !strings.HasPrefix(v.Name(), ".") && !strings.HasPrefix(v.Name(), "_") || v.Name() == "testdata" {
-				rec(out, NewImportPathFound(filepath.Join(importPathFound.ImportPath(), v.Name()), importPathFound.GopathEntry()))
-			}
-		}
-	}
-}
-
-func isDir(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && fi.IsDir()
-}
-
-//var skipGopath = map[string]bool{"/Users/Dmitri/Local/Ongoing/Conception/GoLand": false, "/Users/Dmitri/Dropbox/Work/2013/GoLanding": false}
-
-// Deprecated in favor of GetGoPackages(out chan<- *GoPackage).
-/*func GetGoPackages(out chan<- ImportPathFound) {
-	getGoPackagesB(out)
-}*/
-
-func getGoPackagesA(out chan<- ImportPathFound) {
-	gopathEntries := filepath.SplitList(build.Default.GOPATH)
-	//goon.DumpExpr(gopathEntries)
-	//goon.DumpExpr(build.Default.SrcDirs())
-	//return
-
-	for _, gopathEntry := range gopathEntries {
-		/*if skipGopath[gopathEntry] {
-			continue
-		}*/
-
-		//println("---", gopathEntry, "---\n")
-		rec(out, NewImportPathFound(".", gopathEntry))
-	}
-	close(out)
-}
-
-func getGoPackagesB(out chan<- ImportPathFound) {
-	gopathEntries := filepath.SplitList(build.Default.GOPATH)
-	for _, gopathEntry := range gopathEntries {
-		root := filepath.Join(gopathEntry, "src")
-		if !isDir(root) {
-			continue
-		}
-
-		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
-			if err != nil {
-				log.Printf("can't stat file %s: %v\n", path, err)
-				return nil
-			}
-			if !fi.IsDir() {
-				return nil
-			}
-			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
-				return filepath.SkipDir
-			}
-			importPath, err := filepath.Rel(root, path)
-			if err != nil {
-				return nil
-			}
-			importPathFound := NewImportPathFound(importPath, gopathEntry)
-			if goPackage := GoPackageFromImportPathFound(importPathFound); goPackage != nil {
-				out <- importPathFound
-			}
-			return nil
-		})
-	}
-	close(out)
-}
-
-// Gets all local Go packages (from GOROOT and all GOPATH workspaces).
-func GetGoPackages(out chan<- *GoPackage) {
+// GetGoPackages gets all local Go packages (from GOROOT and all GOPATH workspaces).
+func GetGoPackages(out chan<- *gist7480523.GoPackage) {
 	for _, root := range build.Default.SrcDirs() {
 		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
@@ -121,7 +38,7 @@ func GetGoPackages(out chan<- *GoPackage) {
 				case "builtin":
 					return nil
 				}
-				if goPackage := GoPackageFromImportPath(importPath); goPackage != nil {
+				if goPackage := gist7480523.GoPackageFromImportPath(importPath); goPackage != nil {
 					out <- goPackage
 				}
 				return nil
@@ -131,15 +48,14 @@ func GetGoPackages(out chan<- *GoPackage) {
 	close(out)
 }
 
-// Gets Go packages in all GOPATH workspaces.
-func GetGopathGoPackages(out chan<- *GoPackage) {
+// GetGopathGoPackages gets Go packages in all GOPATH workspaces.
+func GetGopathGoPackages(out chan<- *gist7480523.GoPackage) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
 		root := filepath.Join(gopathEntry, "src")
 		if !isDir(root) {
 			continue
 		}
-
 		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
 				log.Printf("can't stat file %s: %v\n", path, err)
@@ -155,8 +71,8 @@ func GetGopathGoPackages(out chan<- *GoPackage) {
 			if err != nil {
 				return nil
 			}
-			importPathFound := NewImportPathFound(importPath, gopathEntry)
-			if goPackage := GoPackageFromImportPathFound(importPathFound); goPackage != nil {
+			importPathFound := gist7480523.NewImportPathFound(importPath, gopathEntry)
+			if goPackage := gist7480523.GoPackageFromImportPathFound(importPathFound); goPackage != nil {
 				out <- goPackage
 			}
 			return nil
@@ -165,14 +81,42 @@ func GetGopathGoPackages(out chan<- *GoPackage) {
 	close(out)
 }
 
-func getGoPackagesC(out chan<- ImportPathFound) {
+func isDir(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
+}
+
+// rec is the recursive body of getGoPackagesA.
+func rec(out chan<- gist7480523.ImportPathFound, importPathFound gist7480523.ImportPathFound) {
+	if goPackage := gist7480523.GoPackageFromImportPathFound(importPathFound); goPackage != nil {
+		out <- importPathFound
+	}
+
+	entries, err := ioutil.ReadDir(importPathFound.FullPath())
+	if err == nil {
+		for _, v := range entries {
+			if v.IsDir() && !strings.HasPrefix(v.Name(), ".") && !strings.HasPrefix(v.Name(), "_") || v.Name() == "testdata" {
+				rec(out, gist7480523.NewImportPathFound(filepath.Join(importPathFound.ImportPath(), v.Name()), importPathFound.GopathEntry()))
+			}
+		}
+	}
+}
+
+func getGoPackagesA(out chan<- gist7480523.ImportPathFound) {
+	gopathEntries := filepath.SplitList(build.Default.GOPATH)
+	for _, gopathEntry := range gopathEntries {
+		rec(out, gist7480523.NewImportPathFound(".", gopathEntry))
+	}
+	close(out)
+}
+
+func getGoPackagesB(out chan<- gist7480523.ImportPathFound) {
 	gopathEntries := filepath.SplitList(build.Default.GOPATH)
 	for _, gopathEntry := range gopathEntries {
 		root := filepath.Join(gopathEntry, "src")
 		if !isDir(root) {
 			continue
 		}
-
 		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
 			if err != nil {
 				log.Printf("can't stat file %s: %v\n", path, err)
@@ -184,31 +128,48 @@ func getGoPackagesC(out chan<- ImportPathFound) {
 			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
 				return filepath.SkipDir
 			}
-			bpkg, err := BuildPackageFromSrcDir(path)
+			importPath, err := filepath.Rel(root, path)
 			if err != nil {
 				return nil
 			}
-			/*if bpkg.Goroot {
-				return nil
-			}*/
-			out <- NewImportPathFound(bpkg.ImportPath, bpkg.Root)
+			importPathFound := gist7480523.NewImportPathFound(importPath, gopathEntry)
+			if goPackage := gist7480523.GoPackageFromImportPathFound(importPathFound); goPackage != nil {
+				out <- importPathFound
+			}
 			return nil
 		})
 	}
 	close(out)
 }
 
-func main() {
-	started := time.Now()
-
-	out := make(chan *GoPackage)
-	go GetGoPackages(out)
-
-	for goPackage := range out {
-		_ = goPackage
-		println(goPackage.Bpkg.ImportPath)
-		//goon.Dump(goPackage)
+func getGoPackagesC(out chan<- gist7480523.ImportPathFound) {
+	gopathEntries := filepath.SplitList(build.Default.GOPATH)
+	for _, gopathEntry := range gopathEntries {
+		root := filepath.Join(gopathEntry, "src")
+		if !isDir(root) {
+			continue
+		}
+		_ = filepath.Walk(root, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				log.Printf("can't stat file %s: %v\n", path, err)
+				return nil
+			}
+			if !fi.IsDir() {
+				return nil
+			}
+			if strings.HasPrefix(fi.Name(), ".") || strings.HasPrefix(fi.Name(), "_") || fi.Name() == "testdata" {
+				return filepath.SkipDir
+			}
+			bpkg, err := gist5504644.BuildPackageFromSrcDir(path)
+			if err != nil {
+				return nil
+			}
+			/*if bpkg.Goroot {
+				return nil
+			}*/
+			out <- gist7480523.NewImportPathFound(bpkg.ImportPath, bpkg.Root)
+			return nil
+		})
 	}
-
-	goon.Dump(time.Since(started).Seconds() * 1000)
+	close(out)
 }

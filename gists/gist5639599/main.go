@@ -1,3 +1,4 @@
+// Package gist5639599 provides formatted printing of AST nodes.
 package gist5639599
 
 import (

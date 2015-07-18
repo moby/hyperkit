@@ -1,4 +1,4 @@
-// Package exp11 displays Go package source code with dot imports inlined.
+// Package exp11 allows displaying Go package source code with dot imports inlined, or merging entire Go package into a single file.
 package exp11
 
 import (
@@ -33,6 +33,7 @@ func findDotImports(prog *loader.Program, pi *loader.PackageInfo) {
 	}
 }
 
+// InlineDotImports displays Go package source code with dot imports inlined.
 func InlineDotImports(w io.Writer, importPath string) {
 	/*imp2 := importer.New()
 	imp2.Config.UseGcFallback = true

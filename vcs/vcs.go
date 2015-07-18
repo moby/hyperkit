@@ -1,4 +1,4 @@
-// Package for getting status of a repo under vcs.
+// Package vcs allows getting status of a repo under vcs.
 package vcs
 
 import "os/exec"

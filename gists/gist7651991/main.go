@@ -1,3 +1,4 @@
+// Package gist7651991 provides functionality for peforming processing in parallel.
 package gist7651991
 
 import (
@@ -121,6 +122,6 @@ func GoReduce(inChan <-chan interface{}, numWorkers int, reduceFunc func(interfa
 // Order is guaranteed to be preserved.
 //
 // TODO: Implement this.
-func GoReducePreservingOrder(inChan <-chan interface{}, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
+/*func GoReducePreservingOrder(inChan <-chan interface{}, numWorkers int, reduceFunc func(interface{}) interface{}) <-chan interface{} {
 	panic("not implemented")
-}
+}*/

@@ -1,12 +1,11 @@
+// Package gist7576154 implements functionality to create commands and pipes using templates.
 package gist7576154
 
 import (
 	"io"
 	"os/exec"
 
-	"github.com/shurcooL/go/gists/gist7729255"
 	"github.com/shurcooL/go/gists/gist7802150"
-
 	"gopkg.in/pipe.v2"
 )
 
@@ -41,13 +40,33 @@ func (ct CmdTemplate) NewCommand() *exec.Cmd {
 
 // ---
 
+type String interface {
+	Get() string
+}
+
+type StringFunc func() string
+
+func (this StringFunc) Get() string {
+	return this()
+}
+
+type Strings interface {
+	Get() []string
+}
+
+type StringsFunc func() []string
+
+func (this StringsFunc) Get() []string {
+	return this()
+}
+
 type CmdTemplateDynamic struct {
-	NameArgs gist7729255.Strings
-	Dir      gist7729255.String
+	NameArgs Strings
+	Dir      String
 	Stdin    func() io.Reader
 }
 
-func NewCmdTemplateDynamic(nameArgs gist7729255.Strings) CmdTemplateDynamic {
+func NewCmdTemplateDynamic(nameArgs Strings) CmdTemplateDynamic {
 	return CmdTemplateDynamic{
 		NameArgs: nameArgs,
 	}

@@ -1,3 +1,4 @@
+// Package gist8065433 contains helpers for getting list of IPs on the machine.
 package gist8065433
 
 import "net"

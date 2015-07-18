@@ -1,3 +1,4 @@
+// Package gist6418462 implements functionality to get a string containing source code of provided func.
 package gist6418462
 
 import (

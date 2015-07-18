@@ -1,26 +1,28 @@
+// Package gist7390843 offers ListenAndServeStoppable, like http.ListenAndServe, but with ability to stop it externally.
 package gist7390843
 
 import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
-// Closes listener socket when stopServerChan receives a value.
-func ListenAndServeStoppable(addr string, handler http.Handler, stopServerChan <-chan struct{}) error {
-	server := &http.Server{Addr: addr, Handler: handler}
-	listener, err := net.Listen("tcp", server.Addr)
+// ListenAndServeStoppable is like http.ListenAndServe, but it closes listener socket when stop receives a value.
+func ListenAndServeStoppable(addr string, handler http.Handler, stop <-chan struct{}) error {
+	srv := &http.Server{Addr: addr, Handler: handler}
+	ln, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		return err
 	}
 	go func() {
-		<-stopServerChan
-		err := listener.Close()
+		<-stop
+		err := ln.Close()
 		if err != nil {
 			panic(err)
 		}
 	}()
-	err = server.Serve(listener)
+	err = srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
 	switch {
 	case err == nil:
 		panic("Supposed to get an error from Serve due to listener closed, but didn't...")
@@ -29,4 +31,21 @@ func ListenAndServeStoppable(addr string, handler http.Handler, stopServerChan <
 	default:
 		return err
 	}
+}
+
+// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
+// connections. It's used by ListenAndServe so dead TCP connections
+// (e.g. closing laptop mid-download) eventually go away.
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }

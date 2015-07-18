@@ -1,3 +1,4 @@
+// Package gist6096872 offers interchange between io.Writer/io.Reader types and channels of []byte.
 package gist6096872
 
 import (

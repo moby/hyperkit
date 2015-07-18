@@ -1,3 +1,4 @@
+// Package gist5504644 provides helpers for parsing Go AST, creating build and godoc packages.
 package gist5504644
 
 import (

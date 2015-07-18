@@ -1,3 +1,4 @@
+// Package gist7802150 implements an experimental approach for caching and cache invalidation with dependency tracking and lazy evaluation.
 package gist7802150
 
 import (

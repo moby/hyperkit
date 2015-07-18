@@ -1,3 +1,4 @@
+// Package gist5645828 offers functionality to print higher-level summaries of Go packages.
 package gist5645828
 
 import (

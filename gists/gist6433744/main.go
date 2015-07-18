@@ -1,3 +1,4 @@
+// Package gist6433744 offes a func to get starting and ending caret indicies of specified line within multiline text.
 package gist6433744
 
 import (
@@ -26,21 +27,4 @@ func GetLineStartEndIndicies(b []byte, lineIndex int) (startIndex, endIndex int)
 	}
 
 	return -1, -1
-}
-
-func main() {
-	b := []byte(`this
-
-this is a longer line
-and
-stuff
-last`)
-
-	for lineIndex := 0; ; lineIndex++ {
-		s, e := GetLineStartEndIndicies(b, lineIndex)
-		print(lineIndex, ": [", s, ", ", e, "]\n")
-		if s == -1 {
-			break
-		}
-	}
 }

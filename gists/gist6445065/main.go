@@ -1,8 +1,15 @@
+// Package gist6445065 offers funcs to perform deep-search via reflect to find instances that satisfy given query.
 package gist6445065
 
 import (
 	"reflect"
 )
+
+// FindFirst finds the first instances of i that satisfies query within d.
+func FindFirst(d interface{}, query func(i interface{}) bool) interface{} {
+	s := state{Visited: make(map[uintptr]struct{})}
+	return s.findFirst(reflect.ValueOf(d), query)
+}
 
 type state struct {
 	Visited map[uintptr]struct{}
@@ -53,18 +60,19 @@ func (s *state) findFirst(v reflect.Value, query func(i interface{}) bool) inter
 	return nil
 }
 
-func FindFirst(d interface{}, query func(i interface{}) bool) interface{} {
-	s := state{Visited: make(map[uintptr]struct{})}
-	return s.findFirst(reflect.ValueOf(d), query)
+// FindAll finds all instances of i that satisfy query within d.
+func FindAll(d interface{}, query func(i interface{}) bool) map[interface{}]struct{} {
+	s := stateAll{state: state{Visited: make(map[uintptr]struct{})}, Found: make(map[interface{}]struct{})}
+	s.findAll(reflect.ValueOf(d), query)
+	return s.Found
 }
 
-type state2 struct {
+type stateAll struct {
 	state
 	Found map[interface{}]struct{}
 }
 
-func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
-	//if !v.IsValid() { return }
+func (s *stateAll) findAll(v reflect.Value, query func(i interface{}) bool) {
 	switch v.Kind() {
 	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 		// TODO: Instead of skipping nil values, maybe pass the info as a bool parameter to query?
@@ -103,10 +111,4 @@ func (s *state2) findAll(v reflect.Value, query func(i interface{}) bool) {
 			s.findAll(v.Elem(), query)
 		}
 	}
-}
-
-func FindAll(d interface{}, query func(i interface{}) bool) map[interface{}]struct{} {
-	s := state2{state: state{Visited: make(map[uintptr]struct{})}, Found: make(map[interface{}]struct{})}
-	s.findAll(reflect.ValueOf(d), query)
-	return s.Found
 }
