@@ -28,7 +28,7 @@ func SortMapByValue(m map[string]int) PairList {
 		p[i] = Pair{k, v}
 		i++
 	}
-	sort.Sort(gist5408860.Reverse{p})
+	sort.Sort(gist5408860.Reverse{Interface: p})
 	return p
 }
 
@@ -56,7 +56,7 @@ func SortMapByKey(m map[rune]int, reverse bool) RuneIntPairList {
 	if !reverse {
 		sort.Sort(sm)
 	} else {
-		sort.Sort(gist5408860.Reverse{sm})
+		sort.Sort(gist5408860.Reverse{Interface: sm})
 	}
 	return sm
 }
