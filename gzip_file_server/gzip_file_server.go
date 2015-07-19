@@ -85,12 +85,18 @@ func (fs *gzipFileServer) serveFile(w http.ResponseWriter, req *http.Request, na
 	}
 
 	// If the file is not worth gzip compressing, serve it as is.
+	type notWorthGzipCompressing interface {
+		NotWorthGzipCompressing()
+	}
 	if _, ok := f.(notWorthGzipCompressing); ok {
 		http.ServeContent(w, req, d.Name(), d.ModTime(), f)
 		return
 	}
 
 	// If there are gzip encoded bytes available, use them directly.
+	type gzipByter interface {
+		GzipBytes() []byte
+	}
 	if gzipFile, ok := f.(gzipByter); ok {
 		w.Header().Set("Content-Encoding", "gzip")
 		http.ServeContent(w, req, d.Name(), d.ModTime(), bytes.NewReader(gzipFile.GzipBytes()))
@@ -120,14 +126,6 @@ func gzipCompress(r io.Reader) (io.ReadSeeker, error) {
 		return nil, err
 	}
 	return bytes.NewReader(buf.Bytes()), nil
-}
-
-type gzipByter interface {
-	GzipBytes() []byte
-}
-
-type notWorthGzipCompressing interface {
-	NotWorthGzipCompressing()
 }
 
 func dirList(w http.ResponseWriter, f http.File, name string) {
