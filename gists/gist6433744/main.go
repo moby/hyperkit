@@ -1,4 +1,4 @@
-// Package gist6433744 offes a func to get starting and ending caret indicies of specified line within multiline text.
+// Package gist6433744 offers a func to get starting and ending caret indicies of specified line within multiline text.
 package gist6433744
 
 import (
