@@ -103,27 +103,32 @@ func (fs *gzipFileServer) serveFile(w http.ResponseWriter, req *http.Request, na
 		return
 	}
 
-	// Perform compression and serve gzip compressed bytes.
-	rs, err := gzipCompress(f)
-	if err != nil {
-		msg, code := toHTTPError(err)
-		http.Error(w, msg, code)
+	// Perform compression and serve gzip compressed bytes (if it's worth it).
+	if rs, err := gzipCompress(f); err == nil {
+		w.Header().Set("Content-Encoding", "gzip")
+		http.ServeContent(w, req, d.Name(), d.ModTime(), rs)
 		return
 	}
-	w.Header().Set("Content-Encoding", "gzip")
-	http.ServeContent(w, req, d.Name(), d.ModTime(), rs)
+
+	// Serve as is.
+	http.ServeContent(w, req, d.Name(), d.ModTime(), f)
 }
 
+// gzipCompress compresses input from r and returns it as an io.ReadSeeker.
+// It returns an error if compressed size is not smaller than uncompressed.
 func gzipCompress(r io.Reader) (io.ReadSeeker, error) {
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
-	_, err := io.Copy(gw, r)
+	n, err := io.Copy(gw, r)
 	if err != nil {
 		return nil, err
 	}
 	err = gw.Close()
 	if err != nil {
 		return nil, err
+	}
+	if int64(buf.Len()) >= n {
+		return nil, fmt.Errorf("not worth gzip compressing: original size %v, compressed size %v", n, buf.Len())
 	}
 	return bytes.NewReader(buf.Bytes()), nil
 }
