@@ -59,7 +59,7 @@ func (fs *gzipFileServer) serveFile(w http.ResponseWriter, req *http.Request, na
 			return
 		}
 	} else {
-		if url[len(url)-1] == '/' {
+		if url[len(url)-1] == '/' && url != "/" {
 			localRedirect(w, req, "../"+path.Base(url))
 			return
 		}
