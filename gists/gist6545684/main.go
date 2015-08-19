@@ -18,19 +18,19 @@ type Polygon struct {
 }
 
 func ReadGpcFromReader(r io.Reader) (Polygon, error) {
-	p := Polygon{}
+	var p Polygon
 
 	var numContours uint64
 	fmt.Fscan(r, &numContours)
 	p.Contours = make([]Contour, numContours)
 
-	for contourIndex := range p.Contours {
+	for ci := range p.Contours {
 		var numVertices uint64
 		fmt.Fscan(r, &numVertices)
-		p.Contours[contourIndex].Vertices = make([]mgl64.Vec2, numVertices)
+		p.Contours[ci].Vertices = make([]mgl64.Vec2, numVertices)
 
-		for vertexIndex := range p.Contours[contourIndex].Vertices {
-			fmt.Fscan(r, &p.Contours[contourIndex].Vertices[vertexIndex][0], &p.Contours[contourIndex].Vertices[vertexIndex][1])
+		for vi := range p.Contours[ci].Vertices {
+			fmt.Fscan(r, &p.Contours[ci].Vertices[vi][0], &p.Contours[ci].Vertices[vi][1])
 		}
 	}
 

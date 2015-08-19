@@ -1,12 +1,14 @@
 package gist6545684_test
 
 import (
+	"path/filepath"
+
 	"github.com/shurcooL/go-goon"
 	"github.com/shurcooL/go/gists/gist6545684"
 )
 
 func Example() {
-	p, err := gist6545684.ReadGpcFile("./testdata/test_orientation.wwl")
+	p, err := gist6545684.ReadGpcFile(filepath.Join("testdata", "test_orientation.wwl"))
 	if err != nil {
 		panic(err)
 	}
