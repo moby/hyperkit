@@ -1,4 +1,4 @@
-// Package gist5707298 offers convenience functions parsing Go code.
+// Package gist5707298 offers convenience functions for parsing Go code to AST.
 package gist5707298
 
 import (
