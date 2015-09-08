@@ -39,7 +39,7 @@ func GoPackageWorkingDiff(goPackage *gist7480523.GoPackage) string {
 			}
 
 			p := pipe.Script(
-				pipe.Exec("git", "diff", "--no-ext-diff", "HEAD"),
+				pipe.Exec("git", "diff", "--no-ext-diff", "--find-renames", "HEAD"),
 				pipe.Line(
 					pipe.Exec("git", "ls-files", "--others", "--exclude-standard"),
 					pipe.Replace(newFileDiff),
@@ -79,7 +79,7 @@ func GoPackageWorkingDiffMaster(goPackage *gist7480523.GoPackage) string {
 			}
 
 			p := pipe.Script(
-				pipe.Exec("git", "diff", "--no-ext-diff", "master"),
+				pipe.Exec("git", "diff", "--no-ext-diff", "--find-renames", "master"),
 				pipe.Line(
 					pipe.Exec("git", "ls-files", "--others", "--exclude-standard"),
 					pipe.Replace(newFileDiff),
