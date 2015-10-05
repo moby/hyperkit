@@ -59,6 +59,23 @@ func (n *nodeMultiplier) Update() {
 	fmt.Println("Auto Updated", n) // Debug
 }
 
+/*
+
+X = A + B
+Y = B + T
+Z = X * Y
+
+A
+  ↘
+    X
+  ↗   ↘
+B       Z
+  ↘   ↗
+    Y
+  ↗
+T
+
+*/
 var nodeA = &node{name: 'A'}
 var nodeB = &node{name: 'B'}
 var nodeT = &node{name: 'T'}
