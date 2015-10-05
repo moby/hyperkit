@@ -192,9 +192,8 @@ pm1_enable_handler(UNUSED int vcpu, int in, UNUSED int port, int bytes,
 INOUT_PORT(pm1_status, PM1A_EVT_ADDR, IOPORT_F_INOUT, pm1_status_handler);
 INOUT_PORT(pm1_enable, PM1A_EVT_ADDR2, IOPORT_F_INOUT, pm1_enable_handler);
 
-static void
-power_button_handler(UNUSED int signal, UNUSED enum ev_type type,
-	UNUSED void *arg)
+void
+push_power_button(void)
 {
 	pthread_mutex_lock(&pm_lock);
 	if (!(pm1_status & PM1_PWRBTN_STS)) {
@@ -202,6 +201,13 @@ power_button_handler(UNUSED int signal, UNUSED enum ev_type type,
 		sci_update();
 	}
 	pthread_mutex_unlock(&pm_lock);
+}
+
+static void
+power_button_handler(UNUSED int signal, UNUSED enum ev_type type,
+	UNUSED void *arg)
+{
+	push_power_button();
 }
 
 /*

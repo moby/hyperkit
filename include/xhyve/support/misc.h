@@ -62,3 +62,6 @@ static inline void do_cpuid(unsigned ax, unsigned *p) {
 		: "=a" (p[0]), "=b" (p[1]), "=c" (p[2]), "=d" (p[3])
 		:  "0" (ax));
 }
+
+/* Used to trigger a self-shutdown */
+extern void push_power_button(void);
