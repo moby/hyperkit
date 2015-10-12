@@ -57,10 +57,9 @@ func GoPackageWorkingDiff(goPackage *gist7480523.GoPackage) string {
 }
 
 // Show the difference between the working directory and master branch.
-// It returns empty string if master branch is already checked out (this may change).
 // Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
 func GoPackageWorkingDiffMaster(goPackage *gist7480523.GoPackage) string {
-	if goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() {
+	if goPackage.Dir.Repo.VcsLocal.Status != "" || goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() {
 		switch goPackage.Dir.Repo.Vcs.Type() {
 		case vcs.Git:
 			newFileDiff := func(line []byte) []byte {
