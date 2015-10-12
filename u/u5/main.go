@@ -22,26 +22,26 @@ type Importers struct {
 var UserAgent string
 
 // GetGodocOrgImporters fetches the importers of Go package with specified importPath via godoc.org API.
-func GetGodocOrgImporters(importPath string) (*Importers, error) {
+func GetGodocOrgImporters(importPath string) (Importers, error) {
 	req, err := http.NewRequest("GET", "http://api.godoc.org/importers/"+importPath, nil)
 	if err != nil {
-		return nil, err
+		return Importers{}, err
 	}
 	if UserAgent != "" {
 		req.Header.Set("User-Agent", UserAgent)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return Importers{}, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("non-200 status code: %v", resp.StatusCode)
+		return Importers{}, fmt.Errorf("non-200 status code: %v", resp.StatusCode)
 	}
 	var importers Importers
 	err = json.NewDecoder(resp.Body).Decode(&importers)
 	if err != nil {
-		return nil, err
+		return Importers{}, err
 	}
-	return &importers, nil
+	return importers, nil
 }
