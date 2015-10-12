@@ -18,9 +18,19 @@ type Importers struct {
 	Results []GoPackage
 }
 
+// UserAgent is used for outbound requests to godoc.org API, if set to non-empty value.
+var UserAgent string
+
 // GetGodocOrgImporters fetches the importers of Go package with specified importPath via godoc.org API.
 func GetGodocOrgImporters(importPath string) (*Importers, error) {
-	resp, err := http.Get("http://api.godoc.org/importers/" + importPath)
+	req, err := http.NewRequest("GET", "http://api.godoc.org/importers/"+importPath, nil)
+	if err != nil {
+		return nil, err
+	}
+	if UserAgent != "" {
+		req.Header.Set("User-Agent", UserAgent)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
