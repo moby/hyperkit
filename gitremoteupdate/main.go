@@ -4,13 +4,14 @@ package gitremoteupdate
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
-// Operation that happened on a branch.
+// Operation that happened to a branch.
 type Operation uint8
 
 const (
-	// New is a newly created branch.
+	// New is a branch that was created.
 	New Operation = iota
 
 	// Updated is a branch that was updated.
@@ -36,6 +37,9 @@ func Parse(stderr []byte) (Result, error) {
 	var result Result
 
 	lines := strings.Split(string(stderr), "\n")
+	if len(lines) < 3 { // Minimum input should have 3 lines (1 for header, 1 for change, and last empty line).
+		return result, nil
+	}
 	for _, line := range lines[1 : len(lines)-1] {
 		change, err := parseLine(line)
 		if err != nil {
@@ -62,6 +66,14 @@ func parseLine(line string) (Change, error) {
 		change.Op = New
 	case "   ":
 		change.Op = Updated
+	case " + ":
+		const suffix = " (forced update)"
+		if !strings.HasSuffix(line, suffix) {
+			return change, fmt.Errorf(`unsupported " + " format`)
+		}
+		line = line[:len(line)-len(suffix)]
+		line = strings.TrimRightFunc(line, unicode.IsSpace)
+		change.Op = Updated
 	case " x ":
 		change.Op = Deleted
 	default:
@@ -79,7 +91,7 @@ func parseLine(line string) (Change, error) {
 }
 
 // parseBranchArrowBranch parses a `master     -> master` segment to extract
-// relevant branch name.
+// relevant branch name. Currently always using 2nd branch name.
 func parseBranchArrowBranch(bab string) (branch string, err error) {
 	branches := strings.SplitN(bab, " -> ", 2)
 	if len(branches) != 2 {
