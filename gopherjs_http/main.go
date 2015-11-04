@@ -249,7 +249,7 @@ func goReadersToJs(names []string, goReaders []io.Reader) (jsCode string, err er
 	defer gopherjslibLock.Unlock()
 
 	var out bytes.Buffer
-	builder := gopherjslib.NewBuilder(&out, nil)
+	builder := gopherjslib.NewBuilder(&out, &gopherjslib.Options{Minify: true})
 
 	for i, goReader := range goReaders {
 		builder.Add(names[i], goReader)
