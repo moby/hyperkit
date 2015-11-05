@@ -68,6 +68,11 @@
 #include <xhyve/firmware/kexec.h>
 #include <xhyve/firmware/fbsd.h>
 
+#ifdef HAVE_OCAML
+#include <caml/callback.h>
+#include <caml/threads.h>
+#endif
+
 #define GUEST_NIO_PORT 0x488 /* guest upcalls via i/o port */
 
 #define MB (1024UL * 1024)
@@ -871,6 +876,11 @@ main(int argc, char *argv[])
 	if (fw != 1)
 		usage(1);
 
+
+#ifdef HAVE_OCAML
+	caml_startup(argv) ;
+	caml_release_runtime_system();
+#endif
 	error = xh_vm_create();
 	if (error) {
 		fprintf(stderr, "Unable to create VM (%d)\n", error);

@@ -67,12 +67,43 @@ FIRMWARE_SRC := \
 	src/firmware/kexec.c \
 	src/firmware/fbsd.c
 
+HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; then echo YES ; else echo NO; fi)
+
+ifeq ($(HAVE_OCAML_QCOW),YES)
+CFLAGS += -DHAVE_OCAML=1 -DHAVE_OCAML_QCOW=1 -DHAVE_OCAML=1
+
+OCAML_SRC := \
+	src/mirage_block_ocaml.ml
+
+OCAML_C_SRC := \
+	src/mirage_block_c.c
+
+OCAML_WHERE := $(shell ocamlc -where)
+OCAML_PACKS := cstruct cstruct.lwt io-page io-page.unix uri mirage-block mirage-block-unix qcow unix threads lwt lwt.unix
+OCAML_LDLIBS := -L $(OCAML_WHERE) \
+	$(shell ocamlfind query cstruct)/cstruct.a \
+	$(shell ocamlfind query cstruct)/libcstruct_stubs.a \
+	$(shell ocamlfind query io-page)/io_page.a \
+	$(shell ocamlfind query io-page)/io_page_unix.a \
+	$(shell ocamlfind query io-page)/libio_page_unix_stubs.a \
+	$(shell ocamlfind query lwt.unix)/liblwt-unix_stubs.a \
+	$(shell ocamlfind query lwt.unix)/lwt-unix.a \
+	$(shell ocamlfind query lwt.unix)/lwt.a \
+	$(shell ocamlfind query threads)/libthreadsnat.a \
+	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
+	-lasmrun -lbigarray -lunix
+
+build/xhyve.o: CFLAGS += -I$(OCAML_WHERE)
+
+endif
+
 SRC := \
 	$(VMM_SRC) \
 	$(XHYVE_SRC) \
-	$(FIRMWARE_SRC)
+	$(FIRMWARE_SRC) \
+	$(OCAML_C_SRC)
 
-OBJ := $(SRC:src/%.c=build/%.o)
+OBJ := $(SRC:src/%.c=build/%.o) $(OCAML_SRC:src/%.ml=build/%.o)
 DEP := $(OBJ:%.o=%.d)
 INC := -Iinclude
 
@@ -95,9 +126,16 @@ build/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(VERBOSE) $(ENV) $(CC) $(CFLAGS) $(INC) $(DEF) -MMD -MT $@ -MF build/$*.d -o $@ -c $<
 
+$(OCAML_C_SRC:src/%.c=build/%.o): CFLAGS += -I$(OCAML_WHERE)
+build/%.o: src/%.ml
+	@echo ml $<
+	@mkdir -p $(dir $@)
+	$(VERBOSE) $(ENV) ocamlfind ocamlopt -thread -package "$(OCAML_PACKS)" -c $< -o build/$*.cmx
+	$(VERBOSE) $(ENV) ocamlfind ocamlopt -thread -linkpkg -package "$(OCAML_PACKS)" -output-obj -o $@ build/$*.cmx
+
 $(TARGET).sym: $(OBJ)
 	@echo ld $(notdir $@)
-	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ)
+	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(OCAML_LDLIBS)
 	@echo dsym $(notdir $(TARGET).dSYM)
 	$(VERBOSE) $(ENV) $(DSYM) $@ -o $(TARGET).dSYM
 

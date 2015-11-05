@@ -48,6 +48,8 @@
 #include <xhyve/mevent.h>
 #include <xhyve/block_if.h>
 
+#include "mirage_block_c.h"
+
 #define BLOCKIF_SIG 0xb109b109
 /* xhyve: FIXME
  *
@@ -88,7 +90,11 @@ struct blockif_elem {
 
 struct blockif_ctxt {
 	int bc_magic;
+	/* Only one of fd and bc_mbh may be >= 0 */
 	int bc_fd;
+#ifdef HAVE_OCAML_QCOW
+	mirage_block_handle bc_mbh;
+#endif
 	int bc_ischr;
 	int bc_isgeom;
 	int bc_candelete;
@@ -139,6 +145,55 @@ pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 	res = lseek(fd, offset, SEEK_SET);
 	assert(res == offset);
 	return writev(fd, iov, iovcnt);
+}
+
+static ssize_t
+block_preadv(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt, off_t offset)
+{
+	if (bc->bc_fd >= 0) return preadv(bc->bc_fd, iov, iovcnt, offset);
+#ifdef HAVE_OCAML_QCOW
+	if (bc->bc_mbh >= 0) return mirage_block_preadv(bc->bc_mbh, iov, iovcnt, offset);
+#endif
+	abort();
+}
+
+static ssize_t
+block_pwritev(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt, off_t offset)
+{
+	if (bc->bc_fd >= 0) return pwritev(bc->bc_fd, iov, iovcnt, offset);
+#ifdef HAVE_OCAML_QCOW
+	if (bc->bc_mbh >= 0) return mirage_block_pwritev(bc->bc_mbh, iov, iovcnt, offset);
+#endif
+	abort();
+}
+
+static int
+block_flush(struct blockif_ctxt *bc)
+{
+	if (bc->bc_fd >= 0) {
+		if (bc->bc_ischr) {
+                        if (ioctl(bc->bc_fd, DKIOCSYNCHRONIZECACHE))
+                                return errno;
+                } else if (fsync(bc->bc_fd))
+                        return errno;
+		return 0;
+#ifdef HAVE_OCAML_QCOW
+	} else if (bc->bc_mbh >= 0) {
+		if (mirage_block_flush(bc->bc_mbh))
+			 return errno;
+		return 0;
+#endif
+	} else
+		abort();
+}
+static int
+block_close(struct blockif_ctxt *bc)
+{
+	if (bc->bc_fd >= 0) return close(bc->bc_fd);
+#ifdef HAVE_OCAML_QCOW
+	if (bc->bc_mbh >= 0) return mirage_block_close(bc->bc_mbh);
+#endif
+	abort();
 }
 
 static int
@@ -239,7 +294,7 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 	switch (be->be_op) {
 	case BOP_READ:
 		if (buf == NULL) {
-			if ((len = preadv(bc->bc_fd, br->br_iov, br->br_iovcnt,
+			if ((len = block_preadv(bc, br->br_iov, br->br_iovcnt,
 				   br->br_offset)) < 0)
 				err = errno;
 			else
@@ -250,7 +305,10 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 		off = voff = 0;
 		while (br->br_resid > 0) {
 			len = MIN(br->br_resid, MAXPHYS);
-			if (pread(bc->bc_fd, buf, ((size_t) len), br->br_offset + off) < 0)
+			struct iovec iov;
+			iov.iov_base = buf;
+			iov.iov_len = (size_t) len;
+			if (block_preadv(bc, &iov, 1, br->br_offset + off) < 0)
 			{
 				err = errno;
 				break;
@@ -279,7 +337,7 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 			break;
 		}
 		if (buf == NULL) {
-			if ((len = pwritev(bc->bc_fd, br->br_iov, br->br_iovcnt,
+			if ((len = block_pwritev(bc, br->br_iov, br->br_iovcnt,
 				    br->br_offset)) < 0)
 				err = errno;
 			else
@@ -305,7 +363,10 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 				}
 				boff += clen;
 			} while (boff < len);
-			if (pwrite(bc->bc_fd, buf, ((size_t) len), br->br_offset +
+			struct iovec iov;
+			iov.iov_base = buf;
+			iov.iov_len = (size_t) len;
+			if (block_pwritev(bc, &iov, 1, br->br_offset +
 			    off) < 0) {
 				err = errno;
 				break;
@@ -315,11 +376,7 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 		}
 		break;
 	case BOP_FLUSH:
-		if (bc->bc_ischr) {
-			if (ioctl(bc->bc_fd, DKIOCSYNCHRONIZECACHE))
-				err = errno;
-		} else if (fsync(bc->bc_fd))
-			err = errno;
+		err = block_flush(bc);
 		break;
 	case BOP_DELETE:
 		if (!bc->bc_candelete) {
@@ -352,6 +409,10 @@ blockif_thr(void *arg)
 	struct blockif_elem *be;
 	pthread_t t;
 	uint8_t *buf;
+
+#ifdef HAVE_OCAML_QCOW
+	mirage_block_register_thread();
+#endif
 
 	bc = arg;
 	if (bc->bc_isgeom)
@@ -425,10 +486,13 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 	off_t size, psectsz, psectoff;
 	int extra, fd, i, sectsz;
 	int nocache, sync, ro, candelete, geom, ssopt, pssopt;
+	mirage_block_handle mbh;
+	int use_mirage = 0;
 
 	pthread_once(&blockif_once, blockif_init);
 
 	fd = -1;
+	mbh = -1;
 	ssopt = 0;
 	nocache = 0;
 	sync = 0;
@@ -450,6 +514,10 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 			sync = 1;
 		else if (!strcmp(cp, "ro"))
 			ro = 1;
+#ifdef HAVE_OCAML_QCOW
+		else if (!strcmp(cp, "format=qcow"))
+			use_mirage = 1;
+#endif
 		else if (sscanf(cp, "sectorsize=%d/%d", &ssopt, &pssopt) == 2)
 			;
 		else if (sscanf(cp, "sectorsize=%d", &ssopt) == 1)
@@ -469,24 +537,45 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 	if (sync)
 		extra |= O_SYNC;
 
-	fd = open(nopt, (ro ? O_RDONLY : O_RDWR) | extra);
-	if (fd < 0 && !ro) {
-		/* Attempt a r/w fail with a r/o open */
-		fd = open(nopt, O_RDONLY | extra);
-		ro = 1;
+	if (use_mirage) {
+#ifdef HAVE_OCAML_QCOW
+		mirage_block_register_thread();
+		mbh = mirage_block_open(nopt, 1);
+		if (mbh < 0) {
+			perror("Could not open mirage-block device");
+			goto err;
+		}
+
+		if (mirage_block_stat(mbh, &sbuf) < 0) {
+			perror("Could not stat backing file");
+			goto err;
+		}
+#else
+		abort();
+#endif
+	} else {
+		fd = open(nopt, (ro ? O_RDONLY : O_RDWR) | extra);
+		if (fd < 0 && !ro) {
+			/* Attempt a r/w fail with a r/o open */
+			fd = open(nopt, O_RDONLY | extra);
+			ro = 1;
+		}
+
+		if (fd < 0) {
+			perror("Could not open backing file");
+			goto err;
+		}
+
+		if (fstat(fd, &sbuf) < 0) {
+			perror("Could not stat backing file");
+			goto err;
+		}
 	}
 
-	if (fd < 0) {
-		perror("Could not open backing file");
-		goto err;
-	}
+	/* One and only one handle */
+	assert(mbh >= 0 || fd >= 0);
 
-	if (fstat(fd, &sbuf) < 0) {
-		perror("Could not stat backing file");
-		goto err;
-	}
-
-    /*
+	/*
 	 * Deal with raw devices
 	 */
 	size = sbuf.st_size;
@@ -552,6 +641,9 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 
 	bc->bc_magic = (int) BLOCKIF_SIG;
 	bc->bc_fd = fd;
+#ifdef HAVE_OCAML_QCOW
+	bc->bc_mbh = mbh;
+#endif
 	bc->bc_ischr = S_ISCHR(sbuf.st_mode);
 	bc->bc_isgeom = geom;
 	bc->bc_candelete = candelete;
@@ -578,6 +670,10 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 err:
 	if (fd >= 0)
 		close(fd);
+#ifdef HAVE_OCAML_QCOW
+	if (mbh >= 0)
+		mirage_block_close(mbh);
+#endif
 	return (NULL);
 }
 
@@ -741,7 +837,7 @@ blockif_close(struct blockif_ctxt *bc)
 	 * Release resources
 	 */
 	bc->bc_magic = 0;
-	close(bc->bc_fd);
+	block_close(bc);
 	free(bc);
 
 	return (0);
