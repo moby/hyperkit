@@ -13,9 +13,9 @@ func ExampleIsFileGenerated() {
 		panic(err)
 	}
 
-	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/generated_0.go"))
-	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/handcrafted_0.go"))
-	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/handcrafted_1.go"))
+	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/generated_0.go.txt"))
+	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/handcrafted_0.go.txt"))
+	fmt.Println(analysis.IsFileGenerated(cwd, "testdata/handcrafted_1.go.txt"))
 
 	// Output:
 	// true <nil>
