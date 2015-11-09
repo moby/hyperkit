@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// IsGeneratedFile returns true if the specified file is generated, or false if it's handcrafted.
+// IsFileGenerated returns true if the specified file is generated, or false if it's handcrafted.
 // rootDir is the filepath of root directory, but name is a '/'-separated path to file.
-func IsGeneratedFile(rootDir, name string) (bool, error) {
+func IsFileGenerated(rootDir, name string) (bool, error) {
 	switch {
 	case strings.HasPrefix(name, "Godeps/"):
 		return true, nil
