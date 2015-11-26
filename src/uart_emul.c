@@ -40,6 +40,7 @@
 #include <termios.h>
 #include <assert.h>
 #include <errno.h>
+#include <sys/mman.h>
 #include <xhyve/support/ns16550.h>
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
@@ -96,6 +97,12 @@ struct ttyfd {
 	struct termios tio_orig, tio_new;    /* I/O Terminals */
 };
 
+struct log {
+	unsigned char *ring; /* array used as a ring */
+	size_t next;   /* offset of the next free byte */
+	size_t length; /* total length of the ring */
+};
+
 struct uart_softc {
 	pthread_mutex_t mtx;	/* protects all softc elements */
 	uint8_t	data;		/* Data register (R/W) */
@@ -114,6 +121,7 @@ struct uart_softc {
 	struct mevent *mev;
 
 	struct ttyfd tty;
+	struct log log;
 	bool	thre_int_pending;	/* THRE interrupt pending */
 
 	void	*arg;
@@ -164,6 +172,13 @@ ttywrite(struct ttyfd *tf, unsigned char wb)
 {
 
 	(void)write(tf->fd, &wb, 1);
+}
+
+static void
+ringwrite(struct log *log, unsigned char wb)
+{
+  *(log->ring + log->next) = wb;
+	log->next = (log->next + 1) % log->length;
 }
 
 static void
@@ -272,6 +287,31 @@ uart_opentty(struct uart_softc *sc)
 	ttyopen(&sc->tty);
 	sc->mev = mevent_add(sc->tty.fd, EVF_READ, uart_drain, sc);
 	assert(sc->mev != NULL);
+}
+
+static int
+uart_mapring(struct uart_softc *sc, const char *path)
+{
+	int retval = -1, fd = -1;
+	sc->log.length = 65536;
+	if ((fd = open(path, O_CREAT | O_TRUNC | O_RDWR, 0644)) == -1) {
+		perror("open console-ring");
+		goto out;
+	}
+	if (ftruncate(fd, (off_t)sc->log.length) == -1){
+		perror("ftruncate console-ring");
+		goto out;
+	}
+	if ((sc->log.ring = (unsigned char*)mmap(NULL, sc->log.length, PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+		perror("mmap console-ring");
+		goto out;
+	}
+	sc->log.next = 0;
+	retval = 0;
+
+out:
+	if (fd != -1) close(fd);
+	return retval;
 }
 
 /*
@@ -388,6 +428,8 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 				sc->lsr |= LSR_OE;
 		} else if (sc->tty.opened) {
 			ttywrite(&sc->tty, value);
+			if (sc->log.ring)
+				ringwrite(&sc->log, value);
 		} /* else drop on floor */
 		sc->thre_int_pending = true;
 		break;
@@ -649,6 +691,7 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 {
 	int retval;
 	char *linkname = NULL;
+	char *logname = NULL;
 	int ptyfd;
 	char *ptyname;
 
@@ -718,6 +761,11 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 			sc->tty.name = ptyname;
 			sc->tty.opened = true;
 			retval = 0;
+		} else if (strncmp("log=", backend, 4) == 0) {
+			logname = copy_up_to_comma(backend + 4);
+			if (uart_mapring(sc, logname) == -1) {
+				goto err;
+			}
 		} else if (uart_tty_backend(sc, backend) == 0) {
 			retval = 0;
 		} else {
@@ -737,5 +785,6 @@ err:
 	if (sc->tty.fd != -1) close(sc->tty.fd);
 out:
 	if (linkname) free(linkname);
+	if (logname) free(logname);
 	return (retval);
 }
