@@ -32,12 +32,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <strings.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <termios.h>
 #include <assert.h>
+#include <errno.h>
 #include <xhyve/support/ns16550.h>
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
@@ -628,10 +630,25 @@ uart_tty_backend(struct uart_softc *sc, const char *backend)
 	return (retval);
 }
 
+static char *
+copy_up_to_comma(const char *from)
+{
+        char *comma = strchr(from, ',');
+        char *tmp = NULL;
+        if (comma == NULL) {
+                tmp = strdup(from); /* rest of string */
+        } else {
+                ptrdiff_t length = comma - from;
+                tmp = strndup(from, (size_t)length);
+        }
+        return tmp;
+}
+
 int
 uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname)
 {
 	int retval;
+	char *linkname = NULL;
 	int ptyfd;
 	char *ptyname;
 
@@ -640,43 +657,85 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 	if (backend == NULL)
 		return (0);
 
-	if (strcmp("stdio", backend) == 0 && !uart_stdio) {
-		sc->tty.fd = STDIN_FILENO;
-		sc->tty.opened = true;
-		uart_stdio = true;
-		retval = fcntl(sc->tty.fd, F_SETFL, O_NONBLOCK);
-	} else if (strcmp("autopty", backend) == 0) {
-		if ((ptyfd = open("/dev/ptmx", O_RDWR | O_NONBLOCK)) == -1) {
-			fprintf(stderr, "error opening /dev/ptmx char device");
-			return retval;
+	sc->tty.fd = -1;
+	sc->tty.name = NULL;
+
+	while (1) {
+		char *next;
+		if (!backend)
+			break;
+		next = strchr(backend, ',');
+		if (next)
+			next[0] = '\0';
+
+		if (strcmp("stdio", backend) == 0 && !uart_stdio) {
+			sc->tty.fd = STDIN_FILENO;
+			sc->tty.opened = true;
+			uart_stdio = true;
+			retval = fcntl(sc->tty.fd, F_SETFL, O_NONBLOCK);
+		} else if (strcmp("autopty", backend) == 0 ||
+			   strncmp("autopty=", backend, 8) == 0) {
+			linkname = NULL;
+			if (strncmp("autopty=", backend, 8) == 0)
+				linkname = copy_up_to_comma(backend + 8);
+			fprintf(stdout, "linkname %s\n", linkname);
+
+			if ((ptyfd = open("/dev/ptmx", O_RDWR | O_NONBLOCK)) == -1) {
+				fprintf(stderr, "error opening /dev/ptmx char device");
+				goto err;
+			}
+
+			if ((ptyname = ptsname(ptyfd)) == NULL) {
+				perror("ptsname: error getting name for slave pseudo terminal");
+				goto err;
+			}
+
+			if ((retval = grantpt(ptyfd)) == -1) {
+				perror("error setting up ownership and permissions on slave pseudo terminal");
+				goto err;
+			}
+
+			if ((retval = unlockpt(ptyfd)) == -1) {
+				perror("error unlocking slave pseudo terminal, to allow its usage");
+				goto err;
+			}
+
+			fprintf(stdout, "%s connected to %s\n", devname, ptyname);
+
+			if (linkname) {
+				if ((unlink(linkname) == -1) && (errno != ENOENT)) {
+					perror("unlinking autopty symlink");
+					goto err;
+				}
+				if (symlink(ptyname, linkname) == -1){
+					perror("creating autopty symlink");
+					goto err;
+				}
+				fprintf(stdout, "%s linked to %s\n", devname, linkname);
+			}
+
+			sc->tty.fd = ptyfd;
+			sc->tty.name = ptyname;
+			sc->tty.opened = true;
+			retval = 0;
+		} else if (uart_tty_backend(sc, backend) == 0) {
+			retval = 0;
+		} else {
+			goto err;
 		}
 
-		if ((ptyname = ptsname(ptyfd)) == NULL) {
-			perror("ptsname: error getting name for slave pseudo terminal");
-			return retval;
-		}
-
-		if ((retval = grantpt(ptyfd)) == -1) {
-			perror("error setting up ownership and permissions on slave pseudo terminal");
-			return retval;
-		}
-
-		if ((retval = unlockpt(ptyfd)) == -1) {
-			perror("error unlocking slave pseudo terminal, to allow its usage");
-			return retval;
-		}
-
-		fprintf(stdout, "%s connected to %s\n", devname, ptyname);
-		sc->tty.fd = ptyfd;
-		sc->tty.name = ptyname;
-		sc->tty.opened = true;
-		retval = 0;
-	} else if (uart_tty_backend(sc, backend) == 0) {
-		retval = 0;
+		if (!next)
+			break;
+		backend = &next[1];
 	}
 
 	if (retval == 0)
 		uart_opentty(sc);
+	goto out;
 
+err:
+	if (sc->tty.fd != -1) close(sc->tty.fd);
+out:
+	if (linkname) free(linkname);
 	return (retval);
 }
