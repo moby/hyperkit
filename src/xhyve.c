@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <err.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <unistd.h>
 #include <assert.h>
@@ -80,6 +81,7 @@ char *vmname = "vm";
 int guest_ncpus;
 int print_mac;
 char *guest_uuid_str;
+static char *pidfile;
 
 static int guest_vmexit_on_hlt, guest_vmexit_on_pause;
 static int virtio_msix = 1;
@@ -125,13 +127,14 @@ usage(int code)
 {
 
         fprintf(stderr,
-                "Usage: %s [-behuwxMACHPWY] [-c vcpus] [-g <gdb port>] [-l <lpc>]\n"
+                "Usage: %s [-behuwxMACHPWY] [-c vcpus] [-F <pidfile>] [-g <gdb port>] [-l <lpc>]\n"
 		"       %*s [-m mem] [-p vcpu:hostcpu] [-s <pci>] [-U uuid] -f <fw>\n"
 		"       -A: create ACPI tables\n"
 		"       -c: # cpus (default 1)\n"
 		"       -C: include guest memory in core file\n"
 		"       -e: exit on unhandled I/O access\n"
 		"       -f: firmware\n"
+		"       -F: pidfile\n"
 		"       -g: gdb port\n"
 		"       -h: help\n"
 		"       -H: vmexit from the guest on hlt\n"
@@ -775,6 +778,57 @@ fail:
 	return -1;
 }
 
+static void
+remove_pidfile()
+{
+	int error;
+
+	if (pidfile == NULL)
+		return;
+
+	error = unlink(pidfile);
+	if (error < 0)
+		fprintf(stderr, "Failed to remove pidfile\n");
+}
+
+static int
+setup_pidfile()
+{
+	int f, error, pid;
+	char pid_str[21];
+
+	if (pidfile == NULL)
+		return 0;
+
+	pid = getpid();
+
+	error = sprintf(pid_str, "%d", pid);
+	if (error < 0)
+		return -1;
+
+	f = open(pidfile, O_CREAT|O_EXCL|O_WRONLY, 0644);
+	if (f < 0)
+		return -2;
+
+	error = atexit(remove_pidfile);
+	if (error < 0) {
+		close(f);
+		remove_pidfile();
+		return -3;
+	}
+
+	if (0 > (write(f, (void*)pid_str, strlen(pid_str)))) {
+		close(f);
+		return -4;
+	}
+
+	error = close(f);
+	if (error < 0)
+		return -5;
+
+	return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -795,7 +849,7 @@ main(int argc, char *argv[])
 	rtc_localtime = 1;
 	fw = 0;
 
-	while ((c = getopt(argc, argv, "behvuwxMACHPWY:f:g:c:s:m:l:U:")) != -1) {
+	while ((c = getopt(argc, argv, "behvuwxMACHPWY:f:F:g:c:s:m:l:U:")) != -1) {
 		switch (c) {
 		case 'A':
 			acpi = 1;
@@ -816,6 +870,9 @@ main(int argc, char *argv[])
 				fw = 1;
 				break;
 			}
+		case 'F':
+			pidfile = optarg;
+			break;
 		case 'g':
 			gdb_port = atoi(optarg);
 			break;
@@ -904,6 +961,12 @@ main(int argc, char *argv[])
 	error = init_msr();
 	if (error) {
 		fprintf(stderr, "init_msr error %d\n", error);
+		exit(1);
+	}
+
+	error = setup_pidfile();
+	if (error) {
+		fprintf(stderr, "pidfile error %d\n", error);
 		exit(1);
 	}
 
