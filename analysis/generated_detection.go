@@ -11,11 +11,14 @@ import (
 // IsFileGenerated returns true if the specified file is generated, or false if it's handcrafted.
 // rootDir is the filepath of root directory, but name is a '/'-separated path to file.
 func IsFileGenerated(rootDir, name string) (bool, error) {
+	// Detect from name.
 	switch {
 	case strings.HasPrefix(name, "Godeps/"):
 		return true, nil
 	default:
 	}
+
+	// Detect from file contents.
 	f, err := os.Open(filepath.Join(rootDir, filepath.FromSlash(name)))
 	if err != nil {
 		return false, err

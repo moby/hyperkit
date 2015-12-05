@@ -10,7 +10,7 @@ import (
 func ProcessLinesFromReader(r io.Reader, processFunc func(string)) {
 	br := bufio.NewReader(r)
 	for line, err := br.ReadString('\n'); err == nil; line, err = br.ReadString('\n') {
-		processFunc(line[:len(line)-1]) // Trim last newline
+		processFunc(line[:len(line)-1]) // Trim last newline.
 	}
 }
 
