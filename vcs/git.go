@@ -1,8 +1,10 @@
 package vcs
 
 import (
+	"os"
 	"os/exec"
 
+	"github.com/shurcooL/go/osutil"
 	"github.com/shurcooL/go/trim"
 )
 
@@ -80,6 +82,9 @@ func (this *gitVcs) GetRemoteRev() string {
 	// and prevent potential interactive password prompts (opting to return failure exit code instead).
 	cmd := exec.Command("git", "-c", "core.askpass=true", "ls-remote", "--heads", "origin", this.GetDefaultBranch())
 	cmd.Dir = this.rootPath
+	env := osutil.Environ(os.Environ())
+	env.Set("GIT_SSH_COMMAND", "ssh -o StrictHostKeyChecking=yes") // Default for StrictHostKeyChecking is "ask", which we don't want since this is non-interactive and we prefer to fail than block asking for user input.
+	cmd.Env = env
 
 	if out, err := cmd.Output(); err == nil && len(out) >= gitRevisionLength {
 		return string(out[:gitRevisionLength])
