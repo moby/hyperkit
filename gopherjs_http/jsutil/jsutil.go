@@ -14,8 +14,21 @@ import (
 // to the following types.
 //
 // It supports *js.Object (left unmodified), dom.Document, dom.Element, dom.Event, dom.HTMLElement, dom.Node.
+// It has to be one of those types exactly; it can't be another type that implements the interface like *dom.BasicElement.
 //
 // For other types, the input is assumed to be a JSON string which is then unmarshalled into that type.
+//
+// Here is example usage:
+//
+// 	<span onclick="Handler(event, this, {{.SomeStruct | json}});">Example</span>
+//
+// 	func Handler(event dom.Event, htmlElement dom.HTMLElement, data someStruct) {
+// 		data.Foo = ... // Use event, htmlElement, data.
+// 	}
+//
+// 	func main() {
+// 		js.Global.Set("Handler", jsutil.Wrap(Handler))
+// 	}
 func Wrap(fn interface{}) func(...*js.Object) {
 	v := reflect.ValueOf(fn)
 	return func(args ...*js.Object) {
