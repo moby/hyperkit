@@ -97,6 +97,9 @@ func (this *GoPackage) UpdateVcsFields() {
 	}
 }
 
+// GetRepoImportPath figures out the repo root import path given repoPath and srcRoot.
+// It handles symlinks that may be involved in the paths.
+// It also handles a possible case mismatch in the prefix, printing a warning to stderr if detected.
 func GetRepoImportPath(repoPath, srcRoot string) string {
 	if s, err := filepath.EvalSymlinks(repoPath); err == nil {
 		repoPath = s

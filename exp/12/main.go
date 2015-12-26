@@ -9,12 +9,10 @@ import (
 	"github.com/shurcooL/go/vcs"
 )
 
-// TODO: Use FileUri or similar type instead of string for clean path to repo root.
 // rootPath -> *VcsState
 var repos = make(map[string]*exp13.VcsState)
 var reposLock sync.Mutex
 
-// TODO: Use FileUri or similar type instead of string for clean path to repo root.
 // path -> *Directory
 var directories = make(map[string]*Directory)
 var directoriesLock sync.Mutex
@@ -42,11 +40,11 @@ func (this *Directory) Update() {
 
 func newDirectory(path string) *Directory {
 	this := &Directory{path: path}
-	// No DepNode2I sources, so each instance can only be updated (i.e. initialized) once
+	// No DepNode2I sources, so each instance can only be updated (i.e. initialized) once.
 	return this
 }
 
-// Safe to call concurrently.
+// LookupDirectory is safe to call concurrently.
 func LookupDirectory(path string) *Directory {
 	directoriesLock.Lock()
 	defer directoriesLock.Unlock()
