@@ -67,3 +67,13 @@ vmm_mem_free(uint64_t gpa, size_t size, void *object)
 	hv_vm_unmap(gpa, size);
 	free(object);
 }
+
+void
+vmm_mem_protect(uint64_t gpa, size_t size) {
+	hv_vm_protect(gpa, size, 0);
+}
+
+void
+vmm_mem_unprotect(uint64_t gpa, size_t size) {
+	hv_vm_protect(gpa, size, (HV_MEMORY_READ | HV_MEMORY_WRITE | HV_MEMORY_EXEC));
+}

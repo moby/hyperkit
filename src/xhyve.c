@@ -44,6 +44,8 @@
 #include <sys/time.h>
 #include <sys/param.h>
 
+#include <dispatch/dispatch.h>
+
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
 #include <xhyve/support/segments.h>
@@ -945,6 +947,25 @@ main(int argc, char *argv[])
 	}
 
 	rip = 0;
+
+	// Use GCD to register signal handlers. These are not reentrant, so can call xhyve directly
+	dispatch_source_t sigusr1_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGUSR1, 0, dispatch_get_global_queue(0, 0));
+	dispatch_source_t sigusr2_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGUSR2, 0, dispatch_get_global_queue(0, 0));
+
+	dispatch_source_set_event_handler(sigusr1_source, ^{
+			fprintf(stdout, "received sigusr1, pausing\n");
+			xh_hv_pause(1);
+		});
+	dispatch_source_set_event_handler(sigusr2_source, ^{
+			fprintf(stdout, "received sigusr2, unpausing\n");
+			xh_hv_pause(0);
+		});
+
+	signal(SIGUSR1, SIG_IGN);
+	signal(SIGUSR2, SIG_IGN);
+
+	dispatch_resume(sigusr1_source);
+	dispatch_resume(sigusr2_source);
 
 	vcpu_add(BSP, BSP, rip);
 

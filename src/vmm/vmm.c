@@ -129,6 +129,9 @@ struct vm {
 	int num_mem_segs; /* (o) guest memory segments */
 	struct mem_seg mem_segs[VM_MAX_MEMORY_SEGMENTS];
 	struct vcpu vcpu[VM_MAXCPU]; /* (i) guest vcpus */
+	volatile u_int hv_is_paused;
+	pthread_mutex_t hv_pause_mtx;
+	pthread_cond_t hv_pause_cnd;
 };
 #pragma clang diagnostic pop
 
@@ -332,10 +335,86 @@ vm_create(struct vm **retvm)
 	pthread_mutex_init(&vm->rendezvous_mtx, NULL);
 	pthread_cond_init(&vm->rendezvous_sleep_cnd, NULL);
 
+	vm->hv_is_paused = FALSE;
+	pthread_mutex_init(&vm->hv_pause_mtx, NULL);
+	pthread_cond_init(&vm->hv_pause_cnd, NULL);
+
 	vm_init(vm, true);
 
 	*retvm = vm;
 	return (0);
+}
+
+static void
+vm_mem_protect(struct vm *vm) {
+	for (int i = 0; i < vm->num_mem_segs; i++) {
+		vmm_mem_protect(vm->mem_segs[i].gpa, vm->mem_segs[i].len);
+	}
+}
+
+static void
+vm_mem_unprotect(struct vm *vm) {
+	for (int i = 0; i < vm->num_mem_segs; i++) {
+		vmm_mem_unprotect(vm->mem_segs[i].gpa, vm->mem_segs[i].len);
+	}
+}
+
+void
+vm_signal_pause(struct vm *vm, bool pause) {
+	pthread_mutex_lock(&vm->hv_pause_mtx); // Lock as we are modifying hv_is_paused
+	if (pause) {
+		if (atomic_cmpset_rel_int(&vm->hv_is_paused, FALSE, TRUE) == 0) { // All vcpus should wait after next interrupt
+			fprintf(stderr, "freeze signal received, but we are already frozen\n");
+		}
+	} else {
+		if (atomic_cmpset_rel_int(&vm->hv_is_paused, TRUE, FALSE) == 0) {
+			fprintf(stderr, "thaw signal received, but we are not frozen\n");
+		} else {
+			pthread_cond_broadcast(&vm->hv_pause_cnd); // wake paused threads
+		}
+	}
+	pthread_mutex_unlock(&vm->hv_pause_mtx);
+}
+
+
+static bool vm_is_paused(struct vm *vm) {
+	return atomic_load_acq_int(&vm->hv_is_paused) == TRUE;
+}
+
+void
+vm_check_for_unpause(struct vm *vm, int vcpuid) {
+	enum vcpu_state state;
+	if (vm_is_paused(vm)) {
+		if (pthread_mutex_lock(&vm->hv_pause_mtx) != 0) {
+			xhyve_abort("error locking mutex");
+		}
+		if (vm_is_paused(vm)) { // Check that we are still paused after acq lock
+			enum vcpu_state orig_state = vm->vcpu[vcpuid].state;
+			state = VCPU_FROZEN;
+			if (vcpu_set_state(vm, vcpuid, state, false) != 0) {
+				xhyve_abort("vcpu_set_state failed\n");
+			}
+			vm_mem_protect(vm);
+
+			// Wait for signal
+			fprintf(stderr, "vcpu %d waiting for signal to resume\n", vcpuid);
+			do {
+				if (pthread_cond_wait(&vm->hv_pause_cnd, &vm->hv_pause_mtx) != 0) {
+					xhyve_abort("pthread_cond_wait failed");
+				}
+			} while (vm_is_paused(vm));
+			fprintf(stderr, "vcpu %d received signal, resuming\n", vcpuid);
+
+			vm_mem_unprotect(vm);
+			state = orig_state;
+			if (vcpu_set_state(vm, vcpuid, state, false) != 0) {
+				xhyve_abort("vcpu_set_state failed\n");
+			}
+		}
+		if (pthread_mutex_unlock(&vm->hv_pause_mtx) != 0) {
+			xhyve_abort("mutex unlock failed");
+		}
+	}
 }
 
 static void
