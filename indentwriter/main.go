@@ -23,26 +23,23 @@ func New(w io.Writer, indent int) io.Writer {
 }
 
 func (iw *indentWriter) Write(p []byte) (n int, err error) {
-	for i, c := range p {
-		if c == '\n' {
+	for i, b := range p {
+		if b == '\n' {
 			iw.wroteIndent = false
 		} else {
 			if !iw.wroteIndent {
-				_, err := iw.w.Write(iw.prefix)
+				_, err = iw.w.Write(iw.prefix)
 				if err != nil {
 					return n, err
 				}
 				iw.wroteIndent = true
 			}
 		}
-		_, err := iw.w.Write(p[i : i+1])
+		_, err = iw.w.Write(p[i : i+1])
 		if err != nil {
 			return n, err
 		}
 		n++
-	}
-	if n != len(p) {
-		return n, io.ErrShortWrite
 	}
 	return len(p), nil
 }
