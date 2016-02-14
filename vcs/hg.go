@@ -2,8 +2,8 @@ package vcs
 
 import (
 	"os/exec"
+	"strings"
 
-	. "github.com/shurcooL/go/gists/gist5258650"
 	trim "github.com/shurcooL/go/trim"
 )
 
@@ -88,9 +88,8 @@ func (this *hgVcs) GetRemoteRev() string {
 
 	if out, err := cmd.Output(); err == nil {
 		// Get the last line of output.
-		if lines := GetLines(trim.LastNewline(string(out))); len(lines) > 0 {
-			return lines[len(lines)-1]
-		}
+		lines := strings.Split(trim.LastNewline(string(out)), "\n") // Always returns at least 1 element.
+		return lines[len(lines)-1]
 	}
 	return ""
 }
