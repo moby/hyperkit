@@ -93,6 +93,7 @@ struct fifo {
 struct ttyfd {
 	bool	opened;
 	int	fd;		/* tty device file descriptor */
+	int 	sfd;
 	char *name; /* slave pty name when using autopty*/
 	struct termios tio_orig, tio_new;    /* I/O Terminals */
 };
@@ -161,10 +162,18 @@ ttyread(struct ttyfd *tf)
 {
 	unsigned char rb;
 
-	if (read(tf->fd, &rb, 1) == 1)
+	ssize_t n = read(tf->fd, &rb, 1);
+
+	if (n == 1)
 		return (rb);
-	else
-		return (-1);
+	if (n == 0 && tf->name) {
+		/* We will get end of file in a loop until a slave is opened,
+		   so open a slave ourselves here. */
+		if (tf->sfd != -1) close(tf->sfd);
+		fprintf(stdout, "Reopening slave pty\n");
+		tf->sfd = open(tf->name, O_RDONLY | O_NONBLOCK);
+	}
+	return (-1);
 }
 
 static void
@@ -701,6 +710,7 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 		return (0);
 
 	sc->tty.fd = -1;
+	sc->tty.sfd = -1;
 	sc->tty.name = NULL;
 
 	while (1) {
