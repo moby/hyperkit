@@ -11,7 +11,7 @@ func ExampleGetExprAsString() {
 	fmt.Println("Name of var:", GetExprAsString(thisIsAFunkyVarName))
 
 	// Output:
-	//Name of var: thisIsAFunkyVarName
+	// Name of var: thisIsAFunkyVarName
 }
 
 func Example() {
@@ -22,9 +22,9 @@ func Example() {
 	fmt.Println("Name of second arg:", getMySecondArgExprAsString(5, thisIsAFunkyVarName))
 
 	// Output:
-	//Name of var: thisIsAFunkyVarName
-	//Some func name: strings.HasPrefix
-	//Name of second arg: thisIsAFunkyVarName
+	// Name of var: thisIsAFunkyVarName
+	// Some func name: strings.HasPrefix
+	// Name of second arg: thisIsAFunkyVarName
 }
 
 func ExampleTrickyCases() {
@@ -34,6 +34,6 @@ func ExampleTrickyCases() {
 		getMySecondArgExprAsString(5, thisIsAFunkyVarName))
 
 	// Output:
-	//1 2 3 4: 2 2
-	//Name of second arg: <expr not found>
+	// 1 2 3 4: 2 2
+	// Name of second arg: <expr not found>
 }
