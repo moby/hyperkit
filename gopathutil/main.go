@@ -1,5 +1,5 @@
-// Package gopath_util provides tools to operate on GOPATH workspace.
-package gopath_util
+// Package gopathutil provides tools to operate on GOPATH workspace.
+package gopathutil
 
 import (
 	"errors"
