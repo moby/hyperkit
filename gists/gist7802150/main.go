@@ -189,7 +189,7 @@ func (this *ViewGroup) getViewGroup() *ViewGroup {
 // InitViewGroup must be called after creating a new ViewGroupI,
 // before any other ViewGroup method or ViewGroupI func.
 func (this *ViewGroup) InitViewGroup(self ViewGroupI, uri FileUri) {
-	this.all = &map[ViewGroupI]struct{}{self: struct{}{}}
+	this.all = &map[ViewGroupI]struct{}{self: {}}
 	this.uri = uri
 	this.DepNode2Manual = &DepNode2Manual{}
 }

@@ -27,7 +27,7 @@ func Example() {
 	// Name of second arg: thisIsAFunkyVarName
 }
 
-func ExampleTrickyCases() {
+func Example_trickyCases() {
 	var thisIsAFunkyVarName int
 	fmt.Println("1 2 3 4:", getMySecondArgExprAsString(1, 2), getMySecondArgExprAsString(3, 4)) // TODO: This should be 2, 4, not 2, 2
 	fmt.Println("Name of second arg:",                                                          // TODO: This should work

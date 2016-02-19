@@ -27,7 +27,7 @@ func ExampleGetSourceAsString() {
 	//}
 }
 
-func Example2() {
+func Example_two() {
 	f := func(a int, b int) int {
 		c := a + b
 		return c
@@ -42,7 +42,7 @@ func Example2() {
 	//}
 }
 
-func ExampleNil() {
+func Example_nil() {
 	var f func()
 
 	fmt.Println(GetSourceAsString(f))
