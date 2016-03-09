@@ -25,35 +25,43 @@
  */
 
 #include <sys/param.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 
-#include <machine/vmm.h>
+#include <xhyve/vmm/vmm.h>
+#include <xhyve/vmm/vmm_mem.h>
+#include <xhyve/vmm/vmm_api.h>
+#include <xhyve/firmware/bootrom.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <stdbool.h>
-
-#include <vmmapi.h>
-#include "bhyverun.h"
-#include "bootrom.h"
 
 #define	MAX_BOOTROM_SIZE	(16 * 1024 * 1024)	/* 16 MB */
 
-int
-bootrom_init(struct vmctx *ctx, const char *romfile)
+static const char *romfile;
+static uint64_t bootrom_gpa = (1ULL << 32);
+
+void
+bootrom_init(const char *romfile_path)
 {
+	romfile = romfile_path;
+}
+
+uint64_t bootrom_load(void)
+{
+
 	struct stat sbuf;
-	vm_paddr_t gpa;
+	uint64_t gpa;
 	ssize_t rlen;
 	char *ptr;
-	int fd, i, rv, prot;
+	int fd, i, rv;
 
 	rv = -1;
 	fd = open(romfile, O_RDONLY);
@@ -73,39 +81,50 @@ bootrom_init(struct vmctx *ctx, const char *romfile)
 	 * Limit bootrom size to 16MB so it doesn't encroach into reserved
 	 * MMIO space (e.g. APIC, HPET, MSI).
 	 */
-	if (sbuf.st_size > MAX_BOOTROM_SIZE || sbuf.st_size < PAGE_SIZE) {
-		fprintf(stderr, "Invalid bootrom size %ld\n", sbuf.st_size);
+	if (sbuf.st_size > MAX_BOOTROM_SIZE || sbuf.st_size < XHYVE_PAGE_SIZE) {
+		fprintf(stderr, "Invalid bootrom size %zd\n", sbuf.st_size);
 		goto done;
 	}
 
-	if (sbuf.st_size & PAGE_MASK) {
-		fprintf(stderr, "Bootrom size %ld is not a multiple of the "
+	if (sbuf.st_size & XHYVE_PAGE_MASK) {
+		fprintf(stderr, "Bootrom size %zd is not a multiple of the "
 		    "page size\n", sbuf.st_size);
 		goto done;
 	}
 
-	ptr = vm_create_devmem(ctx, VM_BOOTROM, "bootrom", sbuf.st_size);
-	if (ptr == MAP_FAILED)
-		goto done;
+	gpa = bootrom_gpa -= (size_t)sbuf.st_size;
 
-	/* Map the bootrom into the guest address space */
-	prot = PROT_READ | PROT_EXEC;
-	gpa = (1ULL << 32) - sbuf.st_size;
-	if (vm_mmap_memseg(ctx, gpa, VM_BOOTROM, 0, sbuf.st_size, prot) != 0)
+	/* XXX Mapping cold be R/O to guest */
+	ptr = vmm_mem_alloc(gpa, (size_t)sbuf.st_size);
+	if (!ptr) {
+		fprintf(stderr,
+			"Failed to allocate %zd bytes of memory for bootrom\n",
+			sbuf.st_size);
+		rv = -1;
 		goto done;
+	}
 
 	/* Read 'romfile' into the guest address space */
-	for (i = 0; i < sbuf.st_size / PAGE_SIZE; i++) {
-		rlen = read(fd, ptr + i * PAGE_SIZE, PAGE_SIZE);
-		if (rlen != PAGE_SIZE) {
+	for (i = 0; i < sbuf.st_size / XHYVE_PAGE_SIZE; i++) {
+		rlen = read(fd, ptr + i * XHYVE_PAGE_SIZE, XHYVE_PAGE_SIZE);
+		if (rlen != XHYVE_PAGE_SIZE) {
 			fprintf(stderr, "Incomplete read of page %d of bootrom "
 			    "file %s: %ld bytes\n", i, romfile, rlen);
 			goto done;
 		}
 	}
+
 	rv = 0;
 done:
 	if (fd >= 0)
 		close(fd);
-	return (rv);
+	if (rv)
+		exit(-1);
+	return 0xfff0;
+}
+
+bool
+bootrom_contains_gpa(uint64_t gpa)
+{
+	return (gpa >= bootrom_gpa && gpa < (1ULL << 32));
 }
