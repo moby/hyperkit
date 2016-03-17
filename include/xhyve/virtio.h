@@ -207,6 +207,7 @@ struct vring_used {
 #define	VIRTIO_TYPE_RPMSG	7
 #define	VIRTIO_TYPE_SCSI	8
 #define	VIRTIO_TYPE_9P		9
+#define VIRTIO_TYPE_SOCK	19
 
 /* experimental IDs start at 65535 and work down */
 
@@ -217,6 +218,7 @@ struct vring_used {
 #define	VIRTIO_DEV_NET		0x1000
 #define	VIRTIO_DEV_BLOCK	0x1001
 #define	VIRTIO_DEV_RANDOM	0x1002
+#define VIRTIO_DEV_SOCK		0x103f /* In the legacy range. */
 
 /*
  * PCI config space constants.
