@@ -15,7 +15,7 @@ import (
 	"gopkg.in/pipe.v2"
 )
 
-// Show the difference between the working directory and the most recent commit.
+// GoPackageWorkingDiff shows the difference between the working directory and the most recent commit.
 // Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
 // TODO: Support for non-git.
 func GoPackageWorkingDiff(goPackage *gist7480523.GoPackage) string {
@@ -56,7 +56,7 @@ func GoPackageWorkingDiff(goPackage *gist7480523.GoPackage) string {
 	return ""
 }
 
-// Show the difference between the working directory and master branch.
+// GoPackageWorkingDiffMaster shows the difference between the working directory and master branch.
 // Precondition is that goPackage.Dir.Repo is not nil, and VcsLocal is updated.
 func GoPackageWorkingDiffMaster(goPackage *gist7480523.GoPackage) string {
 	if goPackage.Dir.Repo.VcsLocal.Status != "" || goPackage.Dir.Repo.VcsLocal.LocalBranch != goPackage.Dir.Repo.Vcs.GetDefaultBranch() {
@@ -95,6 +95,7 @@ func GoPackageWorkingDiffMaster(goPackage *gist7480523.GoPackage) string {
 	return ""
 }
 
+// BranchesOptions are options for Branches.
 type BranchesOptions struct {
 	Base string // Base branch to compare against (if blank, defaults to "master").
 }
@@ -182,7 +183,7 @@ func branchRemoteInfo(repo *exp13.VcsState) func(line []byte) []byte {
 	}
 }
 
-// Branches returns a Markdown table of branches with ahead/behind information relative to remote.
+// BranchesRemote returns a Markdown table of branches with ahead/behind information relative to remote.
 func BranchesRemote(repo *exp13.VcsState) string {
 	switch repo.Vcs.Type() {
 	case vcs.Git:
@@ -205,7 +206,7 @@ func BranchesRemote(repo *exp13.VcsState) string {
 	}
 }
 
-// Branches returns a Markdown table of branches with ahead/behind information relative to the specified remote.
+// BranchesRemoteCustom returns a Markdown table of branches with ahead/behind information relative to the specified remote.
 func BranchesRemoteCustom(repo *exp13.VcsState, remote string) string {
 	switch repo.Vcs.Type() {
 	case vcs.Git:
