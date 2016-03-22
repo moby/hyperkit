@@ -1,5 +1,5 @@
-// Package time_util provides a func for getting start of week of given time.
-package time_util
+// Package timeutil provides a func for getting start of week of given time.
+package timeutil
 
 import "time"
 
