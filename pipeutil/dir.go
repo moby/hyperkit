@@ -1,4 +1,4 @@
-package pipe_util
+package pipeutil
 
 import "gopkg.in/pipe.v2"
 

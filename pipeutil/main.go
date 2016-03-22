@@ -1,5 +1,5 @@
-// Package pipe_util provides additional functionality for gopkg.in/pipe.v2 package.
-package pipe_util
+// Package pipeutil provides additional functionality for gopkg.in/pipe.v2 package.
+package pipeutil
 
 import (
 	"fmt"
