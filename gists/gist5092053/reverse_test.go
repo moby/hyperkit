@@ -1,19 +1,17 @@
-package gist5408860_test
+package gist5092053
 
 import (
 	"fmt"
 	"sort"
-
-	"github.com/shurcooL/go/gists/gist5408860"
 )
 
-func Example() {
+func Example_reverseAdapter() {
 	s := []int{5, 2, 6, 3, 1, 4} // Unsorted.
 
 	sort.Sort(sort.IntSlice(s))
 	fmt.Println(s)
 
-	sort.Sort(gist5408860.Reverse{Interface: sort.IntSlice(s)})
+	sort.Sort(reverseAdapter{Interface: sort.IntSlice(s)})
 	fmt.Println(s)
 
 	// Output:

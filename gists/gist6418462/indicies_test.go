@@ -1,12 +1,10 @@
-package gist6433744_test
+package gist6418462
 
 import (
 	"fmt"
-
-	"github.com/shurcooL/go/gists/gist6433744"
 )
 
-func ExampleGetLineStartEndIndicies() {
+func Example_getLineStartEndIndicies() {
 	b := []byte(`this
 
 this is a longer line
@@ -15,7 +13,7 @@ stuff
 last`)
 
 	for lineIndex := 0; ; lineIndex++ {
-		s, e := gist6433744.GetLineStartEndIndicies(b, lineIndex)
+		s, e := getLineStartEndIndicies(b, lineIndex)
 		fmt.Printf("%v: [%v, %v]\n", lineIndex, s, e)
 		if s == -1 {
 			break

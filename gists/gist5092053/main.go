@@ -1,11 +1,8 @@
-// Package gist5092053 offers a func to turn a map[string]int into a PairList, then sort and return it.
+// Package gist5092053 offers a func to turn a map[string]int into a PairList, then sort and return it,
+// and a reverse adapter for sort.
 package gist5092053
 
-import (
-	"sort"
-
-	"github.com/shurcooL/go/gists/gist5408860"
-)
+import "sort"
 
 // Pair is a data structure to hold a key/value pair.
 type Pair struct {
@@ -28,7 +25,7 @@ func SortMapByValue(m map[string]int) PairList {
 		p[i] = Pair{k, v}
 		i++
 	}
-	sort.Sort(gist5408860.Reverse{Interface: p})
+	sort.Sort(reverseAdapter{Interface: p})
 	return p
 }
 
@@ -56,7 +53,7 @@ func SortMapByKey(m map[rune]int, reverse bool) RuneIntPairList {
 	if !reverse {
 		sort.Sort(sm)
 	} else {
-		sort.Sort(gist5408860.Reverse{Interface: sm})
+		sort.Sort(reverseAdapter{Interface: sm})
 	}
 	return sm
 }
