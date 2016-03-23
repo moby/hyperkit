@@ -4,7 +4,7 @@ package u3
 import (
 	"net/http"
 
-	"github.com/shurcooL/go/gists/gist7390843"
+	"github.com/shurcooL/go/httpstoppable"
 	"github.com/shurcooL/go/u/u1"
 	"github.com/shurcooL/go/u/u4"
 )
@@ -26,7 +26,7 @@ func DisplayMarkdownInBrowser(markdown []byte) {
 	// TODO: Consider using httptest.NewServer.
 	u4.Open("http://localhost:7044/index")
 
-	err := gist7390843.ListenAndServeStoppable("localhost:7044", nil, stopServerChan)
+	err := httpstoppable.ListenAndServe("localhost:7044", nil, stopServerChan)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ func DisplayHtmlInBrowser(mux *http.ServeMux, stopServerChan <-chan struct{}, qu
 	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
 	u4.Open("http://localhost:7044/index" + query)
 
-	err := gist7390843.ListenAndServeStoppable("localhost:7044", mux, stopServerChan)
+	err := httpstoppable.ListenAndServe("localhost:7044", mux, stopServerChan)
 	if err != nil {
 		panic(err)
 	}

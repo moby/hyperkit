@@ -1,15 +1,16 @@
-// Package gist7390843 offers ListenAndServeStoppable, like http.ListenAndServe, but with ability to stop it externally.
-package gist7390843
+// Package httpstoppable offers ListenAndServe, like http.ListenAndServe, but with ability to stop it externally.
+package httpstoppable
 
 import (
+	"log"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// ListenAndServeStoppable is like http.ListenAndServe, but it closes listener socket when stop receives a value.
-func ListenAndServeStoppable(addr string, handler http.Handler, stop <-chan struct{}) error {
+// ListenAndServe is like http.ListenAndServe, but it closes listener socket when stop receives a value.
+func ListenAndServe(addr string, handler http.Handler, stop <-chan struct{}) error {
 	srv := &http.Server{Addr: addr, Handler: handler}
 	ln, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
@@ -19,7 +20,7 @@ func ListenAndServeStoppable(addr string, handler http.Handler, stop <-chan stru
 		<-stop
 		err := ln.Close()
 		if err != nil {
-			panic(err)
+			log.Println("httpstoppable.ListenAndServe: error closing listener:", err)
 		}
 	}()
 	err = srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
