@@ -13,9 +13,10 @@ import (
 func IsFileGenerated(rootDir, name string) (bool, error) {
 	// Detect from name.
 	switch {
+	case strings.HasPrefix(name, "vendor/") || strings.Contains(name, "/vendor/"):
+		return true, nil
 	case strings.HasPrefix(name, "Godeps/"):
 		return true, nil
-	default:
 	}
 
 	// Detect from file contents.
