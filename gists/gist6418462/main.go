@@ -11,7 +11,7 @@ import (
 	"runtime"
 
 	"github.com/shurcooL/go/gists/gist5639599"
-	"github.com/shurcooL/go/gists/gist6445065"
+	"github.com/shurcooL/go/reflectfind"
 )
 
 // GetSourceAsString returns the source of the func f.
@@ -61,7 +61,7 @@ func GetFuncValueSourceAsString(fv reflect.Value) string {
 		}
 		return false
 	}
-	funcAst := gist6445065.FindFirst(fileAst, query)
+	funcAst := reflectfind.First(fileAst, query)
 
 	// If func literal wasn't found, try again looking for func declaration
 	if funcAst == nil {
@@ -72,7 +72,7 @@ func GetFuncValueSourceAsString(fv reflect.Value) string {
 			}
 			return false
 		}
-		funcAst = gist6445065.FindFirst(fileAst, query)
+		funcAst = reflectfind.First(fileAst, query)
 	}
 
 	if funcAst == nil {

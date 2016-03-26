@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/gists/gist5639599"
-	"github.com/shurcooL/go/gists/gist6445065"
 	"github.com/shurcooL/go/parserutil"
+	"github.com/shurcooL/go/reflectfind"
 )
 
 // Gets the parent func as a string.
@@ -94,12 +94,12 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 	}
 
 	query := func(i interface{}) bool {
-		if c, ok := i.(*ast.CallExpr); ok && nil != gist6445065.FindFirst(c.Fun, innerQuery) {
+		if c, ok := i.(*ast.CallExpr); ok && nil != reflectfind.First(c.Fun, innerQuery) {
 			return true
 		}
 		return false
 	}
-	callExpr, _ := gist6445065.FindFirst(p, query).(*ast.CallExpr)
+	callExpr, _ := reflectfind.First(p, query).(*ast.CallExpr)
 
 	if callExpr == nil {
 		return nil
