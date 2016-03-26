@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/shurcooL/go/gists/gist5639599"
 	"github.com/shurcooL/go/parserutil"
+	"github.com/shurcooL/go/printerutil"
 	"github.com/shurcooL/go/reflectfind"
 )
 
@@ -117,7 +117,7 @@ func GetParentArgExprAsString(argIndex uint32) string {
 		return "<out of range>"
 	}
 
-	return gist5639599.SprintAstBare(args[argIndex])
+	return printerutil.SprintAstBare(args[argIndex])
 }
 
 // Gets all argument expressions of parent func call as a string.
@@ -129,7 +129,7 @@ func GetParentArgExprAllAsString() []string {
 
 	out := make([]string, len(args))
 	for i := range args {
-		out[i] = gist5639599.SprintAstBare(args[i])
+		out[i] = printerutil.SprintAstBare(args[i])
 	}
 	return out
 }

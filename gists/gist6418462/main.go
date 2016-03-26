@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"runtime"
 
-	"github.com/shurcooL/go/gists/gist5639599"
+	"github.com/shurcooL/go/printerutil"
 	"github.com/shurcooL/go/reflectfind"
 )
 
@@ -79,5 +79,5 @@ func GetFuncValueSourceAsString(fv reflect.Value) string {
 		return fmt.Sprintf("<func src not found at %v:%v>", file, line)
 	}
 
-	return gist5639599.SprintAst(fs, funcAst)
+	return printerutil.SprintAst(fs, funcAst)
 }
