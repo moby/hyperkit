@@ -1,5 +1,5 @@
-// Package u11 provides a WriteFile func with an io.Reader as input.
-package u11
+// Package ioutil provides a WriteFile func with an io.Reader as input.
+package ioutil
 
 import (
 	"io"
@@ -9,7 +9,7 @@ import (
 // WriteFile copies from r to a file named by filename.
 // If the file does not exist, WriteFile creates it with permissions 0644;
 // otherwise WriteFile truncates it before writing.
-func WriteFile(r io.Reader, filename string) error {
+func WriteFile(filename string, r io.Reader) error {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
