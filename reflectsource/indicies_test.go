@@ -1,4 +1,4 @@
-package gist6418462
+package reflectsource
 
 import (
 	"fmt"

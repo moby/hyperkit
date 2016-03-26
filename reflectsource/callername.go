@@ -1,5 +1,4 @@
-// Package gist6418290 implements ability to get name of caller funcs and parameters.
-package gist6418290
+package reflectsource
 
 import (
 	"bytes"
@@ -14,7 +13,7 @@ import (
 	"github.com/shurcooL/go/reflectfind"
 )
 
-// Gets the parent func as a string.
+// GetParentFuncAsString gets the parent func as a string.
 func GetParentFuncAsString() string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	// TODO: Use runtime.FuncForPC(runtime.Caller()).Name() to get func name if source code not found.
@@ -33,7 +32,7 @@ func GetParentFuncAsString() string {
 	return funcName + funcArgs
 }
 
-// Gets the parent func with its args as a string.
+// GetParentFuncArgsAsString gets the parent func with its args as a string.
 func GetParentFuncArgsAsString(args ...interface{}) string {
 	// TODO: Replace use of debug.Stack() with direct use of runtime package...
 	// TODO: Use runtime.FuncForPC(runtime.Caller()).Name() to get func name if source code not found.
@@ -58,7 +57,7 @@ func GetParentFuncArgsAsString(args ...interface{}) string {
 	return funcName + funcArgs
 }
 
-// Gets the expression as a string.
+// GetExprAsString gets the expression as a string.
 func GetExprAsString(_ interface{}) string {
 	return GetParentArgExprAsString(0)
 }
@@ -107,7 +106,7 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 	return callExpr.Args
 }
 
-// Gets the argIndex argument expression of parent func call as a string.
+// GetParentArgExprAsString gets the argIndex argument expression of parent func call as a string.
 func GetParentArgExprAsString(argIndex uint32) string {
 	args := getParent2ArgExprAllAsAst()
 	if args == nil {
@@ -120,7 +119,7 @@ func GetParentArgExprAsString(argIndex uint32) string {
 	return printerutil.SprintAstBare(args[argIndex])
 }
 
-// Gets all argument expressions of parent func call as a string.
+// GetParentArgExprAllAsString gets all argument expressions of parent func call as a string.
 func GetParentArgExprAllAsString() []string {
 	args := getParent2ArgExprAllAsAst()
 	if args == nil {
