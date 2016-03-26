@@ -1,14 +1,14 @@
-package gist5707298_test
+package parserutil_test
 
 import (
 	"go/ast"
 	"os"
 
-	"github.com/shurcooL/go/gists/gist5707298"
+	"github.com/shurcooL/go/parserutil"
 )
 
 func Example() {
-	stmt, err := gist5707298.ParseStmt("var x int")
+	stmt, err := parserutil.ParseStmt("var x int")
 	if err != nil {
 		panic(err)
 	}

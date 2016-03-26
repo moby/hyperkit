@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/shurcooL/go/gists/gist5639599"
-	"github.com/shurcooL/go/gists/gist5707298"
 	"github.com/shurcooL/go/gists/gist6445065"
+	"github.com/shurcooL/go/parserutil"
 )
 
 // Gets the parent func as a string.
@@ -81,7 +81,7 @@ func getParent2ArgExprAllAsAst() []ast.Expr {
 
 	str := getLine(stack, 7)
 	str = str[strings.Index(str, ": ")+len(": "):]
-	p, err := gist5707298.ParseStmt(str)
+	p, err := parserutil.ParseStmt(str)
 	if err != nil {
 		return nil
 	}
