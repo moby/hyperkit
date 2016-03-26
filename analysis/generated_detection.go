@@ -1,3 +1,7 @@
+// Package analysis provides a routine that determines if a file is generated or handcrafted.
+//
+// It's intended to stay up to date with the proposed format specification
+// in https://github.com/golang/go/issues/13560.
 package analysis
 
 import (
