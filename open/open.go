@@ -1,5 +1,5 @@
-// Package u4 offers ability to open files or URLs as if user double clicked it in their OS.
-package u4
+// Package open offers ability to open files or URLs as if user double-clicked it in their OS.
+package open
 
 import (
 	"log"
@@ -22,6 +22,6 @@ func Open(path string) {
 	cmd := exec.Command(args[0], args[1:]...)
 	err := cmd.Run()
 	if err != nil {
-		log.Println("u4.Open:", err)
+		log.Println("open.Open:", err)
 	}
 }
