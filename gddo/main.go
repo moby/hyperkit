@@ -17,7 +17,7 @@ type Client struct {
 
 // GetImporters fetches the importers of Go package with specified importPath via godoc.org API.
 func (c *Client) GetImporters(importPath string) (Importers, error) {
-	req, err := http.NewRequest("GET", "http://api.godoc.org/importers/"+importPath, nil)
+	req, err := http.NewRequest("GET", "https://api.godoc.org/importers/"+importPath, nil)
 	if err != nil {
 		return Importers{}, err
 	}
