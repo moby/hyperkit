@@ -40,6 +40,7 @@
 #include <sysexits.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/time.h>
@@ -852,6 +853,7 @@ main(int argc, char *argv[])
 	int rtc_localtime;
 	uint64_t rip;
 	size_t memsize;
+	struct sigaction sa_ign;
 
 	bvmcons = 0;
 	dump_guest_memory = 0;
@@ -949,6 +951,17 @@ main(int argc, char *argv[])
 	if (fw != 1)
 		usage(1);
 
+	/*
+	 * We don't want SIGPIPEs ever, be sure to do this before any threads
+	 * are created.
+	 */
+	sa_ign.sa_handler = SIG_IGN;
+	sa_ign.sa_flags = 0;
+	error = sigaction(SIGPIPE, &sa_ign, NULL);
+	if (error) {
+		perror("sigaction(SIGPIPE)");
+		exit(1);
+	}
 
 #ifdef HAVE_OCAML
 	caml_startup(argv) ;
