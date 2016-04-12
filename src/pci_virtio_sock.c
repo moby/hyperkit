@@ -483,6 +483,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 static int set_socket_options(struct pci_vtsock_sock *s)
 {
 	int rc, buf_alloc = (int)s->buf_alloc;
+	socklen_t opt_len;
 
 	rc = setsockopt(s->fd, SOL_SOCKET, SO_SNDBUF,
 			&buf_alloc, sizeof(buf_alloc));
@@ -498,6 +499,21 @@ static int set_socket_options(struct pci_vtsock_sock *s)
 		DPRINTF(("Failed to set SO_RCVBUF on fd %d: %s\n",
 			 s->fd, strerror(errno)));
 		return rc;
+	}
+
+	opt_len = sizeof(buf_alloc);
+	rc = getsockopt(s->fd, SOL_SOCKET, SO_SNDBUF,
+			&buf_alloc, &opt_len);
+	if ( rc < 0 ) {
+		DPRINTF(("Failed to get SO_SNDBUF on fd %d: %s\n",
+			 s->fd, strerror(errno)));
+		return rc;
+	}
+	/* If we didn't get what we asked for then expose this to the other end */
+	if (buf_alloc < (int)s->buf_alloc) {
+		PPRINTF(("fd %d SO_SNDBUF is 0x%x not 0x%x as requested, clamping\n",
+			 s->fd, buf_alloc, s->buf_alloc));
+		s->buf_alloc = (uint32_t)buf_alloc;
 	}
 
 	return 0;
