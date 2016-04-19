@@ -54,7 +54,7 @@
 #include <xhyve/virtio.h>
 #include <xhyve/xhyve.h>
 
-#define VTSOCK_RINGSZ 64
+#define VTSOCK_RINGSZ 256
 
 #define VTSOCK_QUEUE_RX		0
 #define VTSOCK_QUEUE_TX		1
@@ -139,7 +139,7 @@ struct vsock_addr {
 #define PRIaddr PRIcid ".%" PRIport
 #define FMTADDR(a) a.cid, a.port
 
-#define WRITE_BUF_LENGTH (32*1024) // Same as golang io.Copy default, used in vsudd
+#define WRITE_BUF_LENGTH (128*1024)
 
 struct pci_vtsock_sock {
 	/*
