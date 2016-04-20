@@ -233,6 +233,9 @@ struct pci_vtsock_softc {
 	pthread_mutex_t rx_mtx;
 	pthread_t rx_thread;
 	int rx_kick_fd, rx_wake_fd; /* Write to kick, select on wake */
+#define VTSOCK_REPLYRINGSZ (2*VTSOCK_RINGSZ)
+	struct virtio_sock_hdr reply_ring[VTSOCK_REPLYRINGSZ];
+	int reply_prod, reply_cons;
 };
 
 #pragma clang diagnostic pop
@@ -742,28 +745,24 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 				 uint16_t op, uint16_t type, uint32_t flags,
 				 uint32_t buf_alloc, uint32_t fwd_cnt)
 {
-	struct vqueue_info *vq = &sc->vssc_vqs[VTSOCK_QUEUE_RX];
 	struct virtio_sock_hdr *hdr;
-	struct iovec iov[VTSOCK_MAXSEGS];
-	uint16_t idx;
-	int n;
+	int slot;
 
 	assert(op != VIRTIO_VSOCK_OP_RW);
 	assert(flags == 0 || op == VIRTIO_VSOCK_OP_SHUTDOWN);
 
 	pthread_mutex_lock(&sc->rx_mtx);
 
-	/* We send responses synchronously from the tx thread... */
-	while (!vq_has_descs(vq))
-		usleep(500);
+	slot = sc->reply_prod++;
+	if (sc->reply_prod == VTSOCK_REPLYRINGSZ)
+		sc->reply_prod = 0;
+	/* check for reply ring overflow */
+	/* XXX correct check? */
+	DPRINTF(("TX: QUEUING REPLY IN SLOT %x (prod %x, cons %x)\n",
+		 slot, sc->reply_prod, sc->reply_cons));
+	assert(sc->reply_cons != sc->reply_prod);
 
-	n = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, NULL);
-	DPRINTF(("TX: virtio-vsock: got %d elem rx chain for response\n", n));
-
-	assert(n >= 1);
-	assert(iov[0].iov_len >= sizeof(*hdr));
-
-	hdr = iov[0].iov_base;
+	hdr = &sc->reply_ring[slot];
 
 	hdr->src_cid = local_addr.cid;
 	hdr->src_port = local_addr.port;
@@ -781,9 +780,7 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 
 	dprint_header(hdr, 0, "TX");
 
-	vq_relchain(vq, idx, sizeof(*hdr));
-	vq_endchains(vq, 1);
-
+	kick_rx(sc, "tx thread queued response");
 	pthread_mutex_unlock(&sc->rx_mtx);
 }
 
@@ -1343,7 +1340,8 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		while (vq_has_descs(vq))
 			pci_vtsock_proc_tx(sc, vq);
 
-		vq_endchains(vq, 1);
+		if (vq_ring_ready(vq))
+			vq_endchains(vq, 1);
 
 		pthread_mutex_unlock(&sc->tx_mtx);
 
@@ -1463,6 +1461,34 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	return len;
 }
 
+static void rx_do_one_reply(struct pci_vtsock_softc *sc,
+			    struct vqueue_info *vq)
+{
+	struct virtio_sock_hdr *hdr;
+	struct iovec iov_array[VTSOCK_MAXSEGS], *iov = iov_array;
+	int iovec_len;
+	uint16_t idx;
+	size_t pushed;
+	int slot;
+
+	slot = sc->reply_cons++;
+	if (sc->reply_cons == VTSOCK_REPLYRINGSZ)
+		sc->reply_cons = 0;
+
+	hdr = &sc->reply_ring[slot];
+
+	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, NULL);
+	DPRINTF(("RX: reply: got %d elem rx chain for slot %x (prod %x, cons %x)\n",
+		 iovec_len, slot, sc->reply_prod, sc->reply_cons));
+
+	assert(iovec_len >= 1);
+
+	pushed = iovec_push(&iov, &iovec_len, hdr, sizeof(*hdr));
+	assert(pushed == sizeof(*hdr));
+
+	vq_relchain(vq, idx, sizeof(*hdr));
+}
+
 static void *pci_vtsock_rx_thread(void *vsc)
 {
 	struct pci_vtsock_softc *sc = vsc;
@@ -1513,7 +1539,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		nr = select(maxfd + 1, &rfd, NULL, NULL, NULL);
 		if (nr < 0) DPRINTF(("RX: select returned %zd errno %d\n", nr, errno));
 		assert(nr >= 0);
-		DPRINTF(("RX:\nRX: *** %d/%d fds are readable\n", nr, nrfd));
+		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
+			 nr, nrfd, vq_has_descs(vq) ? "yes" : "no"));
 
 		pthread_mutex_lock(&sc->rx_mtx);
 
@@ -1554,6 +1581,19 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 		while (did_some_work) {
 			did_some_work = false;
+
+			DPRINTF(("RX: Handling pending replies first\n"));
+			while (vq_has_descs(vq) && sc->reply_cons != sc->reply_prod) {
+				rx_do_one_reply(sc, vq);
+				did_some_work = true;
+			}
+
+			if (sc->reply_cons != sc->reply_prod) {
+				DPRINTF(("RX: No more descriptors for pending replies\n"));
+				poll_socks = false; /* Still replies to send, so don't handle socks yet */
+				vq_endchains(vq, 1);
+				goto rx_done;
+			}
 
 			DPRINTF(("RX: Checking all socks\n"));
 
@@ -1949,6 +1989,9 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return (1);
 	sc->rx_wake_fd = pipefds[0];
 	sc->rx_kick_fd = pipefds[1];
+
+	sc->reply_prod = 0;
+	sc->reply_cons = 0;
 
 	if (pthread_create(&sc->rx_thread, NULL,
 			   pci_vtsock_rx_thread, sc))
