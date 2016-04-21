@@ -1,0 +1,11 @@
+general:
+  artifacts:
+    - build/xhyve
+    - build/xhyve.sym
+machine:
+  xcode:
+    version: "7.3"
+test:
+  override:
+    - make clean
+    - make all
