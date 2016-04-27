@@ -178,6 +178,7 @@ struct pci_vtsock_sock {
 	uint32_t buf_alloc;
 	uint32_t fwd_cnt;
 
+	bool credit_update_required;
 	uint32_t rx_cnt; /* Amount we have sent to the peer */
 	uint32_t peer_buf_alloc; /* From the peer */
 	uint32_t peer_fwd_cnt; /* From the peer */
@@ -471,6 +472,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->peer_buf_alloc = 0;
 	s->peer_fwd_cnt = 0;
 	s->rx_cnt = 0;
+	s->credit_update_required = false;
 
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
@@ -754,6 +756,13 @@ done:
 	if (kick) kick_rx(sc, "shutdown (local)");
 }
 
+static void set_credit_update_required(struct pci_vtsock_softc *sc,
+				       struct pci_vtsock_sock *sock)
+{
+	if (sock->credit_update_required) return;
+	sock->credit_update_required = true;
+	kick_rx(sc, "credit update required");
+}
 
 static void send_response_common(struct pci_vtsock_softc *sc,
 				 struct vsock_addr local_addr,
@@ -903,7 +912,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 		 sock->fd, sock->write_buf_head));
 	sock->fwd_cnt += sock->write_buf_head;
 	sock->write_buf_head = sock->write_buf_tail = 0;
-	send_response_sock(sc, VIRTIO_VSOCK_OP_CREDIT_UPDATE, 0, sock);
+	set_credit_update_required(sc, sock);
 }
 
 /* -> 1 == success, update peer credit
@@ -1123,7 +1132,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		if (rc < 0) goto do_rst;
 		vq_relchain(vq, idx, 0);
 		if (rc == 1)
-			send_response_sock(sc, VIRTIO_VSOCK_OP_CREDIT_UPDATE, 0, sock);
+			set_credit_update_required(sc, sock);
 		break;
 	}
 
@@ -1154,7 +1163,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 			goto do_rst;
 		}
 		vq_relchain(vq, idx, 0);
-		send_response_sock(sc, VIRTIO_VSOCK_OP_CREDIT_UPDATE, 0, sock);
+		set_credit_update_required(sc, sock);
 		break;
 	}
 
@@ -1505,6 +1514,48 @@ static void rx_do_one_reply(struct pci_vtsock_softc *sc,
 	vq_relchain(vq, idx, sizeof(*hdr));
 }
 
+/* true on success, false if no descriptors */
+static bool send_credit_update(struct vqueue_info *vq,
+			       struct pci_vtsock_sock *s)
+{
+	struct virtio_sock_hdr *hdr;
+	struct iovec iov_array[VTSOCK_MAXSEGS], *iov = iov_array;
+	uint16_t idx;
+	int iovec_len;
+
+	assert(s->fd >= 0);
+
+	if (!vq_has_descs(vq)) {
+		DPRINTF(("RX: no queues for credit update!\n"));
+		return false;
+	}
+
+	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, NULL);
+	DPRINTF(("RX: virtio-vsock: got %d elem rx chain for credit update\n", iovec_len));
+	dprint_chain(iov, iovec_len, NULL, "RX");
+
+	assert(iovec_len >= 1);
+	assert(iov[0].iov_len >= sizeof(*hdr));
+
+	hdr = iov[0].iov_base;
+	hdr->src_cid = s->local_addr.cid;
+	hdr->src_port = s->local_addr.port;
+	hdr->dst_cid = s->peer_addr.cid;
+	hdr->dst_port = s->peer_addr.port;
+	hdr->len = 0;
+	hdr->type = VIRTIO_VSOCK_TYPE_STREAM;
+	hdr->op = VIRTIO_VSOCK_OP_CREDIT_UPDATE;
+	hdr->flags = 0;
+	hdr->buf_alloc = s->buf_alloc;
+	hdr->fwd_cnt = s->fwd_cnt;
+
+	dprint_header(hdr, 0, "RX");
+
+	vq_relchain(vq, idx, sizeof(*hdr));
+
+	return true;
+}
+
 static void *pci_vtsock_rx_thread(void *vsc)
 {
 	struct pci_vtsock_softc *sc = vsc;
@@ -1650,6 +1701,17 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						FD_CLR(s->fd, &rfd);
 					} else {
 						did_some_work = true;
+					}
+					/* We sent either an OP_RW or an OP_SHUTDOWN in proc_rx */
+					s->credit_update_required = false;
+				} else if (s->credit_update_required) {
+					if (send_credit_update(vq, s)) {
+						s->credit_update_required = false;
+					} else {
+						/* Consumed all descriptors, stop */
+						DPRINTF(("RX: No more descriptors\n"));
+						vq_endchains(vq, 1);
+						goto rx_done;
 					}
 				}
 			}
