@@ -142,15 +142,15 @@ struct vsock_addr {
 #define WRITE_BUF_LENGTH (128*1024)
 
 struct pci_vtsock_sock {
+	pthread_mutex_t mtx;
+
 	/*
 	 * To allocate a sock:
 	 *
-	 *   With sc->socks_mtx held find a sock with state == FREE
-	 *   and set it to state == CONNECTING.
+	 *   Grab a sock and take its lock. If sock is not FREE, drop
+	 *   lock and try the next one.
 	 *
-	 *   After dropping the lock open the real fd and set fd to it.
-	 *
-	 *   Set state == CONNECTED
+	 *   Once a FREE sock is found set it to state == CONNECTING.
 	 *
 	 * To free a sock:
 	 *
@@ -201,15 +201,16 @@ struct pci_vtsock_forward {
  *
  *   vssc_mtx is taken by the core and is often held during callbacks
  *   (e.g. it is held during a vq_notify or pci cfg access). It
- *   protects virtio resources, including the queues.
+ *   protects virtio resources.
  *
- *   tx_mtx protects the tx data structures, including the queue
+ *   tx_mtx protects the tx data structures, including the queue.
  *
- *   rx_mtx protects the rx data structures, including the queue,
- *   nests inside tx_mtx (for replies).
+ *   rx_mtx protects the rx data structures, including the queue.
  *
- *   socks_mtx is taken whenever the socks[] array is being
- *   walked.
+ *   reply_mtx protects reply_{ring,prod,cons}
+ *
+ *   sock->mtx protects the contents of the sock struct, including the
+ *   state.
  */
 struct pci_vtsock_softc {
 	struct virtio_softc vssc_vs;
@@ -218,7 +219,6 @@ struct pci_vtsock_softc {
 	struct vqueue_info vssc_vqs[VTSOCK_QUEUES];
 	struct vtsock_config vssc_cfg;
 
-	pthread_mutex_t socks_mtx;
 	struct pci_vtsock_sock socks[VTSOCK_MAXSOCKS];
 
 	struct pci_vtsock_forward fwds[VTSOCK_MAXFWDS];
@@ -234,6 +234,8 @@ struct pci_vtsock_softc {
 	pthread_mutex_t rx_mtx;
 	pthread_t rx_thread;
 	int rx_kick_fd, rx_wake_fd; /* Write to kick, select on wake */
+
+	pthread_mutex_t reply_mtx;
 #define VTSOCK_REPLYRINGSZ (2*VTSOCK_RINGSZ)
 	struct virtio_sock_hdr reply_ring[VTSOCK_REPLYRINGSZ];
 	int reply_prod, reply_cons;
@@ -383,33 +385,6 @@ static size_t iovec_push(struct iovec **iov, int *iov_len, void *buf, size_t byt
 	return res;
 }
 
-
-static struct pci_vtsock_sock *find_connected_sock(struct pci_vtsock_softc *sc,
-						   uint16_t type,
-						   struct vsock_addr local_addr,
-						   struct vsock_addr peer_addr)
-{
-	int i;
-
-	assert(type == VIRTIO_VSOCK_TYPE_STREAM);
-
-	pthread_mutex_lock(&sc->socks_mtx);
-	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
-		struct pci_vtsock_sock *s = &sc->socks[i];
-		if ((s->state == SOCK_CONNECTED || s->state == SOCK_CONNECTING) &&
-		    s->peer_addr.cid == peer_addr.cid &&
-		    s->peer_addr.port == peer_addr.port &&
-		    s->local_addr.cid == local_addr.cid &&
-		    s->local_addr.port == local_addr.port) {
-			pthread_mutex_unlock(&sc->socks_mtx);
-			return s;
-		}
-	}
-
-	pthread_mutex_unlock(&sc->socks_mtx);
-	return NULL;
-}
-
 static void dprint_iovec(struct iovec *iov, int iovec_len, const char *ctx)
 {
 	int i;
@@ -444,24 +419,74 @@ static void dprint_header(struct virtio_sock_hdr *hdr, bool tx, const char *ctx)
 		 ctx, hdr->flags, hdr->buf_alloc, hdr->fwd_cnt));
 }
 
+static void put_sock(struct pci_vtsock_sock *s)
+{
+	int err = pthread_mutex_unlock(&s->mtx);
+	assert(err == 0);
+}
+
+static struct pci_vtsock_sock *get_sock(struct pci_vtsock_sock *s)
+{
+	int err = pthread_mutex_lock(&s->mtx);
+	assert(err == 0);
+	return s;
+}
+
+/* Returns a _locked_, sock by idx */
+static struct pci_vtsock_sock *lookup_sock_by_idx(struct pci_vtsock_softc *sc, int i)
+{
+	struct pci_vtsock_sock *s = &sc->socks[i];
+	//int err;
+
+	//err = pthread_mutex_lock(&s->mtx);
+	//assert(err == 0);
+	return get_sock(s);
+}
+
+static struct pci_vtsock_sock *lookup_sock(struct pci_vtsock_softc *sc,
+					   uint16_t type,
+					   struct vsock_addr local_addr,
+					   struct vsock_addr peer_addr)
+{
+	int i;
+
+	assert(type == VIRTIO_VSOCK_TYPE_STREAM);
+
+	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
+		struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+
+		if ((s->state == SOCK_CONNECTED || s->state == SOCK_CONNECTING) &&
+		    s->peer_addr.cid == peer_addr.cid &&
+		    s->peer_addr.port == peer_addr.port &&
+		    s->local_addr.cid == local_addr.cid &&
+		    s->local_addr.port == local_addr.port) {
+			return s;
+		}
+
+		put_sock(s);
+	}
+
+	return NULL;
+}
+
+
+/* Returns NULL on failure or a locked socket on success */
 static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 {
 	struct pci_vtsock_sock *s = NULL; /* XXX init otherwise cc thinks return s uses undefined s! */
 	int i;
 
-	pthread_mutex_lock(&sc->socks_mtx);
 	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
-		s = &sc->socks[i];
+		s = lookup_sock_by_idx(sc, i);
 		if (s->state == SOCK_FREE) {
 			s->state = SOCK_CONNECTING;
 			break;
 		}
+		put_sock(s);
 	}
 
 	assert(s != NULL);
 	assert(i == VTSOCK_MAXSOCKS || s->state == SOCK_CONNECTING);
-
-	pthread_mutex_unlock(&sc->socks_mtx);
 
 	if (i == VTSOCK_MAXSOCKS)
 		return NULL;
@@ -588,12 +613,17 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 		 s->fd, FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
 	s->state = SOCK_CONNECTED;
 
+	put_sock(s);
+
 	return s;
 
 err:
 	/* s is static, no need to free(), but do set state back to free */
 	if (fd >= 0) close(fd);
-	if (s) s->state = SOCK_FREE;
+	if (s) {
+		s->state = SOCK_FREE;
+		put_sock(s);
+	}
 	return NULL;
 }
 
@@ -670,7 +700,6 @@ static void close_sock(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
 {
 	if (!s) return;
 	DPRINTF(("%s: Closing sock %p\n", ctx, (void *)s));
-	pthread_mutex_lock(&sc->socks_mtx);
 
 	shutdown_peer_local_fd(s, VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL, ctx);
 
@@ -679,7 +708,6 @@ static void close_sock(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
 	s->local_shutdown = VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL;
 
 	s->state = SOCK_CLOSING;
-	pthread_mutex_unlock(&sc->socks_mtx);
 	kick_rx(sc, "sock closed");
 }
 
@@ -690,8 +718,6 @@ static void shutdown_peer_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_so
 	uint32_t set;
 
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
-
-	pthread_mutex_lock(&sc->socks_mtx);
 
 	if (s->state != SOCK_CONNECTED) goto done;
 
@@ -714,7 +740,6 @@ static void shutdown_peer_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_so
 	}
 
 done:
-	pthread_mutex_unlock(&sc->socks_mtx);
 	if (kick) kick_rx(sc, "shutdown (peer)");
 }
 
@@ -726,8 +751,6 @@ static void shutdown_local_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_s
 	uint32_t new, set;
 
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
-
-	pthread_mutex_lock(&sc->socks_mtx);
 
 	if (s->state != SOCK_CONNECTED) goto done;
 
@@ -752,7 +775,6 @@ static void shutdown_local_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_s
 	}
 
 done:
-	pthread_mutex_unlock(&sc->socks_mtx);
 	if (kick) kick_rx(sc, "shutdown (local)");
 }
 
@@ -776,7 +798,7 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 	assert(op != VIRTIO_VSOCK_OP_RW);
 	assert(flags == 0 || op == VIRTIO_VSOCK_OP_SHUTDOWN);
 
-	pthread_mutex_lock(&sc->rx_mtx);
+	pthread_mutex_lock(&sc->reply_mtx);
 
 	slot = sc->reply_prod++;
 	if (sc->reply_prod == VTSOCK_REPLYRINGSZ)
@@ -806,7 +828,7 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 	dprint_header(hdr, 0, "TX");
 
 	kick_rx(sc, "tx thread queued response");
-	pthread_mutex_unlock(&sc->rx_mtx);
+	pthread_mutex_unlock(&sc->reply_mtx);
 }
 
 static void send_response_sock(struct pci_vtsock_softc *sc,
@@ -1008,15 +1030,15 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		return;
 	}
 
-	sock = find_connected_sock(sc, VIRTIO_VSOCK_TYPE_STREAM,
-				   (struct vsock_addr) {
-					   .cid = hdr.dst_cid,
+	sock = lookup_sock(sc, VIRTIO_VSOCK_TYPE_STREAM,
+			   (struct vsock_addr) {
+				   .cid = hdr.dst_cid,
 					   .port =hdr.dst_port
-				   },
-				   (struct vsock_addr) {
-					   .cid = hdr.src_cid,
+			   },
+			   (struct vsock_addr) {
+				   .cid = hdr.src_cid,
 					   .port =hdr.src_port
-				   });
+			   });
 
 	if (sock) {
 		sock->peer_buf_alloc = hdr.buf_alloc;
@@ -1077,6 +1099,8 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 
 	case VIRTIO_VSOCK_OP_RST:
 		/* No response */
+		if (!sock)
+			PPRINTF(("TX: RST to non-existent sock\n"));
 		close_sock(sc, sock, "TX");
 		vq_relchain(vq, idx, 0);
 		break;
@@ -1167,6 +1191,9 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		break;
 	}
 
+	if (sock)
+		put_sock(sock);
+
 	return;
 
 do_rst:
@@ -1184,6 +1211,7 @@ do_rst:
 				     });
 	vq_relchain(vq, idx, 0);
 	close_sock(sc, sock, "TX");
+	if (sock) put_sock(sock);
 	return;
 }
 
@@ -1260,13 +1288,18 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 	rc = set_socket_options(sock);
 	if (rc < 0) goto err;
 
+	put_sock(sock);
+
 	PPRINTF(("TX: SOCK connecting (%d) %"PRIaddr" <=> %"PRIaddr"\n",
 		 sock->fd, FMTADDR(sock->local_addr), FMTADDR(sock->peer_addr)));
 	send_response_sock(sc, VIRTIO_VSOCK_OP_REQUEST, 0, sock);
 
 	return;
 err:
-	if (sock) sock->state = SOCK_FREE;
+	if (sock) {
+		sock->state = SOCK_FREE;
+		put_sock(sock);
+	}
 	close(fd);
 }
 
@@ -1302,11 +1335,12 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			nrfd++;
 		}
 
-		pthread_mutex_lock(&sc->socks_mtx);
-
 		for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-			struct pci_vtsock_sock *s = &sc->socks[i];
-			if (s->state != SOCK_CONNECTED) continue;
+			struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+			if (s->state != SOCK_CONNECTED) {
+				put_sock(s);
+				continue;
+			}
 			assert(s->fd >= 0);
 			assert(s->fd < FD_SETSIZE);
 			if (sock_is_buffering(s)) {
@@ -1315,9 +1349,8 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				buffering++;
 				nrfd++;
 			}
+			put_sock(s);
 		}
-
-		pthread_mutex_unlock(&sc->socks_mtx);
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
@@ -1352,11 +1385,15 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 		if (buffering) {
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = &sc->socks[i];
-				if (s->state != SOCK_CONNECTED) continue;
+				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+				if (s->state != SOCK_CONNECTED) {
+					put_sock(s);
+					continue;
+				}
 				if (FD_ISSET(s->fd, &wfd)) {
 					buffer_drain(sc, s);
 				}
+				put_sock(s);
 			}
 		}
 
@@ -1486,7 +1523,8 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	return len;
 }
 
-static void rx_do_one_reply(struct pci_vtsock_softc *sc,
+/* True if there is more to do */
+static bool rx_do_one_reply(struct pci_vtsock_softc *sc,
 			    struct vqueue_info *vq)
 {
 	struct virtio_sock_hdr *hdr;
@@ -1495,6 +1533,10 @@ static void rx_do_one_reply(struct pci_vtsock_softc *sc,
 	uint16_t idx;
 	size_t pushed;
 	int slot;
+	bool more_to_do = false;
+
+	if (sc->reply_cons == sc->reply_prod)
+		goto done;
 
 	slot = sc->reply_cons++;
 	if (sc->reply_cons == VTSOCK_REPLYRINGSZ)
@@ -1512,6 +1554,11 @@ static void rx_do_one_reply(struct pci_vtsock_softc *sc,
 	assert(pushed == sizeof(*hdr));
 
 	vq_relchain(vq, idx, sizeof(*hdr));
+
+	more_to_do = sc->reply_cons != sc->reply_prod;
+
+done:
+	return more_to_do;
 }
 
 /* true on success, false if no descriptors */
@@ -1578,25 +1625,35 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		nrfd = 1;
 
 		if (poll_socks) {
-			pthread_mutex_lock(&sc->socks_mtx);
-
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = &sc->socks[i];
-				uint32_t peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
-				if (s->state != SOCK_CONNECTED) continue;
-				if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) continue;
-				if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) continue;
+				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+				uint32_t peer_free;
+				if (s->state != SOCK_CONNECTED) {
+					put_sock(s);
+					continue;
+				}
+				if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
+					put_sock(s);
+					continue;
+				}
+				if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
+					put_sock(s);
+					continue;
+				}
 				assert(s->fd >= 0);
 				assert(s->fd < FD_SETSIZE);
+				peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
 				DPRINTF(("RX: sock %d (%d): peer free = %"PRId32"\n",
 					 i, s->fd, peer_free));
-				if (peer_free == 0) continue;
+				if (peer_free == 0) {
+					put_sock(s);
+					continue;
+				}
 				FD_SET(s->fd, &rfd);
 				maxfd = max_fd(s->fd, maxfd);
 				nrfd++;
+				put_sock(s);
 			}
-
-			pthread_mutex_unlock(&sc->socks_mtx);
 		}
 
 		/* Unlocked during select */
@@ -1647,15 +1704,19 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		}
 
 		while (did_some_work) {
+			bool more_replies_pending = true; /* Assume there is */
 			did_some_work = false;
 
 			DPRINTF(("RX: Handling pending replies first\n"));
-			while (vq_has_descs(vq) && sc->reply_cons != sc->reply_prod) {
-				rx_do_one_reply(sc, vq);
+			pthread_mutex_lock(&sc->reply_mtx);
+			while (vq_has_descs(vq)) {
+				more_replies_pending = rx_do_one_reply(sc, vq);
+				if (!more_replies_pending) break;
 				did_some_work = true;
 			}
+			pthread_mutex_unlock(&sc->reply_mtx);
 
-			if (sc->reply_cons != sc->reply_prod) {
+			if (more_replies_pending) {
 				DPRINTF(("RX: No more descriptors for pending replies\n"));
 				poll_socks = false; /* Still replies to send, so don't handle socks yet */
 				vq_endchains(vq, 1);
@@ -1665,9 +1726,9 @@ static void *pci_vtsock_rx_thread(void *vsc)
 			DPRINTF(("RX: Checking all socks\n"));
 
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = &sc->socks[i];
+				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+
 				if (s->state == SOCK_CLOSING) { /* Closing comes through here */
-					pthread_mutex_lock(&sc->socks_mtx);
 					assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
 					       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 					DPRINTF(("RX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
@@ -1680,11 +1741,15 @@ static void *pci_vtsock_rx_thread(void *vsc)
 					close(s->fd);
 					s->fd = -1;
 					s->state = SOCK_FREE;
-					pthread_mutex_unlock(&sc->socks_mtx);
+					put_sock(s);
 					continue;
 				}
 
-				if (s->state != SOCK_CONNECTED) continue;
+				if (s->state != SOCK_CONNECTED) {
+					put_sock(s);
+					continue;
+				}
+
 				assert(s->fd >= 0);
 
 				if (FD_ISSET(s->fd, &rfd)) {
@@ -1696,6 +1761,7 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						/* Consumed all descriptors, stop */
 						DPRINTF(("RX: No more descriptors\n"));
 						vq_endchains(vq, 1);
+						put_sock(s);
 						goto rx_done;
 					} else if (bytes == 0) {
 						FD_CLR(s->fd, &rfd);
@@ -1711,17 +1777,20 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						/* Consumed all descriptors, stop */
 						DPRINTF(("RX: No more descriptors\n"));
 						vq_endchains(vq, 1);
+						put_sock(s);
 						goto rx_done;
 					}
 				}
+
+				put_sock(s);
 			}
 		}
 
 		DPRINTF(("RX: All work complete\n"));
 		vq_endchains(vq, 0);
-
  rx_done:
 		pthread_mutex_unlock(&sc->rx_mtx);
+
 	}
 }
 
@@ -1997,6 +2066,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	sc = calloc(1, sizeof(struct pci_vtsock_softc));
 	for (i = 0; i < VTSOCK_MAXSOCKS; i++) {
 		struct pci_vtsock_sock *str = &sc->socks[i];
+		int err = pthread_mutex_init(&str->mtx, NULL);
+		assert(err == 0);
 		str->state = SOCK_FREE;
 		str->fd = -1;
 	}
@@ -2010,7 +2081,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	pthread_mutex_init(&sc->vssc_mtx, NULL);
 	pthread_mutex_init(&sc->tx_mtx, NULL);
 	pthread_mutex_init(&sc->rx_mtx, NULL);
-	pthread_mutex_init(&sc->socks_mtx, NULL);
+	pthread_mutex_init(&sc->reply_mtx, NULL);
 
 	sc->path = strdup(path);
 
