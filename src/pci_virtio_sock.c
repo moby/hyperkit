@@ -1055,7 +1055,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 
 		send_response_sock(sc, VIRTIO_VSOCK_OP_RESPONSE, 0, sock);
 		vq_relchain(vq, idx, 0);
-		kick_rx(sc, "new incoming sock"); /* Restart rx select loop */
+		/* No rx kick required, send_response_sock did one */
 		break;
 
 	case VIRTIO_VSOCK_OP_RESPONSE:
