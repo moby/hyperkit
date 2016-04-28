@@ -147,16 +147,21 @@ struct pci_vtsock_sock {
 	/*
 	 * To allocate a sock:
 	 *
-	 *   Grab a sock and take its lock. If sock is not FREE, drop
-	 *   lock and try the next one.
+	 *   Grab alloc_mtx
 	 *
-	 *   Once a FREE sock is found set it to state == CONNECTING.
+	 *   Loop over socks[] looking for a FREE sock
+	 *
+	 *   If a FREE sock is found take its lock before setting it to state == CONNECTING.
+	 *
+	 *   Finally drop alloc_mtx
 	 *
 	 * To free a sock:
 	 *
 	 *   Set state to CLOSING and kick the rx sock.
 	 *
 	 *   The RX loop will close the fd and set state == FREE
+	 *
+	 *   This does not require the alloc_mtx.
 	 */
 	enum {
 		SOCK_FREE, /* Initial state */
@@ -207,10 +212,13 @@ struct pci_vtsock_forward {
  *
  *   rx_mtx protects the rx data structures, including the queue.
  *
+ *   alloc_mtx protects transitions from socks[...].state == FREE => *
+ *
  *   reply_mtx protects reply_{ring,prod,cons}
  *
  *   sock->mtx protects the contents of the sock struct, including the
  *   state.
+ *
  */
 struct pci_vtsock_softc {
 	struct virtio_softc vssc_vs;
@@ -219,6 +227,7 @@ struct pci_vtsock_softc {
 	struct vqueue_info vssc_vqs[VTSOCK_QUEUES];
 	struct vtsock_config vssc_cfg;
 
+	pthread_mutex_t alloc_mtx;
 	struct pci_vtsock_sock socks[VTSOCK_MAXSOCKS];
 
 	struct pci_vtsock_forward fwds[VTSOCK_MAXFWDS];
@@ -436,10 +445,19 @@ static struct pci_vtsock_sock *get_sock(struct pci_vtsock_sock *s)
 static struct pci_vtsock_sock *lookup_sock_by_idx(struct pci_vtsock_softc *sc, int i)
 {
 	struct pci_vtsock_sock *s = &sc->socks[i];
-	//int err;
 
-	//err = pthread_mutex_lock(&s->mtx);
-	//assert(err == 0);
+	/*
+	 * Avoid locking overhead if the socket is free. Since any
+	 * alloc will trigger a kick of the rx or tx threads there is
+	 * no danger of missing something which is being allocated
+	 * right now.
+	 *
+	 * Since alloc_sock takes the sock->mtx before setting state
+	 * we won't see a half constructed socket here either, since
+	 * the caller of alloc_sock will complete the init before
+	 * dropping the sock->mtx.
+	 */
+	if (s->state == SOCK_FREE) return NULL;
 	return get_sock(s);
 }
 
@@ -454,6 +472,7 @@ static struct pci_vtsock_sock *lookup_sock(struct pci_vtsock_softc *sc,
 
 	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
 		struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+		if (!s) continue;
 
 		if ((s->state == SOCK_CONNECTED || s->state == SOCK_CONNECTING) &&
 		    s->peer_addr.cid == peer_addr.cid &&
@@ -476,14 +495,16 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	struct pci_vtsock_sock *s = NULL; /* XXX init otherwise cc thinks return s uses undefined s! */
 	int i;
 
+	pthread_mutex_lock(&sc->alloc_mtx);
 	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
-		s = lookup_sock_by_idx(sc, i);
+		s = &sc->socks[i];
 		if (s->state == SOCK_FREE) {
+			get_sock(s);
 			s->state = SOCK_CONNECTING;
 			break;
 		}
-		put_sock(s);
 	}
+	pthread_mutex_unlock(&sc->alloc_mtx);
 
 	assert(s != NULL);
 	assert(i == VTSOCK_MAXSOCKS || s->state == SOCK_CONNECTING);
@@ -1337,6 +1358,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 		for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
 			struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+			if (!s) continue;
 			if (s->state != SOCK_CONNECTED) {
 				put_sock(s);
 				continue;
@@ -1386,6 +1408,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		if (buffering) {
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
 				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+				if (!s) continue;
 				if (s->state != SOCK_CONNECTED) {
 					put_sock(s);
 					continue;
@@ -1628,6 +1651,7 @@ static void *pci_vtsock_rx_thread(void *vsc)
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
 				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
 				uint32_t peer_free;
+				if (!s) continue;
 				if (s->state != SOCK_CONNECTED) {
 					put_sock(s);
 					continue;
@@ -1727,6 +1751,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
 				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+
+				if (!s) continue;
 
 				if (s->state == SOCK_CLOSING) { /* Closing comes through here */
 					assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
@@ -2082,6 +2108,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	pthread_mutex_init(&sc->tx_mtx, NULL);
 	pthread_mutex_init(&sc->rx_mtx, NULL);
 	pthread_mutex_init(&sc->reply_mtx, NULL);
+	pthread_mutex_init(&sc->alloc_mtx, NULL);
 
 	sc->path = strdup(path);
 
