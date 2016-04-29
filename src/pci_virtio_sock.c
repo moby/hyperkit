@@ -1660,37 +1660,53 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		maxfd = sc->rx_wake_fd;
 		nrfd = 1;
 
-		if (poll_socks) {
-			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-				uint32_t peer_free;
-				if (!s) continue;
-				if (s->state != SOCK_CONNECTED) {
-					put_sock(s);
-					continue;
-				}
-				if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
-					put_sock(s);
-					continue;
-				}
-				if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
-					put_sock(s);
-					continue;
-				}
-				assert(s->fd >= 0);
-				assert(s->fd < FD_SETSIZE);
-				peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
-				DPRINTF(("RX: sock %d (%d): peer free = %"PRId32"\n",
-					 i, s->fd, peer_free));
-				if (peer_free == 0) {
-					put_sock(s);
-					continue;
-				}
-				FD_SET(s->fd, &rfd);
-				maxfd = max_fd(s->fd, maxfd);
-				nrfd++;
+		for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
+			struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
+			uint32_t peer_free;
+			if (!s) continue;
+
+			if (s->state == SOCK_CLOSING) { /* Closing comes through here */
+				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
+				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
+				DPRINTF(("RX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
+					 (void *)s, s->fd,
+					 s->local_shutdown,
+					 s->peer_shutdown));
+				PPRINTF(("RX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
+					 s->fd,
+					 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
+				close(s->fd);
+				s->fd = -1;
+				s->state = SOCK_FREE;
 				put_sock(s);
+				continue;
 			}
+
+			if (s->state != SOCK_CONNECTED || !poll_socks) {
+				put_sock(s);
+				continue;
+			}
+			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
+				put_sock(s);
+				continue;
+			}
+			if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
+				put_sock(s);
+				continue;
+			}
+			assert(s->fd >= 0);
+			assert(s->fd < FD_SETSIZE);
+			peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
+			DPRINTF(("RX: sock %d (%d): peer free = %"PRId32"\n",
+				 i, s->fd, peer_free));
+			if (peer_free == 0) {
+				put_sock(s);
+				continue;
+			}
+			FD_SET(s->fd, &rfd);
+			maxfd = max_fd(s->fd, maxfd);
+			nrfd++;
+			put_sock(s);
 		}
 
 		/* Unlocked during select */
@@ -1718,8 +1734,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 			DPRINTF(("RX: thread got %zd kicks (have descs: %s)\n",
 				 rd_dummy, vq_has_descs(vq) ? "yes" : "no"));
 
-// XXX need to check sockets in order to process closing, so cannot make this
-// tempting looking optimisation.
+// XXX need to check sockets in order to process the reply ring, so
+// cannot make this tempting looking optimisation.
 //
 //			if (nr == 1) {
 //				 /* Must have been the kicker fd, in
@@ -1766,23 +1782,6 @@ static void *pci_vtsock_rx_thread(void *vsc)
 				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
 
 				if (!s) continue;
-
-				if (s->state == SOCK_CLOSING) { /* Closing comes through here */
-					assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
-					       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
-					DPRINTF(("RX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
-						 (void *)s, s->fd,
-						 s->local_shutdown,
-						 s->peer_shutdown));
-					PPRINTF(("RX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
-						 s->fd,
-						 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
-					close(s->fd);
-					s->fd = -1;
-					s->state = SOCK_FREE;
-					put_sock(s);
-					continue;
-				}
 
 				if (s->state != SOCK_CONNECTED) {
 					put_sock(s);
