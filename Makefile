@@ -117,7 +117,7 @@ INC := -Iinclude
 
 CFLAGS += -DVERSION=\"$(GIT_VERSION)\"
 
-TARGET = build/xhyve
+TARGET = build/com.docker.hyperkit
 
 all: $(TARGET) | build
 
