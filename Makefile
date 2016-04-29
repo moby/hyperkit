@@ -68,10 +68,18 @@ FIRMWARE_SRC := \
 	src/firmware/kexec.c \
 	src/firmware/fbsd.c
 
+ifneq ($(LIBVMNETD_DIR),)
+VMNETD_SRC := \
+	src/pci_virtio_net_ipc.c
+LDLIBS += $(LIBVMNETD_DIR)/libvmnetd.a
+CFLAGS += -I$(LIBVMNETD_DIR)
+endif
+
 SRC := \
 	$(VMM_SRC) \
 	$(XHYVE_SRC) \
-	$(FIRMWARE_SRC)
+	$(FIRMWARE_SRC) \
+	$(VMNETD_SRC)
 
 OBJ := $(SRC:src/%.c=build/%.o)
 DEP := $(OBJ:%.o=%.d)
@@ -98,7 +106,7 @@ build/%.o: src/%.c
 
 $(TARGET).sym: $(OBJ)
 	@echo ld $(notdir $@)
-	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ)
+	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(LDLIBS)
 	@echo dsym $(notdir $(TARGET).dSYM)
 	$(VERBOSE) $(ENV) $(DSYM) $@ -o $(TARGET).dSYM
 
