@@ -58,13 +58,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 #include <sys/select.h>
 #include <sys/param.h>
 #include <sys/uio.h>
 #include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/time.h>
 #include <net/ethernet.h>
-#include <dispatch/dispatch.h>
-#include <vmnet/vmnet.h>
+#include <uuid/uuid.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
 #include <xhyve/support/linker_set.h>
@@ -74,6 +77,11 @@
 #include <xhyve/pci_emul.h>
 #include <xhyve/mevent.h>
 #include <xhyve/virtio.h>
+
+#include "protocol.h"
+#include "utils.h"
+
+#define WPRINTF(format, ...) printf(format, __VA_ARGS__)
 
 #define VTNET_RINGSZ 1024
 #define VTNET_MAXSEGS 32
@@ -155,7 +163,7 @@ struct pci_vtnet_softc {
 	struct virtio_softc vsc_vs;
 	struct vqueue_info vsc_queues[VTNET_MAXQ - 1];
 	pthread_mutex_t vsc_mtx;
-	struct vmnet_state *vms;
+	struct ipcnet_state *state;
 	int vsc_rx_ready;
 	volatile int resetting;/* set and checked outside lock */
 	uint64_t vsc_features; /* negotiated features */
@@ -177,7 +185,7 @@ static int pci_vtnet_cfgwrite(void *, int, int, uint32_t);
 static void pci_vtnet_neg_features(void *, uint64_t);
 
 static struct virtio_consts vtnet_vi_consts = {
-	"vtnet",		/* our name */
+	"ipcnet",		/* our name */
 	VTNET_MAXQ - 1,		/* we currently support 2 virtqueues */
 	sizeof(struct virtio_net_config), /* config reg size */
 	pci_vtnet_reset,	/* reset */
@@ -188,172 +196,321 @@ static struct virtio_consts vtnet_vi_consts = {
 	VTNET_S_HOSTCAPS,	/* our capabilities */
 };
 
-struct vmnet_state {
-	interface_ref iface;
-	uint8_t mac[6];
-	unsigned int mtu;
-	unsigned int max_packet_size;
+struct ipcnet_state {
+	int fd;
+	struct vif_info vif;
 };
 
 #pragma clang diagnostic pop
 
-static void pci_vtnet_tap_callback(struct pci_vtnet_softc *sc);
-
-/*
- * Create an interface for the guest using Apple's vmnet framework.
- *
- * The interface works in VMNET_SHARED_MODE which allows for packets
- * of the guest to reach other guests and the Internet.
- *
- * See also: https://developer.apple.com/library/mac/documentation/vmnet/Reference/vmnet_Reference/index.html
- */
-static int
-vmn_create(struct pci_vtnet_softc *sc)
+static char *
+copy_up_to_comma(const char *from)
 {
-	xpc_object_t interface_desc;
-	uuid_t uuid;
-	__block interface_ref iface;
-	__block vmnet_return_t iface_status;
-	dispatch_semaphore_t iface_created;
-	dispatch_queue_t if_create_q;
-	dispatch_queue_t if_q;
-	struct vmnet_state *vms;
-	uint32_t uuid_status;
-
-	interface_desc = xpc_dictionary_create(NULL, NULL, 0);
-	xpc_dictionary_set_uint64(interface_desc, vmnet_operation_mode_key,
-		VMNET_SHARED_MODE);
-
-	if (guest_uuid_str != NULL) {
-		uuid_from_string(guest_uuid_str, &uuid, &uuid_status);
-		if (uuid_status != uuid_s_ok) {
-			return (-1);
-		}
+	char *comma = strchr(from, ',');
+	char *tmp = NULL;
+	if (comma == NULL) {
+		tmp = strdup(from); /* rest of string */
 	} else {
-		uuid_generate_random(uuid);
+		size_t length = (size_t)(comma - from);
+		tmp = strndup(from, length);
+	}
+	return tmp;
+}
+
+static int
+ipcnet_create(struct pci_vtnet_softc *sc, const char *opts)
+{
+	const char *path = "/var/tmp/com.docker.vmnetd.socket";
+	char *macfile = NULL;
+	char *errorfile = NULL;
+	int simulate_failure = 0;
+	char *tmp = NULL;
+	uuid_t uuid;
+	char uuid_string[37];
+	struct sockaddr_un addr;
+	int fd;
+	struct ipcnet_state *state = malloc(sizeof(struct ipcnet_state));
+	if (!state) abort();
+	bzero(state, sizeof(struct ipcnet_state));
+	fprintf(stdout, "virtio-net-ipc: initialising %s\n", opts);
+
+	/* Use a random uuid by default */
+	uuid_generate_random(uuid);
+	uuid_unparse(uuid, uuid_string);
+
+	while (1) {
+		char *next;
+		if (! opts)
+			break;
+		next = strchr(opts, ',');
+		if (next)
+			next[0] = '\0';
+		if (strncmp(opts, "path=", 5) == 0) {
+			path = copy_up_to_comma(opts + 5);
+			/* Let path leak */
+		} else if (strncmp(opts, "uuid=", 5) == 0) {
+			tmp = copy_up_to_comma(opts + 5);
+			if (strlen(tmp) < 36) {
+				fprintf(stderr, "uuids need to be 36 characters long\n");
+				return 1;
+			}
+			memcpy(&uuid_string[0], &tmp[0], 36);
+			fprintf(stdout, "Interface will have uuid %s\n", tmp);
+			free(tmp);
+			tmp = NULL;
+		} else if (strncmp(opts, "macfile=", 8) == 0) {
+			macfile = copy_up_to_comma(opts + 8);
+		} else if (strncmp(opts, "errorfile=", 10) == 0) {
+			errorfile = copy_up_to_comma(opts + 10);
+		} else if (strncmp(opts, "simulate-failure", 16) == 0) {
+			/* Allows easier testing of vmnet failures */
+			simulate_failure = 1;
+		} else {
+			fprintf(stderr, "invalid option: %s\r\n", opts);
+			return 1;
+		}
+		if (! next)
+			break;
+		opts = &next[1];
 	}
 
-	xpc_dictionary_set_uuid(interface_desc, vmnet_interface_id_key, uuid);
-	iface = NULL;
-	iface_status = 0;
+	state->vif.max_packet_size = 1500;
+	sc->state = state;
+	struct init_message *me = create_init_message();
 
-	vms = malloc(sizeof(struct vmnet_state));
-
-	if (!vms) {
-		return (-1);
-	}
-
-	if_create_q = dispatch_queue_create("org.xhyve.vmnet.create",
-		DISPATCH_QUEUE_SERIAL);
-
-	iface_created = dispatch_semaphore_create(0);
-
-	iface = vmnet_start_interface(interface_desc, if_create_q,
-		^(vmnet_return_t status, xpc_object_t interface_param)
-	{
-		iface_status = status;
-		if (status != VMNET_SUCCESS || !interface_param) {
-			dispatch_semaphore_signal(iface_created);
-			return;
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, path, sizeof(addr.sun_path)-1);
+	int log_every_n_tries = 0; /* log first failure */
+	do {
+		if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1){
+			WPRINTF("Failed to create socket: %s\n", strerror(errno));
+			abort();
+		}
+		if(connect(fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) != 0) {
+			goto err;
+		}
+		if (write_init_message(fd, me) == -1){
+			goto err;
+		}
+		struct init_message you;
+		if (read_init_message(fd, &you) == -1){
+			goto err;
+		}
+		char *txt = print_init_message(&you);
+		DPRINTF(("Server reports %s\n", txt));
+		free(txt);
+		enum command command = ethernet;
+		if (write_command(fd, &command) == -1) {
+			goto err;
+		}
+		struct ethernet_args args;
+		memcpy(&args.uuid_string[0], &uuid_string[0], 36);
+		if (write_ethernet_args(fd, &args) == -1){
+			goto err;
+		}
+		if ((read_vif_info(fd, &state->vif) == -1) || simulate_failure) {
+			/* If this step fails it's almost certainly the vmnet.framework MAC
+			   address clash failure. */
+			if (errorfile != NULL) {
+				FILE *f = fopen(errorfile, "w");
+				if (f == NULL) {
+					goto err;
+				}
+				fprintf(f, "Unknown error connecting to vmnet.framework\n");
+				fclose(f);
+				exit(1);
+			}
+			/* If the caller doesn't want to know about errors, treat this
+			   as a soft failure */
+			bzero(&state->vif, sizeof(state->vif));
+			state->vif.mac[0] = 0xde;
+			state->vif.mac[1] = 0xad;
+			state->vif.mac[2] = 0xbe;
+			state->vif.mac[3] = 0xef;
+			state->vif.mac[4] = 0xde;
+			state->vif.mac[5] = 0xad;
+			state->vif.max_packet_size = 1500;
+			state->vif.mtu = 1500;
+			close(fd);
+			int fds[2];
+			/* Give it a socket that goes nowhere */
+			if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0){
+				goto err;
+			}
+			fd = fds[0];
 		}
 
-		if (sscanf(xpc_dictionary_get_string(interface_param,
-			vmnet_mac_address_key),
-			"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			&vms->mac[0], &vms->mac[1], &vms->mac[2], &vms->mac[3],
-			&vms->mac[4], &vms->mac[5]) != 6)
-		{
-			assert(0);
+		/* success */
+		break;
+err:
+		if (log_every_n_tries == 0) {
+			DPRINTF(("virtio-net-ipc: failed to connect to %s: %m\n", path));
 		}
+		close(fd);
+		fd = -1;
+		log_every_n_tries --;
+		if (log_every_n_tries < 0) log_every_n_tries = 100; /* at 100ms interval = 10s */
+		usleep(100000); /* 100 ms */
+	} while (fd == -1);
 
-		vms->mtu = (unsigned)
-			xpc_dictionary_get_uint64(interface_param, vmnet_mtu_key);
-		vms->max_packet_size = (unsigned)
-			xpc_dictionary_get_uint64(interface_param,
-				vmnet_max_packet_size_key);
-		dispatch_semaphore_signal(iface_created);
-	});
+	state->fd = fd;
 
-	dispatch_semaphore_wait(iface_created, DISPATCH_TIME_FOREVER);
-	dispatch_release(if_create_q);
+	struct vif_info *info = &state->vif;
+	fprintf(stdout, "Connection established with MAC=%02x:%02x:%02x:%02x:%02x:%02x and MTU %d\n",
+	  info->mac[0], info->mac[1], info->mac[2], info->mac[3], info->mac[4], info->mac[5],
+		(int)info->mtu);
 
-	if (iface == NULL || iface_status != VMNET_SUCCESS) {
-		printf("virtio_net: Could not create vmnet interface, "
-			"permission denied or no entitlement?\n");
-		free(vms);
-		return (-1);
+	if (macfile) {
+		tmp = malloc(PATH_MAX);
+		if (!tmp) abort();
+		snprintf(tmp, PATH_MAX, "%s.tmp", macfile);
+		FILE *f = fopen(tmp, "w");
+		if (f == NULL) {
+			DPRINTF(("Failed to write MAC to file %s: %m\n", tmp));
+			return 1;
+		}
+		if (fprintf(f, "%02x:%02x:%02x:%02x:%02x:%02x", info->mac[0], info->mac[1],
+			info->mac[2], info->mac[3], info->mac[4], info->mac[5]) < 0) {
+				DPRINTF(("Failed to write MAC to file %s: %m\n", tmp));
+			return 1;
+		}
+		fclose(f);
+		if (rename(tmp, macfile) == -1) {
+			DPRINTF(("Failed to write MAC to file %s: %m\n", macfile));
+			return 1;
+		}
 	}
+	return 0;
+}
 
-	vms->iface = iface;
-	sc->vms = vms;
+typedef struct pcap_hdr_s {
+	uint32_t magic_number;   /* magic number */
+	uint16_t version_major;  /* major version number */
+	uint16_t version_minor;  /* minor version number */
+	int32_t  thiszone;       /* GMT to local correction */
+	uint32_t sigfigs;        /* accuracy of timestamps */
+	uint32_t snaplen;        /* max length of captured packets, in octets */
+	uint32_t network;        /* data link type */
+} pcap_hdr_t;
 
-	if_q = dispatch_queue_create("org.xhyve.vmnet.iface_q", 0);
+typedef struct pcaprec_hdr_s {
+	uint32_t ts_sec;         /* timestamp seconds */
+	uint32_t ts_usec;        /* timestamp microseconds */
+	uint32_t incl_len;       /* number of octets of packet saved in file */
+	uint32_t orig_len;       /* actual length of packet */
+} pcaprec_hdr_t;
 
-	vmnet_interface_set_event_callback(iface, VMNET_INTERFACE_PACKETS_AVAILABLE,
-		if_q, ^(UNUSED interface_event_t event_id, UNUSED xpc_object_t event)
-	{
-		pci_vtnet_tap_callback(sc);
-	});
+#if 0
+static void capture(unsigned char *buffer, int len){
+	static int pcap_fd = 0;
+	if (pcap_fd == 0){
+		if ((pcap_fd = open("capture.pcap", O_WRONLY | O_CREAT | O_TRUNC)) == -1){
+			fprintf(stderr, "Failed to open capture.pcap: %s\r\n", strerror(errno));
+			exit(1);
+		}
+		struct pcap_hdr_s h;
+		h.magic_number =  0xa1b2c3d4;
+		h.version_major = 2;
+		h.version_minor = 4;
+		h.thiszone = 0;
+		h.sigfigs = 0;
+		h.snaplen = 2048;
+		h.network = 1; /* ETHERNET */
+		really_write(pcap_fd, (uint8_t*)&h, sizeof(struct pcap_hdr_s));
+	};
+	struct pcaprec_hdr_s h;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	h.ts_sec = tv.tv_sec;
+	h.ts_usec = tv.tv_usec;
+	h.incl_len = len;
+	h.orig_len = len;
+	really_write(pcap_fd, (uint8_t*)&h, sizeof(struct pcaprec_hdr_s));
+	really_write(pcap_fd, buffer, len);
+}
+#endif
 
-	return (0);
+static void hexdump(unsigned char *buffer, size_t len){
+	char ascii[17];
+	size_t i = 0;
+	ascii[16] = '\000';
+	while (i < len) {
+		unsigned char c = *(buffer + i);
+		printf("%02x ", c);
+		ascii[i++ % 16] = isprint(c)?(signed char)c:'.';
+		if ((i % 2) == 0) printf(" ");
+		if ((i % 16) == 0) printf(" %s\r\n", ascii);
+	};
+	printf("\r\n");
 }
 
 static ssize_t
-vmn_read(struct vmnet_state *vms, struct iovec *iov, int n) {
-	vmnet_return_t r;
-	struct vmpktdesc v;
-	int pktcnt;
-	int i;
+vmn_read(struct ipcnet_state *state, struct iovec *iov, int n) {
+	uint8_t header[2];
+	int length, remaining, i = 0;
 
-	v.vm_pkt_size = 0;
-
-	for (i = 0; i < n; i++) {
-		v.vm_pkt_size += iov[i].iov_len;
+	if (really_read(state->fd, &header[0], 2) == -1){
+		DPRINTF(("virtio-net-ipc: vmnet_read failed, pushing ACPI power button\n"));
+		push_power_button();
+		/* Block reading forever until we shutdown */
+		for (;;){
+			usleep(1000000);
+		}
 	}
+	remaining = length = (header[0] & 0xff) | ((header[1] & 0xff) << 8);
 
-	assert(v.vm_pkt_size >= vms->max_packet_size);
-
-	v.vm_pkt_iov = iov;
-	v.vm_pkt_iovcnt = (uint32_t) n;
-	v.vm_flags = 0; /* TODO no clue what this is */
-
-	pktcnt = 1;
-
-	r = vmnet_read(vms->iface, &v, &pktcnt);
-
-	assert(r == VMNET_SUCCESS);
-
-	if (pktcnt < 1) {
-		return (-1);
+	while (remaining > 0){
+		size_t batch = min((unsigned long)remaining, iov[i].iov_len);
+		if (really_read(state->fd, iov[i].iov_base, batch) == -1){
+			DPRINTF(("virtio-net-ipc: vmnet_read failed, pushing ACPI power button\n"));
+			push_power_button();
+			/* Block reading forever until we shutdown */
+			for (;;){
+				usleep(1000000);
+			}
+		}
+		remaining -= batch;
+		i++;
+		assert(remaining == 0 || i < n);
 	}
-
-	return ((ssize_t) v.vm_pkt_size);
+	DPRINTF(("Received packet of %d bytes\r\n", length));
+	if (pci_vtnet_debug) {
+		hexdump(iov[0].iov_base, min(iov[0].iov_len, 32));
+#if 0
+		capture(iov[0].iov_base, length);
+#endif
+	}
+	return length;
 }
 
 static void
-vmn_write(struct vmnet_state *vms, struct iovec *iov, int n) {
-	vmnet_return_t r;
-	struct vmpktdesc v;
-	int pktcnt;
-	int i;
+vmn_write(struct ipcnet_state *state, struct iovec *iov, int n) {
+	uint8_t header[2];
+	size_t length = 0;
 
-	v.vm_pkt_size = 0;
-
-	for (i = 0; i < n; i++) {
-		v.vm_pkt_size += iov[i].iov_len;
+	for (int i = 0; i < n; i++) {
+		length += iov[i].iov_len;
 	}
 
-	assert(v.vm_pkt_size <= vms->max_packet_size);
+	assert(length<= state->vif.max_packet_size);
 
-	v.vm_pkt_iov = iov;
-	v.vm_pkt_iovcnt = (uint32_t) n;
-	v.vm_flags = 0; /* TODO no clue what this is */
+	DPRINTF(("Transmitting packet of length %zd\r\n", length));
+	if (pci_vtnet_debug) {
+	  hexdump(iov[0].iov_base, min(iov[0].iov_len, 32));
+#if 0
+	  capture(iov[0].iov_base, iov[0].iov_len);
+#endif
+	}
+	header[0] = (length >> 0) & 0xff;
+	header[1] = (length >> 8) & 0xff;
+	if (really_write(state->fd, &header[0], 2) == -1){
+		DPRINTF(("virtio-net-ipc: vmnet_write failed, pushing ACPI power button"));
+		push_power_button();
+		return;
+	}
 
-	pktcnt = 1;
-
-	r = vmnet_write(vms->iface, &v, &pktcnt);
-
-	assert(r == VMNET_SUCCESS);
+	(void) writev(state->fd, iov, n);
 }
 
 /*
@@ -423,7 +580,7 @@ pci_vtnet_tap_tx(struct pci_vtnet_softc *sc, struct iovec *iov, int iovcnt,
 {
 	static char pad[60]; /* all zero bytes */
 
-	if (!sc->vms)
+	if (!sc->state)
 		return;
 
 	/*
@@ -436,7 +593,7 @@ pci_vtnet_tap_tx(struct pci_vtnet_softc *sc, struct iovec *iov, int iovcnt,
 		iov[iovcnt].iov_len = (size_t) (60 - len);
 		iovcnt++;
 	}
-	vmn_write(sc->vms, iov, iovcnt);
+	vmn_write(sc->state, iov, iovcnt);
 }
 
 /*
@@ -482,7 +639,7 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 	/*
 	 * Should never be called without a valid tap fd
 	 */
-	assert(sc->vms);
+	assert(sc->state);
 
 	/*
 	 * But, will be called when the rx ring hasn't yet
@@ -494,7 +651,7 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		 */
 		iov[0].iov_base = dummybuf;
 		iov[0].iov_len = sizeof(dummybuf);
-		(void) vmn_read(sc->vms, iov, 1);
+		(void) vmn_read(sc->state, iov, 1);
 		return;
 	}
 
@@ -509,7 +666,7 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		 */
 		iov[0].iov_base = dummybuf;
 		iov[0].iov_len = sizeof(dummybuf);
-		(void) vmn_read(sc->vms, iov, 1);
+		(void) vmn_read(sc->state, iov, 1);
 		vq_endchains(vq, 1);
 		return;
 	}
@@ -528,9 +685,9 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		vrx = iov[0].iov_base;
 		riov = rx_iov_trim(iov, &n, sc->rx_vhdrlen);
 
-		len = (int) vmn_read(sc->vms, riov, n);
+		len = (int) vmn_read(sc->state, riov, n);
 
-		if (len < 0 && errno == EWOULDBLOCK) {
+		if (len < 0) {
 			/*
 			 * No more packets, but still some avail ring
 			 * entries.  Interrupt if needed/appropriate.
@@ -557,21 +714,40 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		 * Release this chain and handle more chains.
 		 */
 		vq_relchain(vq, idx, ((uint32_t) (len + sc->rx_vhdrlen)));
-	} while (vq_has_descs(vq));
+	} while /* (vq_has_descs(vq))*/ (0);
+	/* NB: socket is in blocking mode, so rely on getting back here through
+	   select() rather than readv() failing with EWOULDBLOCK */
 
 	/* Interrupt if needed, including for NOTIFY_ON_EMPTY. */
 	vq_endchains(vq, 1);
 }
 
-static void
-pci_vtnet_tap_callback(struct pci_vtnet_softc *sc)
-{
-	pthread_mutex_lock(&sc->rx_mtx);
-	sc->rx_in_progress = 1;
-	pci_vtnet_tap_rx(sc);
-	sc->rx_in_progress = 0;
-	pthread_mutex_unlock(&sc->rx_mtx);
+static void *
+pci_vtnet_tap_select_func(void *vsc) {
+	struct pci_vtnet_softc *sc;
+	fd_set rfd;
 
+	sc = vsc;
+
+	assert(sc);
+	assert(sc->state->fd != -1);
+
+	FD_ZERO(&rfd);
+	FD_SET(sc->state->fd, &rfd);
+
+	while (1) {
+		if (select((sc->state->fd + 1), &rfd, NULL, NULL, NULL) == -1) {
+			abort();
+		}
+
+		pthread_mutex_lock(&sc->rx_mtx);
+		sc->rx_in_progress = 1;
+		pci_vtnet_tap_rx(sc);
+		sc->rx_in_progress = 0;
+		pthread_mutex_unlock(&sc->rx_mtx);
+	}
+
+	return (NULL);
 }
 
 static void
@@ -699,13 +875,20 @@ pci_vtnet_ping_ctlq(void *vsc, struct vqueue_info *vq)
 #endif
 
 static int
-pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
+pci_vtnet_init(struct pci_devinst *pi, char *opts)
 {
+	static int aslInitDone = 0;
 	struct pci_vtnet_softc *sc;
 	int mac_provided;
+	pthread_t sthrd;
+
+	if (!aslInitDone) {
+		aslInit("Docker", "com.docker.xhyve");
+		aslLog(ASL_LEVEL_NOTICE, "Starting xhyve");
+		aslInitDone = 1;
+	}
 
 	sc = calloc(1, sizeof(struct pci_vtnet_softc));
-
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
 
 	vi_softc_linkup(&sc->vsc_vs, &vtnet_vi_consts, sc, pi, sc->vsc_queues);
@@ -719,31 +902,23 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 	sc->vsc_queues[VTNET_CTLQ].vq_qsize = VTNET_RINGSZ;
         sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
 #endif
- 
+
 	/*
 	 * Attempt to open the tap device and read the MAC address
 	 * if specified
 	 */
 	mac_provided = 0;
 
-	if (vmn_create(sc) == -1) {
+	if (ipcnet_create(sc, opts) == -1) {
 		return (-1);
 	}
 
-    if (print_mac == 1)
-    {
-		printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
-			sc->vms->mac[0], sc->vms->mac[1], sc->vms->mac[2],
-			sc->vms->mac[3], sc->vms->mac[4], sc->vms->mac[5]);
-		exit(0);
-    }
-
-	sc->vsc_config.mac[0] = sc->vms->mac[0];
-	sc->vsc_config.mac[1] = sc->vms->mac[1];
-	sc->vsc_config.mac[2] = sc->vms->mac[2];
-	sc->vsc_config.mac[3] = sc->vms->mac[3];
-	sc->vsc_config.mac[4] = sc->vms->mac[4];
-	sc->vsc_config.mac[5] = sc->vms->mac[5];
+	sc->vsc_config.mac[0] = sc->state->vif.mac[0];
+	sc->vsc_config.mac[1] = sc->state->vif.mac[1];
+	sc->vsc_config.mac[2] = sc->state->vif.mac[2];
+	sc->vsc_config.mac[3] = sc->state->vif.mac[3];
+	sc->vsc_config.mac[4] = sc->state->vif.mac[4];
+	sc->vsc_config.mac[5] = sc->state->vif.mac[5];
 
 	/* initialize config space */
 	pci_set_cfgdata16(pi, PCIR_DEVICE, VIRTIO_DEV_NET);
@@ -754,7 +929,7 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 
 	/* Link is up if we managed to open tap device. */
 	sc->vsc_config.status = 1;
-	
+
 	/* use BAR 1 to map MSI-X table and PBA, if we're using MSI-X */
 	if (vi_intr_init(&sc->vsc_vs, 1, fbsdrun_virtio_msix()))
 		return (1);
@@ -767,17 +942,22 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 	sc->rx_merge = 1;
 	sc->rx_vhdrlen = sizeof(struct virtio_net_rxhdr);
 	sc->rx_in_progress = 0;
-	pthread_mutex_init(&sc->rx_mtx, NULL); 
+	pthread_mutex_init(&sc->rx_mtx, NULL);
 
-	/* 
+	/*
 	 * Initialize tx semaphore & spawn TX processing thread.
 	 * As of now, only one thread for TX desc processing is
-	 * spawned. 
+	 * spawned.
 	 */
 	sc->tx_in_progress = 0;
 	pthread_mutex_init(&sc->tx_mtx, NULL);
 	pthread_cond_init(&sc->tx_cond, NULL);
 	pthread_create(&sc->tx_tid, NULL, pci_vtnet_tx_thread, (void *)sc);
+
+	if (pthread_create(&sthrd, NULL, pci_vtnet_tap_select_func, sc)) {
+		fprintf(stderr, "Could not create select()-based receive thread\n");
+	}
+
 	return (0);
 }
 
@@ -827,10 +1007,10 @@ pci_vtnet_neg_features(void *vsc, uint64_t negotiated_features)
 	}
 }
 
-static struct pci_devemu pci_de_vnet_vmnet = {
-	.pe_emu = 	"virtio-net",
+static struct pci_devemu pci_de_vnet_ipc = {
+	.pe_emu = 	"virtio-ipc",
 	.pe_init =	pci_vtnet_init,
 	.pe_barwrite =	vi_pci_write,
 	.pe_barread =	vi_pci_read
 };
-PCI_EMUL_SET(pci_de_vnet_vmnet);
+PCI_EMUL_SET(pci_de_vnet_ipc);

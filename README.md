@@ -1,4 +1,4 @@
-# xhyve
+# [xhyve.org](http://www.xhyve.org)
 
 ![](./xhyve_logo.png)
 <!-- https://thenounproject.com/term/squirrel/57718/ -->
@@ -6,7 +6,7 @@
 About
 -----
 
-The *xhyve hypervisor* is a port of [bhyve](http://www.bhyve.org) to OS X. It is built on top of Hypervisor.framework in OS X 10.10 Yosemite and higher, runs entirely in userspace, and has no other dependencies. It can run FreeBSD and vanilla Linux distributions and may gain support for other guest operating systems in the future.
+The *xhyve hypervisor* is a port of [bhyve](http://www.bhyve.org) to OS X. It is built on top of [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html) in OS X 10.10 Yosemite and higher, runs entirely in userspace, and has no other dependencies. It can run FreeBSD and vanilla Linux distributions and may gain support for other guest operating systems in the future.
 
 License: BSD
 
@@ -18,9 +18,22 @@ Requirements
 * OS X 10.10.3 Yosemite or later
 * a 2010 or later Mac (i.e. a CPU that supports EPT)
 
+Installation
+------------
+
+If you have homebrew, then simply:
+
+    $ brew update
+    $ brew install --HEAD xhyve
+
+The `--HEAD` in the brew command ensures that you always get the latest changes, even if the homebrew database is not yet updated. If for any reason you don't want that simply do `brew install xhyve` .
+
+if not then:  
+
 Building
 --------
-
+    $ git clone https://github.com/mist64/xhyve
+    $ cd xhyve
     $ make
 
 The resulting binary will be in build/xhyve
@@ -56,7 +69,7 @@ It exposes the following peripherals to virtual machines:
 
 Notably absent are sound, USB, HID and any kind of graphics support. With a focus on server virtualization this is not strictly a requirement. bhyve may gain desktop virtualization capabilities in the future but this doesn't seem to be a priority.
 
-Unlike QEMU, byhve also currently lacks any kind of guest-side firmware (QEMU uses the GPL3 [SeaBIOS](http://www.seabios.org)), but aims to provide a compatible [OVMF EFI](http://www.linux-kvm.org/page/OVMF) in the near future. It does however provide ACPI, SMBIOS and MP Tables.
+Unlike QEMU, bhyve also currently lacks any kind of guest-side firmware (QEMU uses the GPL3 [SeaBIOS](http://www.seabios.org)), but aims to provide a compatible [OVMF EFI](http://www.linux-kvm.org/page/OVMF) in the near future. It does however provide ACPI, SMBIOS and MP Tables.
 
 bhyve architecture
 ------------------
@@ -170,14 +183,14 @@ Where *X* is your tap device, i.e. */dev/tapX*.
 
 Issues
 ------
-If you are, or were, running any version of VirtualBox, prior to 5.0, and
-attempt to run xhyve your system will immediately crash as a kernel panic is
-triggered. This is due to a VirtualBox bug (that got fixed in VirtualBox 5.0)
-as VirtualBox wasn't playing nice with OSX's Hypervisor.framework used by
-xhyve.
+If you are, or were, running any version of VirtualBox, prior to 4.3.30 or 5.0,
+and attempt to run xhyve your system will immediately crash as a kernel panic is
+triggered. This is due to a VirtualBox bug (that got fixed in newest VirtualBox
+versions) as VirtualBox wasn't playing nice with OSX's Hypervisor.framework used
+by xhyve.
 
-To get around this you either have to update to VirtualBox 5 (which got this
-fixed definitively) or, if you for some reason are unable to update, to reboot
+To get around this you either have to update to newest VirtualBox 4.3 or 5.0 or,
+if you for some reason are unable to update, to reboot
 your Mac after using VirtualBox and before attempting to use xhyve.
 (see issues [#5](https://github.com/mist64/xhyve/issues/5) and
 [#9](https://github.com/mist64/xhyve/issues/9) for the full context)

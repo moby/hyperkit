@@ -49,6 +49,7 @@ XHYVE_SRC := \
 	src/pci_irq.c \
 	src/pci_lpc.c \
 	src/pci_uart.c \
+	src/pci_virtio_9p.c \
 	src/pci_virtio_block.c \
 	src/pci_virtio_net_tap.c \
 	src/pci_virtio_net_vmnet.c \
@@ -66,6 +67,13 @@ XHYVE_SRC := \
 FIRMWARE_SRC := \
 	src/firmware/kexec.c \
 	src/firmware/fbsd.c
+
+ifneq ($(LIBVMNETD_DIR),)
+VMNETD_SRC := \
+	src/pci_virtio_net_ipc.c
+LDLIBS += $(LIBVMNETD_DIR)/libvmnetd.a
+CFLAGS += -I$(LIBVMNETD_DIR)
+endif
 
 HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; then echo YES ; else echo NO; fi)
 
@@ -94,13 +102,13 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	-lasmrun -lbigarray -lunix
 
 build/xhyve.o: CFLAGS += -I$(OCAML_WHERE)
-
 endif
 
 SRC := \
 	$(VMM_SRC) \
 	$(XHYVE_SRC) \
 	$(FIRMWARE_SRC) \
+	$(VMNETD_SRC) \
 	$(OCAML_C_SRC)
 
 OBJ := $(SRC:src/%.c=build/%.o) $(OCAML_SRC:src/%.ml=build/%.o)
@@ -135,7 +143,7 @@ build/%.o: src/%.ml
 
 $(TARGET).sym: $(OBJ)
 	@echo ld $(notdir $@)
-	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(OCAML_LDLIBS)
+	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(LDLIBS) $(OCAML_LDLIBS)
 	@echo dsym $(notdir $(TARGET).dSYM)
 	$(VERBOSE) $(ENV) $(DSYM) $@ -o $(TARGET).dSYM
 
