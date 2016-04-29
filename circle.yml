@@ -7,5 +7,8 @@ machine:
     version: "7.3"
 test:
   override:
+    - brew install opam
+    - opam init --yes
+    - opam install --yes sexplib=113.00.00 uri qcow-format ocamlfind
     - make clean
-    - make all
+    - eval `opam config env` && make all
