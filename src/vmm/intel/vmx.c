@@ -2189,6 +2189,9 @@ vmx_run(void *arg, int vcpu, register_t rip, void *rendezvous_cookie,
 		}
 		vmx_exit_trace(vmx, vcpu, ((uint64_t) rip), exit_reason, handled);
 		rip = (register_t) vmexit->rip;
+
+		vm_check_for_unpause(vm, vcpu);
+
 	} while (handled);
 
 	/*

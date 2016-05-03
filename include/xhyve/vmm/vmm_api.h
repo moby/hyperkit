@@ -45,6 +45,7 @@ enum vm_mmap_style {
 	VM_MMAP_SPARSE,		/* mappings created on-demand */
 };
 
+void xh_hv_pause(int pause);
 int xh_vm_create(void);
 void xh_vm_destroy(void);
 int xh_vcpu_create(int vcpu);
