@@ -32,12 +32,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <strings.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <termios.h>
 #include <assert.h>
+#include <errno.h>
+#include <sys/mman.h>
 #include <xhyve/support/ns16550.h>
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
@@ -90,8 +93,15 @@ struct fifo {
 struct ttyfd {
 	bool	opened;
 	int	fd;		/* tty device file descriptor */
+	int 	sfd;
 	char *name; /* slave pty name when using autopty*/
 	struct termios tio_orig, tio_new;    /* I/O Terminals */
+};
+
+struct log {
+	unsigned char *ring; /* array used as a ring */
+	size_t next;   /* offset of the next free byte */
+	size_t length; /* total length of the ring */
 };
 
 struct uart_softc {
@@ -112,6 +122,7 @@ struct uart_softc {
 	struct mevent *mev;
 
 	struct ttyfd tty;
+	struct log log;
 	bool	thre_int_pending;	/* THRE interrupt pending */
 
 	void	*arg;
@@ -151,10 +162,18 @@ ttyread(struct ttyfd *tf)
 {
 	unsigned char rb;
 
-	if (read(tf->fd, &rb, 1) == 1)
+	ssize_t n = read(tf->fd, &rb, 1);
+
+	if (n == 1)
 		return (rb);
-	else
-		return (-1);
+	if (n == 0 && tf->name) {
+		/* We will get end of file in a loop until a slave is opened,
+		   so open a slave ourselves here. */
+		if (tf->sfd != -1) close(tf->sfd);
+		fprintf(stdout, "Reopening slave pty\n");
+		tf->sfd = open(tf->name, O_RDONLY | O_NONBLOCK);
+	}
+	return (-1);
 }
 
 static void
@@ -162,6 +181,13 @@ ttywrite(struct ttyfd *tf, unsigned char wb)
 {
 
 	(void)write(tf->fd, &wb, 1);
+}
+
+static void
+ringwrite(struct log *log, unsigned char wb)
+{
+  *(log->ring + log->next) = wb;
+	log->next = (log->next + 1) % log->length;
 }
 
 static void
@@ -270,6 +296,31 @@ uart_opentty(struct uart_softc *sc)
 	ttyopen(&sc->tty);
 	sc->mev = mevent_add(sc->tty.fd, EVF_READ, uart_drain, sc);
 	assert(sc->mev != NULL);
+}
+
+static int
+uart_mapring(struct uart_softc *sc, const char *path)
+{
+	int retval = -1, fd = -1;
+	sc->log.length = 65536;
+	if ((fd = open(path, O_CREAT | O_TRUNC | O_RDWR, 0644)) == -1) {
+		perror("open console-ring");
+		goto out;
+	}
+	if (ftruncate(fd, (off_t)sc->log.length) == -1){
+		perror("ftruncate console-ring");
+		goto out;
+	}
+	if ((sc->log.ring = (unsigned char*)mmap(NULL, sc->log.length, PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) {
+		perror("mmap console-ring");
+		goto out;
+	}
+	sc->log.next = 0;
+	retval = 0;
+
+out:
+	if (fd != -1) close(fd);
+	return retval;
 }
 
 /*
@@ -386,6 +437,8 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 				sc->lsr |= LSR_OE;
 		} else if (sc->tty.opened) {
 			ttywrite(&sc->tty, value);
+			if (sc->log.ring)
+				ringwrite(&sc->log, value);
 		} /* else drop on floor */
 		sc->thre_int_pending = true;
 		break;
@@ -628,10 +681,26 @@ uart_tty_backend(struct uart_softc *sc, const char *backend)
 	return (retval);
 }
 
+static char *
+copy_up_to_comma(const char *from)
+{
+        char *comma = strchr(from, ',');
+        char *tmp = NULL;
+        if (comma == NULL) {
+                tmp = strdup(from); /* rest of string */
+        } else {
+                ptrdiff_t length = comma - from;
+                tmp = strndup(from, (size_t)length);
+        }
+        return tmp;
+}
+
 int
 uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname)
 {
 	int retval;
+	char *linkname = NULL;
+	char *logname = NULL;
 	int ptyfd;
 	char *ptyname;
 
@@ -640,43 +709,92 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 	if (backend == NULL)
 		return (0);
 
-	if (strcmp("stdio", backend) == 0 && !uart_stdio) {
-		sc->tty.fd = STDIN_FILENO;
-		sc->tty.opened = true;
-		uart_stdio = true;
-		retval = fcntl(sc->tty.fd, F_SETFL, O_NONBLOCK);
-	} else if (strcmp("autopty", backend) == 0) {
-		if ((ptyfd = open("/dev/ptmx", O_RDWR | O_NONBLOCK)) == -1) {
-			fprintf(stderr, "error opening /dev/ptmx char device");
-			return retval;
+	sc->tty.fd = -1;
+	sc->tty.sfd = -1;
+	sc->tty.name = NULL;
+
+	while (1) {
+		char *next;
+		if (!backend)
+			break;
+		next = strchr(backend, ',');
+		if (next)
+			next[0] = '\0';
+
+		if (strcmp("stdio", backend) == 0 && !uart_stdio) {
+			sc->tty.fd = STDIN_FILENO;
+			sc->tty.opened = true;
+			uart_stdio = true;
+			retval = fcntl(sc->tty.fd, F_SETFL, O_NONBLOCK);
+		} else if (strcmp("autopty", backend) == 0 ||
+			   strncmp("autopty=", backend, 8) == 0) {
+			linkname = NULL;
+			if (strncmp("autopty=", backend, 8) == 0)
+				linkname = copy_up_to_comma(backend + 8);
+			fprintf(stdout, "linkname %s\n", linkname);
+
+			if ((ptyfd = open("/dev/ptmx", O_RDWR | O_NONBLOCK)) == -1) {
+				fprintf(stderr, "error opening /dev/ptmx char device");
+				goto err;
+			}
+
+			if ((ptyname = ptsname(ptyfd)) == NULL) {
+				perror("ptsname: error getting name for slave pseudo terminal");
+				goto err;
+			}
+
+			if ((retval = grantpt(ptyfd)) == -1) {
+				perror("error setting up ownership and permissions on slave pseudo terminal");
+				goto err;
+			}
+
+			if ((retval = unlockpt(ptyfd)) == -1) {
+				perror("error unlocking slave pseudo terminal, to allow its usage");
+				goto err;
+			}
+
+			fprintf(stdout, "%s connected to %s\n", devname, ptyname);
+
+			if (linkname) {
+				if ((unlink(linkname) == -1) && (errno != ENOENT)) {
+					perror("unlinking autopty symlink");
+					goto err;
+				}
+				if (symlink(ptyname, linkname) == -1){
+					perror("creating autopty symlink");
+					goto err;
+				}
+				fprintf(stdout, "%s linked to %s\n", devname, linkname);
+			}
+
+			sc->tty.fd = ptyfd;
+			sc->tty.name = ptyname;
+			sc->tty.opened = true;
+			retval = 0;
+		} else if (strncmp("log=", backend, 4) == 0) {
+			logname = copy_up_to_comma(backend + 4);
+			if (uart_mapring(sc, logname) == -1) {
+				goto err;
+			}
+		} else if (uart_tty_backend(sc, backend) == 0) {
+			retval = 0;
+		} else {
+			goto err;
 		}
 
-		if ((ptyname = ptsname(ptyfd)) == NULL) {
-			perror("ptsname: error getting name for slave pseudo terminal");
-			return retval;
-		}
-
-		if ((retval = grantpt(ptyfd)) == -1) {
-			perror("error setting up ownership and permissions on slave pseudo terminal");
-			return retval;
-		}
-
-		if ((retval = unlockpt(ptyfd)) == -1) {
-			perror("error unlocking slave pseudo terminal, to allow its usage");
-			return retval;
-		}
-
-		fprintf(stdout, "%s connected to %s\n", devname, ptyname);
-		sc->tty.fd = ptyfd;
-		sc->tty.name = ptyname;
-		sc->tty.opened = true;
-		retval = 0;
-	} else if (uart_tty_backend(sc, backend) == 0) {
-		retval = 0;
+		if (!next)
+			break;
+		backend = &next[1];
 	}
 
 	if (retval == 0)
 		uart_opentty(sc);
+	goto out;
 
+err:
+	if (sc->tty.fd != -1) close(sc->tty.fd);
+out:
+	if (linkname) free(linkname);
+	if (logname) free(logname);
 	return (retval);
 }
