@@ -81,6 +81,11 @@ vcpu_freeze_all(bool freeze)
 	}
 }
 
+void xh_hv_pause(int pause) {
+	assert(vm != NULL);
+	vm_signal_pause(vm, (pause != 0));
+}
+
 int
 xh_vm_create(void)
 {

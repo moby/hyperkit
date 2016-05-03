@@ -108,6 +108,8 @@ extern struct vmm_ops vmm_ops_intel;
 int vmm_init(void);
 int vmm_cleanup(void);
 int vm_create(struct vm **retvm);
+void vm_signal_pause(struct vm *vm, bool pause);
+void vm_check_for_unpause(struct vm *vm, int vcpuid);
 int vcpu_create(struct vm *vm, int vcpu);
 void vm_destroy(struct vm *vm);
 void vcpu_destroy(struct vm *vm, int vcpu);
