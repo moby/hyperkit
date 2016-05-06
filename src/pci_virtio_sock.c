@@ -122,9 +122,9 @@ struct virtio_sock_hdr {
  * Debug printf
  */
 static int pci_vtsock_debug = 0;
-#define DPRINTF(params) if (pci_vtsock_debug) printf params
+#define DPRINTF(params) do { if (pci_vtsock_debug) { printf params; fflush(stdout); } } while(0)
 /* Protocol logging */
-#define PPRINTF(params) if (0) printf params
+#define PPRINTF(params) do { if (0) { printf params;  fflush(stdout); } } while(0)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
@@ -407,6 +407,7 @@ static size_t iovec_push(struct iovec **iov, int *iov_len, void *buf, size_t byt
 static void dprint_iovec(struct iovec *iov, int iovec_len, const char *ctx)
 {
 	int i;
+	if (!pci_vtsock_debug) return;
 	DPRINTF(("%s: IOV:%p ELEMS:%d\n", ctx, (void *)iov, iovec_len));
 	for (i = 0; i < iovec_len; i++)
 		DPRINTF(("%s:  %d = %zu @ %p\n",
@@ -417,6 +418,7 @@ static void dprint_chain(struct iovec *iov, int iovec_len, uint16_t *flags,
 			 const char *ctx)
 {
 	int i;
+	if (!pci_vtsock_debug) return;
 	DPRINTF(("%s: CHAIN:%p ELEMS:%d\n", ctx, (void *)iov, iovec_len));
 	for (i = 0; i < iovec_len; i++)
 		DPRINTF(("%s:  %d = %zu @ %p (%"PRIx16")\n",
@@ -426,6 +428,7 @@ static void dprint_chain(struct iovec *iov, int iovec_len, uint16_t *flags,
 
 static void dprint_header(struct virtio_sock_hdr *hdr, bool tx, const char *ctx)
 {
+	if (!pci_vtsock_debug) return;
 	assert(hdr->op < nitems(opnames));
 
 	DPRINTF(("%s: %sSRC:"PRIaddr" DST:"PRIaddr"\n",
