@@ -3,7 +3,6 @@ package jsutil
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -56,7 +55,7 @@ func Wrap(fn interface{}) func(...*js.Object) {
 				p := reflect.New(t)
 				err := json.Unmarshal([]byte(args[i].String()), p.Interface())
 				if err != nil {
-					panic(fmt.Errorf("jsutil: unmarshaling JSON failed: %v", err))
+					panic("jsutil: unmarshaling JSON failed: " + err.Error())
 				}
 				in[i] = reflect.Indirect(p)
 			}
