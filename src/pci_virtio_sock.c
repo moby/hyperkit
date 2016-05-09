@@ -245,10 +245,6 @@ struct pci_vtsock_forward {
  *   (e.g. it is held during a vq_notify or pci cfg access). It
  *   protects virtio resources.
  *
- *   tx_mtx protects the tx data structures, including the queue.
- *
- *   rx_mtx protects the rx data structures, including the queue.
- *
  *   list_rwlock, protects free and inuse lists (rdlock for traversal)
  *
  *   sock->mtx protects the contents of the sock struct, including the
@@ -272,14 +268,10 @@ struct pci_vtsock_softc {
 	struct pci_vtsock_forward fwds[VTSOCK_MAXFWDS];
 	int nr_fwds;
 
-	/* Protects the following plus VTSOCK_QUEUE_TX */
-	pthread_mutex_t tx_mtx;
 	pthread_t tx_thread;
 	int tx_kick_fd, tx_wake_fd; /* Write to kick, select on wake */
 	int connect_fd; /* */
 
-	/* Protects the following plus VTSOCK_QUEUE_RX */
-	pthread_mutex_t rx_mtx;
 	pthread_t rx_thread;
 	int rx_kick_fd, rx_wake_fd; /* Write to kick, select on wake */
 
@@ -1446,15 +1438,11 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			}
 		}
 
-		pthread_mutex_lock(&sc->tx_mtx);
-
 		while (vq_has_descs(vq))
 			pci_vtsock_proc_tx(sc, vq);
 
 		if (vq_ring_ready(vq))
 			vq_endchains(vq, 1);
-
-		pthread_mutex_unlock(&sc->tx_mtx);
 
 		DPRINTF(("TX: All work complete\n"));
 	}
@@ -1665,6 +1653,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 	assert(sc);
 	assert(sc->rx_wake_fd != -1);
 
+rx_done:
+
 	while (1) {
 		int nrfd, maxfd, nr;
 		bool did_some_work = true;
@@ -1763,8 +1753,6 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		assert(nr >= 0);
 		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
 			 nr, nrfd, vq_has_descs(vq) ? "yes" : "no"));
-
-		pthread_mutex_lock(&sc->rx_mtx);
 
 		if (FD_ISSET(sc->rx_wake_fd, &rfd)) {
 			/* Eat the notification(s) */
@@ -1874,9 +1862,6 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 		DPRINTF(("RX: All work complete\n"));
 		vq_endchains(vq, 0);
- rx_done:
-		pthread_mutex_unlock(&sc->rx_mtx);
-
 	}
 }
 
@@ -2170,8 +2155,6 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	}
 
 	pthread_mutex_init(&sc->vssc_mtx, NULL);
-	pthread_mutex_init(&sc->tx_mtx, NULL);
-	pthread_mutex_init(&sc->rx_mtx, NULL);
 	pthread_mutex_init(&sc->reply_mtx, NULL);
 	pthread_rwlock_init(&sc->list_rwlock, NULL);
 
