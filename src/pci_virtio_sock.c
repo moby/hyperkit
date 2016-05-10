@@ -270,6 +270,7 @@ struct pci_vtsock_softc {
 
 	pthread_t tx_thread;
 	int tx_kick_fd, tx_wake_fd; /* Write to kick, select on wake */
+	bool rx_kick_pending;
 	int connect_fd; /* */
 
 	pthread_t rx_thread;
@@ -665,6 +666,7 @@ static void kick_rx(struct pci_vtsock_softc *sc, const char *why)
 {
 	char dummy;
 	ssize_t nr;
+	sc->rx_kick_pending = false;
 	nr = write(sc->rx_kick_fd, &dummy, 1);
 	assert(nr == 1);
 	DPRINTF(("RX: kicked rx thread: %s\n", why));
@@ -817,7 +819,7 @@ static void set_credit_update_required(struct pci_vtsock_softc *sc,
 {
 	if (sock->credit_update_required) return;
 	sock->credit_update_required = true;
-	kick_rx(sc, "credit update required");
+	sc->rx_kick_pending = true;
 }
 
 static void send_response_common(struct pci_vtsock_softc *sc,
@@ -861,8 +863,9 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 
 	dprint_header(hdr, 0, "TX");
 
-	kick_rx(sc, "tx thread queued response");
 	pthread_mutex_unlock(&sc->reply_mtx);
+
+	sc->rx_kick_pending = true;
 }
 
 static void send_response_sock(struct pci_vtsock_softc *sc,
@@ -1193,7 +1196,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		/* No response needed, we updated above */
 		vq_relchain(vq, idx, 0);
 		/* But kick rx thread to attempt to send more */
-		kick_rx(sc, "credit update");
+		sc->rx_kick_pending = true;
 		break;
 
 	case VIRTIO_VSOCK_OP_CREDIT_REQUEST:
@@ -1430,6 +1433,9 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		if (vq_ring_ready(vq))
 			vq_endchains(vq, 1);
 
+		if (sc->rx_kick_pending) {
+			kick_rx(sc, "end of tx loop");
+		}
 		DPRINTF(("TX: All work complete\n"));
 	}
 }
@@ -2180,6 +2186,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return (1);
 	sc->tx_wake_fd = pipefds[0];
 	sc->tx_kick_fd = pipefds[1];
+
+	sc->rx_kick_pending = false;
 
 	if (pthread_create(&sc->tx_thread, NULL,
 			   pci_vtsock_tx_thread, sc))
