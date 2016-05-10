@@ -134,9 +134,15 @@ static int pci_vtsock_debug = 0;
 struct vsock_addr {
 	uint32_t cid, port;
 };
-#define PRIcid "08"PRIx32
-#define PRIport "08"PRIx32
-#define PRIaddr PRIcid ".%" PRIport
+#define PRIcid "%08"PRIx32
+#define PRIport "%08"PRIx32
+
+#ifdef PRI_ADDR_PREFIX
+#define PRIaddr PRI_ADDR_PREFIX PRIcid "." PRIport
+#else
+#define PRIaddr PRIcid "." PRIport
+#endif
+
 #define FMTADDR(a) a.cid, a.port
 
 #define WRITE_BUF_LENGTH (128*1024)
@@ -418,7 +424,7 @@ static void dprint_header(struct virtio_sock_hdr *hdr, bool tx, const char *ctx)
 {
 	assert(hdr->op < nitems(opnames));
 
-	DPRINTF(("%s: %sSRC:%"PRIaddr" DST:%"PRIaddr"\n",
+	DPRINTF(("%s: %sSRC:"PRIaddr" DST:"PRIaddr"\n",
 		 ctx, tx ? "<=" : "=>",
 		 hdr->src_cid, hdr->src_port, hdr->dst_cid, hdr->dst_port));
 	DPRINTF(("%s:   LEN:%08"PRIx32" TYPE:%04"PRIx16" OP:%"PRId16"=%s\n",
@@ -591,7 +597,7 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 	un.sun_len = 0; /* Unused? */
 	un.sun_family = AF_UNIX;
 	rc = snprintf(un.sun_path, sizeof(un.sun_path),
-		     "%s/%"PRIaddr, sc->path, FMTADDR(local_addr));
+		     "%s/"PRIaddr, sc->path, FMTADDR(local_addr));
 	if (rc < 0) {
 		DPRINTF(("TX: Failed to format socket path\n"));
 		goto err;
@@ -630,7 +636,7 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 	rc = set_socket_options(s);
 	if (rc < 0) goto err;
 
-	PPRINTF(("TX: SOCK connected (%d) %"PRIaddr" <=> %"PRIaddr"\n",
+	PPRINTF(("TX: SOCK connected (%d) "PRIaddr" <=> "PRIaddr"\n",
 		 s->fd, FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
 	s->state = SOCK_CONNECTED;
 
@@ -1111,7 +1117,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 				 sock->state));
 			goto do_rst;
 		}
-		PPRINTF(("TX: SOCK connected (%d) %"PRIaddr" <=> %"PRIaddr"\n",
+		PPRINTF(("TX: SOCK connected (%d) "PRIaddr" <=> "PRIaddr"\n",
 			 sock->fd, FMTADDR(sock->local_addr), FMTADDR(sock->peer_addr)));
 		sock->state = SOCK_CONNECTED;
 		vq_relchain(vq, idx, 0);
@@ -1311,7 +1317,7 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 
 	put_sock(sock);
 
-	PPRINTF(("TX: SOCK connecting (%d) %"PRIaddr" <=> %"PRIaddr"\n",
+	PPRINTF(("TX: SOCK connecting (%d) "PRIaddr" <=> "PRIaddr"\n",
 		 sock->fd, FMTADDR(sock->local_addr), FMTADDR(sock->peer_addr)));
 	send_response_sock(sc, VIRTIO_VSOCK_OP_REQUEST, 0, sock);
 
@@ -1761,7 +1767,7 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						 (void *)s, s->fd,
 						 s->local_shutdown,
 						 s->peer_shutdown));
-					PPRINTF(("RX: SOCK closed (%d) %"PRIaddr" <=> %"PRIaddr"\n",
+					PPRINTF(("RX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
 						 s->fd,
 						 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
 					close(s->fd);
@@ -1928,13 +1934,13 @@ static int open_one_forward_socket(struct pci_vtsock_softc *sc, uint32_t port)
 	un.sun_len = 0; /* Unused? */
 	un.sun_family = AF_UNIX;
 	rc = snprintf(un.sun_path, sizeof(un.sun_path),
-		     "%s/%"PRIaddr, sc->path, sc->vssc_cfg.guest_cid, port);
+		     "%s/"PRIaddr, sc->path, sc->vssc_cfg.guest_cid, port);
 	if (rc < 0) {
 		perror("Failed to format forward socket path");
 		return 1;
 	}
 	rc = snprintf(sl.sun_path, sizeof(sl.sun_path),
-		     "%s/guest.%"PRIport, sc->path, port);
+		     "%s/guest."PRIport, sc->path, port);
 	if (rc < 0) {
 		perror("Failed to format forward socket symlink path");
 		return 1;
