@@ -916,7 +916,6 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 static void buffer_drain(struct pci_vtsock_softc *sc,
 			 struct pci_vtsock_sock *sock)
 {
-	struct timeval before, after;
 	ssize_t nr;
 
 	DPRINTF(("TX: buffer drain on fd %d 0x%x-0x%x/0x%x\n",
@@ -926,13 +925,8 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 	assert(sock_is_buffering(sock));
 	assert(sock->write_buf_head < sock->write_buf_tail);
 
-	gettimeofday(&before, NULL);
 	nr = write(sock->fd, &sock->write_buf[sock->write_buf_head],
 		   sock->write_buf_tail - sock->write_buf_head);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "TX: WARNING: write on fd %d took %ld seconds\n",
-			sock->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (nr == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
@@ -952,9 +946,8 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 		}
 	}
 
-	DPRINTF(("TX: drained %zd/%"PRId32" bytes in %ld seconds\n", nr,
-		 sock->write_buf_tail - sock->write_buf_head,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("TX: drained %zd/%"PRId32" bytes\n", nr,
+		 sock->write_buf_tail - sock->write_buf_head));
 	sock->write_buf_head += nr;
 	if (sock->write_buf_head < sock->write_buf_tail)
 		return;
@@ -978,19 +971,13 @@ static int handle_write(struct pci_vtsock_softc *sc,
 			struct pci_vtsock_sock *sock,
 			uint32_t len, struct iovec *iov, int iov_len)
 {
-	struct timeval before, after;
 	ssize_t num;
 
 	if (sock_is_buffering(sock)) {
 		return buffer_write(sock, len, iov, iov_len);
 	}
 
-	gettimeofday(&before, NULL);
 	num = writev(sock->fd, iov, iov_len);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "TX: WARNING: writev on fd %d took %ld seconds\n",
-			sock->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (num == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
@@ -1008,8 +995,7 @@ static int handle_write(struct pci_vtsock_softc *sc,
 		}
 	}
 
-	DPRINTF(("TX: wrote %zd/%"PRId32" bytes in %ld seconds\n", num, len,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("TX: wrote %zd/%"PRId32" bytes\n", num, len));
 	if (num == len) {
 		sock->fwd_cnt += num;
 		return 1;
@@ -1474,7 +1460,6 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	int iovec_len;
 	size_t pushed;
 	ssize_t len;
-	struct timeval before, after;
 
 	assert(s->fd >= 0);
 
@@ -1512,22 +1497,15 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 
 	iovec_clip(&iov, &iovec_len, peer_free);
 
-	gettimeofday(&before, NULL);
 	len = readv(s->fd, iov, iovec_len);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "RX: WARNING: readv on fd %d took %ld seconds\n",
-			s->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (len == -1) {
 		if (errno == EAGAIN) { /* Nothing to read/would block */
-			DPRINTF(("RX: readv fd=%d EAGAIN in %ld seconds\n", s->fd,
-				 (unsigned long)(after.tv_sec - before.tv_sec)));
+			DPRINTF(("RX: readv fd=%d EAGAIN\n", s->fd));
 			vq_retchain(vq);
 			return 0;
 		}
-		PPRINTF(("RX: readv fd=%d failed with %d %s in %ld seconds\n",
-			 s->fd, errno, strerror(errno),
-			 (unsigned long)(after.tv_sec - before.tv_sec)));
+		PPRINTF(("RX: readv fd=%d failed with %d %s\n",
+			 s->fd, errno, strerror(errno)));
 		hdr->op = VIRTIO_VSOCK_OP_RST;
 		hdr->flags = 0;
 		hdr->len = 0;
@@ -1536,9 +1514,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		close_sock(sc, s, "RX");
 		return 0;
 	}
-	DPRINTF(("RX: readv put %zd bytes into iov in %ld seconds\n",
-		 len,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
 	if (len == 0) { /* Not actually anything to read -- EOF */
 		PPRINTF(("RX: readv fd=%d EOF => SHUTDOWN_TX\n", s->fd));
 		shutdown_local_sock(sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX, "RX");
