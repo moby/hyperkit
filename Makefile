@@ -82,6 +82,12 @@ HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; 
 ifeq ($(HAVE_OCAML_QCOW),YES)
 CFLAGS += -DHAVE_OCAML=1 -DHAVE_OCAML_QCOW=1 -DHAVE_OCAML=1
 
+# prefix vsock file names if PRI_ADDR_PREFIX
+# is defined. (not applied to aliases)
+ifneq ($(PRI_ADDR_PREFIX),)
+CFLAGS += -DPRI_ADDR_PREFIX=\"$(PRI_ADDR_PREFIX)\"
+endif
+
 OCAML_SRC := \
 	src/mirage_block_ocaml.ml
 
