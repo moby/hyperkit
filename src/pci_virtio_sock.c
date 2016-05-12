@@ -143,6 +143,10 @@ struct vsock_addr {
 #define PRIaddr PRIcid "." PRIport
 #endif
 
+#ifndef CONNECT_SOCKET_NAME
+#define CONNECT_SOCKET_NAME "connect"
+#endif
+
 #define FMTADDR(a) a.cid, a.port
 
 #define WRITE_BUF_LENGTH (128*1024)
@@ -1896,7 +1900,7 @@ static int open_connect_socket(struct pci_vtsock_softc *sc)
 	un.sun_len = 0; /* Unused? */
 	un.sun_family = AF_UNIX;
 	rc = snprintf(un.sun_path, sizeof(un.sun_path),
-		     "%s/connect", sc->path);
+		     "%s/"CONNECT_SOCKET_NAME, sc->path);
 	if (rc < 0) {
 		perror("Failed to format connect socket path");
 		return 1;

@@ -88,6 +88,12 @@ ifneq ($(PRI_ADDR_PREFIX),)
 CFLAGS += -DPRI_ADDR_PREFIX=\"$(PRI_ADDR_PREFIX)\"
 endif
 
+# override default connect socket name if 
+# CONNECT_SOCKET_NAME is defined 
+ifneq ($(CONNECT_SOCKET_NAME),)
+CFLAGS += -DCONNECT_SOCKET_NAME=\"$(CONNECT_SOCKET_NAME)\"
+endif
+
 OCAML_SRC := \
 	src/mirage_block_ocaml.ml
 
