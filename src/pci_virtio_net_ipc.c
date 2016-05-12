@@ -883,8 +883,8 @@ pci_vtnet_init(struct pci_devinst *pi, char *opts)
 	pthread_t sthrd;
 
 	if (!aslInitDone) {
-		aslInit("Docker", "com.docker.xhyve");
-		aslLog(ASL_LEVEL_NOTICE, "Starting xhyve");
+		aslInit("Docker", "com.docker.hyperkit");
+		aslLog(ASL_LEVEL_NOTICE, "Starting hyperkit");
 		aslInitDone = 1;
 	}
 
