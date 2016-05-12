@@ -41,6 +41,23 @@ ruling it out in the future.
 
 The resulting binary will be in `build/com.docker.hyperkit`
 
+To enable qcow support in the block backend an ocaml OPAM development
+environment is required with the qcow-format module available. A
+suitable environment can be setup by installing `opam` via `brew` and
+using that to install the appropriate libraries:
+
+    $ brew install opam
+    $ opam init
+    $ eval `opam config env`
+    $ opam install sexplib=113.00.00 uri qcow-format ocamlfind
+
+Notes:
+
+- `opam config env` must be evaluated each time prior to building
+  hyperkit so the build will find the ocaml environment.
+- An explicit older version of sexplib is currently required to build
+  qcow format 0.2
+
 ## Usage
 
     $ com.docker.hyperkit -h
