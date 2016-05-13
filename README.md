@@ -49,7 +49,8 @@ using that to install the appropriate libraries:
     $ brew install opam
     $ opam init
     $ eval `opam config env`
-    $ opam install sexplib=113.00.00 uri qcow-format ocamlfind
+    $ opam pin add qcow-format git://github.com/mirage/ocaml-qcow#master
+    $ opam install uri qcow-format ocamlfind
 
 Notes:
 
