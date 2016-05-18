@@ -1,13 +1,12 @@
 ## [Hyperkit](http://github.com/docker/hyperkit)
 
-*Hyperkit* is a hypervisor for OS X built using the
-[Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It
-is a core component of Docker For Mac and has a focus on running lightweight
-Virtual Machines to host containers.
+*Hyperkit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on xhyve/bhyve, which is optimized for lightweight virtual machines and container deployment.
 
-## xhyve and bhyve
+Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
 
-Hyperkit is derived from [xhyve](http://www.xhyve.org), which in turn
+### Relationship to xhyve and bhyve
+
+Hyperkit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
 was derived from [bhyve](http://www.bhyve.org). See the [original xhyve
 README](README.xhyve.md) which incorporates the bhyve README.
 
@@ -15,7 +14,7 @@ We try to avoid deviating from these upstreams unnecessarily in order
 to more easily share code, for example the various device
 models/emulations should be easily shareable.
 
-## Reporting security issues
+### Reporting security issues
 
 The maintainers take security seriously. If you discover a security issue,
 please bring it to their attention right away!
