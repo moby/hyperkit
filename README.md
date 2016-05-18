@@ -4,33 +4,15 @@
 
 Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
 
-### Relationship to xhyve and bhyve
-
-Hyperkit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
-was derived from [bhyve](http://www.bhyve.org). See the [original xhyve
-README](README.xhyve.md) which incorporates the bhyve README.
-
-We try to avoid deviating from these upstreams unnecessarily in order
-to more easily share code, for example the various device
-models/emulations should be easily shareable.
-
-### Reporting security issues
-
-The maintainers take security seriously. If you discover a security issue,
-please bring it to their attention right away!
-
-Please **DO NOT** file a public issue, instead send your report privately to
-[security@docker.com](mailto:security@docker.com).
-
-Security reports are greatly appreciated and we will publicly thank you for it.
-We also like to send gifts&mdash;if you're into Docker schwag, make sure to let
-us know. We currently do not offer a paid security bounty program, but are not
-ruling it out in the future.
 
 ## Requirements
 
 * OS X 10.10.3 Yosemite or later
 * a 2010 or later Mac (i.e. a CPU that supports EPT)
+
+## Usage
+
+    $ com.docker.hyperkit -h
 
 ## Building
 
@@ -58,9 +40,30 @@ Notes:
 - An explicit older version of sexplib is currently required to build
   qcow format 0.2
 
-## Usage
 
-    $ com.docker.hyperkit -h
+### Relationship to xhyve and bhyve
+
+Hyperkit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
+was derived from [bhyve](http://www.bhyve.org). See the [original xhyve
+README](README.xhyve.md) which incorporates the bhyve README.
+
+We try to avoid deviating from these upstreams unnecessarily in order
+to more easily share code, for example the various device
+models/emulations should be easily shareable.
+
+### Reporting security issues
+
+The maintainers take security seriously. If you discover a security issue,
+please bring it to their attention right away!
+
+Please **DO NOT** file a public issue, instead send your report privately to
+[security@docker.com](mailto:security@docker.com).
+
+Security reports are greatly appreciated and we will publicly thank you for it.
+We also like to send gifts&mdash;if you're into Docker schwag, make sure to let
+us know. We currently do not offer a paid security bounty program, but are not
+ruling it out in the future.
+
 
 ## Copyright and license
 
