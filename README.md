@@ -1,6 +1,6 @@
 ## [Hyperkit](http://github.com/docker/hyperkit)
 
-*Hyperkit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on xhyve/bhyve, which is optimized for lightweight virtual machines and container deployment.
+*Hyperkit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on [xhyve](https://github.com/mist64/xhyve)/[bhyve](http://bhyve.org), which is optimized for lightweight virtual machines and container deployment.  It is designed to be interfaced with higher-level components such as the [VPNKit](https://github.com/docker/vpnkit) and [DataKit](https://github.com/docker/datakit).
 
 Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
 
@@ -22,7 +22,7 @@ Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https
 
 The resulting binary will be in `build/com.docker.hyperkit`
 
-To enable qcow support in the block backend an ocaml OPAM development
+To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
 environment is required with the qcow-format module available. A
 suitable environment can be setup by installing `opam` via `brew` and
 using that to install the appropriate libraries:
@@ -31,7 +31,7 @@ using that to install the appropriate libraries:
     $ opam init
     $ eval `opam config env`
     $ opam pin add qcow-format git://github.com/mirage/ocaml-qcow#master
-    $ opam install uri qcow-format ocamlfind
+    $ opam install uri qcow-format
 
 Notes:
 
