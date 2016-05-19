@@ -40,6 +40,7 @@
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/time.h>
+#include <sys/queue.h>
 
 #include <stdio.h>
 #include <stdint.h>
@@ -122,9 +123,9 @@ struct virtio_sock_hdr {
  * Debug printf
  */
 static int pci_vtsock_debug = 0;
-#define DPRINTF(params) if (pci_vtsock_debug) printf params
+#define DPRINTF(params) do { if (pci_vtsock_debug) { printf params; fflush(stdout); } } while(0)
 /* Protocol logging */
-#define PPRINTF(params) if (0) printf params
+#define PPRINTF(params) do { if (0) { printf params;  fflush(stdout); } } while(0)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
@@ -154,24 +155,50 @@ struct vsock_addr {
 struct pci_vtsock_sock {
 	pthread_mutex_t mtx;
 
+	/* Either on softc->free_list or softc->inuse_list */
+	LIST_ENTRY(pci_vtsock_sock) list;
+
+	/* For tx and rx thread local use respectively */
+	LIST_ENTRY(pci_vtsock_sock) tx_queue;
+	LIST_ENTRY(pci_vtsock_sock) rx_queue;
+
 	/*
 	 * To allocate a sock:
 	 *
-	 *   Grab alloc_mtx
+	 *   Take list_rwlock for writing
 	 *
-	 *   Loop over socks[] looking for a FREE sock
+	 *     Grab a sock from head of free_list
 	 *
-	 *   If a FREE sock is found take its lock before setting it to state == CONNECTING.
+	 *     If a FREE sock is found take its lock before removing it
+	 *     from the list and setting its state to CONNECTING.
 	 *
-	 *   Finally drop alloc_mtx
+	 *     Add the sock to inuse_list.
+	 *
+	 *   Drop list_rwlock
 	 *
 	 * To free a sock:
 	 *
 	 *   Set state to CLOSING and kick the rx sock.
 	 *
-	 *   The RX loop will close the fd and set state == FREE
+	 *   The RX loop will take list_rwlock for reading (as part of
+	 *   its normal start of loop processing) and:
 	 *
-	 *   This does not require the alloc_mtx.
+	 *     Take the socket's lock and discover state == CLOSING
+	 *
+	 *     Put the socket on a local "to be closed" queue
+	 *
+         *   Release list_rwlock
+	 *
+	 *   If there a sockets to be closed, take list_rwlock for
+	 *   writing, and for each socket:
+	 *
+	 *     close the fd, set state == FREE
+	 *
+	 *     remove socket from inuse_list, add to free_list
+	 *
+	 *     drop the socket's lock
+	 *
+	 *  Drop list_rwlock
 	 */
 	enum {
 		SOCK_FREE, /* Initial state */
@@ -218,18 +245,14 @@ struct pci_vtsock_forward {
  *   (e.g. it is held during a vq_notify or pci cfg access). It
  *   protects virtio resources.
  *
- *   tx_mtx protects the tx data structures, including the queue.
- *
- *   rx_mtx protects the rx data structures, including the queue.
- *
- *   alloc_mtx protects transitions from socks[...].state == FREE => *
- *
- *   reply_mtx protects reply_{ring,prod,cons}
+ *   list_rwlock, protects free and inuse lists (rdlock for traversal)
  *
  *   sock->mtx protects the contents of the sock struct, including the
  *   state.
  *
+ *   reply_mtx protects reply_{ring,prod,cons}
  */
+LIST_HEAD(sock_list_head, pci_vtsock_sock);
 struct pci_vtsock_softc {
 	struct virtio_softc vssc_vs;
 	pthread_mutex_t vssc_mtx;
@@ -237,20 +260,19 @@ struct pci_vtsock_softc {
 	struct vqueue_info vssc_vqs[VTSOCK_QUEUES];
 	struct vtsock_config vssc_cfg;
 
-	pthread_mutex_t alloc_mtx;
+	/* list_mtx protects free_list and inuse_list heads */
+	pthread_rwlock_t list_rwlock;
+	struct sock_list_head free_list, inuse_list;
 	struct pci_vtsock_sock socks[VTSOCK_MAXSOCKS];
 
 	struct pci_vtsock_forward fwds[VTSOCK_MAXFWDS];
 	int nr_fwds;
 
-	/* Protects the following plus VTSOCK_QUEUE_TX */
-	pthread_mutex_t tx_mtx;
 	pthread_t tx_thread;
 	int tx_kick_fd, tx_wake_fd; /* Write to kick, select on wake */
+	bool rx_kick_pending;
 	int connect_fd; /* */
 
-	/* Protects the following plus VTSOCK_QUEUE_RX */
-	pthread_mutex_t rx_mtx;
 	pthread_t rx_thread;
 	int rx_kick_fd, rx_wake_fd; /* Write to kick, select on wake */
 
@@ -407,6 +429,7 @@ static size_t iovec_push(struct iovec **iov, int *iov_len, void *buf, size_t byt
 static void dprint_iovec(struct iovec *iov, int iovec_len, const char *ctx)
 {
 	int i;
+	if (!pci_vtsock_debug) return;
 	DPRINTF(("%s: IOV:%p ELEMS:%d\n", ctx, (void *)iov, iovec_len));
 	for (i = 0; i < iovec_len; i++)
 		DPRINTF(("%s:  %d = %zu @ %p\n",
@@ -417,6 +440,7 @@ static void dprint_chain(struct iovec *iov, int iovec_len, uint16_t *flags,
 			 const char *ctx)
 {
 	int i;
+	if (!pci_vtsock_debug) return;
 	DPRINTF(("%s: CHAIN:%p ELEMS:%d\n", ctx, (void *)iov, iovec_len));
 	for (i = 0; i < iovec_len; i++)
 		DPRINTF(("%s:  %d = %zu @ %p (%"PRIx16")\n",
@@ -426,6 +450,7 @@ static void dprint_chain(struct iovec *iov, int iovec_len, uint16_t *flags,
 
 static void dprint_header(struct virtio_sock_hdr *hdr, bool tx, const char *ctx)
 {
+	if (!pci_vtsock_debug) return;
 	assert(hdr->op < nitems(opnames));
 
 	DPRINTF(("%s: %sSRC:"PRIaddr" DST:"PRIaddr"\n",
@@ -451,76 +476,55 @@ static struct pci_vtsock_sock *get_sock(struct pci_vtsock_sock *s)
 	return s;
 }
 
-/* Returns a _locked_, sock by idx */
-static struct pci_vtsock_sock *lookup_sock_by_idx(struct pci_vtsock_softc *sc, int i)
-{
-	struct pci_vtsock_sock *s = &sc->socks[i];
-
-	/*
-	 * Avoid locking overhead if the socket is free. Since any
-	 * alloc will trigger a kick of the rx or tx threads there is
-	 * no danger of missing something which is being allocated
-	 * right now.
-	 *
-	 * Since alloc_sock takes the sock->mtx before setting state
-	 * we won't see a half constructed socket here either, since
-	 * the caller of alloc_sock will complete the init before
-	 * dropping the sock->mtx.
-	 */
-	if (s->state == SOCK_FREE) return NULL;
-	return get_sock(s);
-}
-
+/* Returns a locked sock */
 static struct pci_vtsock_sock *lookup_sock(struct pci_vtsock_softc *sc,
 					   uint16_t type,
 					   struct vsock_addr local_addr,
 					   struct vsock_addr peer_addr)
 {
-	int i;
+	struct pci_vtsock_sock *s;
 
 	assert(type == VIRTIO_VSOCK_TYPE_STREAM);
 
-	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
-		struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-		if (!s) continue;
+	pthread_rwlock_rdlock(&sc->list_rwlock);
+	LIST_FOREACH(s, &sc->inuse_list, list) {
+		get_sock(s);
 
 		if ((s->state == SOCK_CONNECTED || s->state == SOCK_CONNECTING) &&
 		    s->peer_addr.cid == peer_addr.cid &&
 		    s->peer_addr.port == peer_addr.port &&
 		    s->local_addr.cid == local_addr.cid &&
 		    s->local_addr.port == local_addr.port) {
-			return s;
+			goto found;
 		}
 
 		put_sock(s);
 	}
 
-	return NULL;
+	s = NULL;
+
+found:
+	pthread_rwlock_unlock(&sc->list_rwlock);
+	return s;
 }
 
 
 /* Returns NULL on failure or a locked socket on success */
 static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 {
-	struct pci_vtsock_sock *s = NULL; /* XXX init otherwise cc thinks return s uses undefined s! */
-	int i;
+	struct pci_vtsock_sock *s;
 
-	pthread_mutex_lock(&sc->alloc_mtx);
-	for (i = 0 ; i < VTSOCK_MAXSOCKS; i++) {
-		s = &sc->socks[i];
-		if (s->state == SOCK_FREE) {
-			get_sock(s);
-			s->state = SOCK_CONNECTING;
-			break;
-		}
+	pthread_rwlock_wrlock(&sc->list_rwlock);
+	s = LIST_FIRST(&sc->free_list);
+	if (s) {
+		get_sock(s);
+		LIST_REMOVE(s, list);
+		LIST_INSERT_HEAD(&sc->inuse_list, s, list);
+		s->state = SOCK_CONNECTING;
 	}
-	pthread_mutex_unlock(&sc->alloc_mtx);
+	pthread_rwlock_unlock(&sc->list_rwlock);
 
-	assert(s != NULL);
-	assert(i == VTSOCK_MAXSOCKS || s->state == SOCK_CONNECTING);
-
-	if (i == VTSOCK_MAXSOCKS)
-		return NULL;
+	if (!s) return NULL;
 
 	s->buf_alloc = WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
@@ -662,6 +666,7 @@ static void kick_rx(struct pci_vtsock_softc *sc, const char *why)
 {
 	char dummy;
 	ssize_t nr;
+	sc->rx_kick_pending = false;
 	nr = write(sc->rx_kick_fd, &dummy, 1);
 	assert(nr == 1);
 	DPRINTF(("RX: kicked rx thread: %s\n", why));
@@ -814,7 +819,7 @@ static void set_credit_update_required(struct pci_vtsock_softc *sc,
 {
 	if (sock->credit_update_required) return;
 	sock->credit_update_required = true;
-	kick_rx(sc, "credit update required");
+	sc->rx_kick_pending = true;
 }
 
 static void send_response_common(struct pci_vtsock_softc *sc,
@@ -858,8 +863,9 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 
 	dprint_header(hdr, 0, "TX");
 
-	kick_rx(sc, "tx thread queued response");
 	pthread_mutex_unlock(&sc->reply_mtx);
+
+	sc->rx_kick_pending = true;
 }
 
 static void send_response_sock(struct pci_vtsock_softc *sc,
@@ -913,7 +919,6 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 static void buffer_drain(struct pci_vtsock_softc *sc,
 			 struct pci_vtsock_sock *sock)
 {
-	struct timeval before, after;
 	ssize_t nr;
 
 	DPRINTF(("TX: buffer drain on fd %d 0x%x-0x%x/0x%x\n",
@@ -923,13 +928,8 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 	assert(sock_is_buffering(sock));
 	assert(sock->write_buf_head < sock->write_buf_tail);
 
-	gettimeofday(&before, NULL);
 	nr = write(sock->fd, &sock->write_buf[sock->write_buf_head],
 		   sock->write_buf_tail - sock->write_buf_head);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "TX: WARNING: write on fd %d took %ld seconds\n",
-			sock->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (nr == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
@@ -949,9 +949,8 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 		}
 	}
 
-	DPRINTF(("TX: drained %zd/%"PRId32" bytes in %ld seconds\n", nr,
-		 sock->write_buf_tail - sock->write_buf_head,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("TX: drained %zd/%"PRId32" bytes\n", nr,
+		 sock->write_buf_tail - sock->write_buf_head));
 	sock->write_buf_head += nr;
 	if (sock->write_buf_head < sock->write_buf_tail)
 		return;
@@ -975,19 +974,13 @@ static int handle_write(struct pci_vtsock_softc *sc,
 			struct pci_vtsock_sock *sock,
 			uint32_t len, struct iovec *iov, int iov_len)
 {
-	struct timeval before, after;
 	ssize_t num;
 
 	if (sock_is_buffering(sock)) {
 		return buffer_write(sock, len, iov, iov_len);
 	}
 
-	gettimeofday(&before, NULL);
 	num = writev(sock->fd, iov, iov_len);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "TX: WARNING: writev on fd %d took %ld seconds\n",
-			sock->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (num == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
@@ -1005,8 +998,7 @@ static int handle_write(struct pci_vtsock_softc *sc,
 		}
 	}
 
-	DPRINTF(("TX: wrote %zd/%"PRId32" bytes in %ld seconds\n", num, len,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("TX: wrote %zd/%"PRId32" bytes\n", num, len));
 	if (num == len) {
 		sock->fwd_cnt += num;
 		return 1;
@@ -1204,7 +1196,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		/* No response needed, we updated above */
 		vq_relchain(vq, idx, 0);
 		/* But kick rx thread to attempt to send more */
-		kick_rx(sc, "credit update");
+		sc->rx_kick_pending = true;
 		break;
 
 	case VIRTIO_VSOCK_OP_CREDIT_REQUEST:
@@ -1339,6 +1331,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 	struct pci_vtsock_softc *sc = vsc;
 	struct vqueue_info *vq = &sc->vssc_vqs[VTSOCK_QUEUE_TX];
 	fd_set rfd, wfd;
+	LIST_HEAD(tx_queue, pci_vtsock_sock) queue;
 
 	assert(sc);
 	assert(sc->tx_wake_fd != -1);
@@ -1347,6 +1340,9 @@ static void *pci_vtsock_tx_thread(void *vsc)
 	while(1) {
 		int i, nrfd, maxfd, nr;
 		int buffering = 0;
+		struct pci_vtsock_sock *s;
+
+		LIST_INIT(&queue);
 
 		FD_ZERO(&rfd);
 		FD_ZERO(&wfd);
@@ -1366,9 +1362,9 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			nrfd++;
 		}
 
-		for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-			struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-			if (!s) continue;
+		pthread_rwlock_rdlock(&sc->list_rwlock);
+		LIST_FOREACH(s, &sc->inuse_list, list) {
+			get_sock(s);
 			if (s->state != SOCK_CONNECTED) {
 				put_sock(s);
 				continue;
@@ -1380,9 +1376,11 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				maxfd = max_fd(s->fd, maxfd);
 				buffering++;
 				nrfd++;
+				LIST_INSERT_HEAD(&queue, s, tx_queue);
 			}
 			put_sock(s);
 		}
+		pthread_rwlock_unlock(&sc->list_rwlock);
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
@@ -1416,9 +1414,8 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		}
 
 		if (buffering) {
-			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-				if (!s) continue;
+			LIST_FOREACH(s, &queue, tx_queue) {
+				get_sock(s);
 				if (s->state != SOCK_CONNECTED) {
 					put_sock(s);
 					continue;
@@ -1430,16 +1427,15 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			}
 		}
 
-		pthread_mutex_lock(&sc->tx_mtx);
-
 		while (vq_has_descs(vq))
 			pci_vtsock_proc_tx(sc, vq);
 
 		if (vq_ring_ready(vq))
 			vq_endchains(vq, 1);
 
-		pthread_mutex_unlock(&sc->tx_mtx);
-
+		if (sc->rx_kick_pending) {
+			kick_rx(sc, "end of tx loop");
+		}
 		DPRINTF(("TX: All work complete\n"));
 	}
 }
@@ -1470,7 +1466,6 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	int iovec_len;
 	size_t pushed;
 	ssize_t len;
-	struct timeval before, after;
 
 	assert(s->fd >= 0);
 
@@ -1508,22 +1503,15 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 
 	iovec_clip(&iov, &iovec_len, peer_free);
 
-	gettimeofday(&before, NULL);
 	len = readv(s->fd, iov, iovec_len);
-	gettimeofday(&after, NULL);
-	if ((after.tv_sec - before.tv_sec) > 5)
-		fprintf(stderr, "RX: WARNING: readv on fd %d took %ld seconds\n",
-			s->fd, (unsigned long)(after.tv_sec - before.tv_sec));
 	if (len == -1) {
 		if (errno == EAGAIN) { /* Nothing to read/would block */
-			DPRINTF(("RX: readv fd=%d EAGAIN in %ld seconds\n", s->fd,
-				 (unsigned long)(after.tv_sec - before.tv_sec)));
+			DPRINTF(("RX: readv fd=%d EAGAIN\n", s->fd));
 			vq_retchain(vq);
 			return 0;
 		}
-		PPRINTF(("RX: readv fd=%d failed with %d %s in %ld seconds\n",
-			 s->fd, errno, strerror(errno),
-			 (unsigned long)(after.tv_sec - before.tv_sec)));
+		PPRINTF(("RX: readv fd=%d failed with %d %s\n",
+			 s->fd, errno, strerror(errno)));
 		hdr->op = VIRTIO_VSOCK_OP_RST;
 		hdr->flags = 0;
 		hdr->len = 0;
@@ -1532,9 +1520,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		close_sock(sc, s, "RX");
 		return 0;
 	}
-	DPRINTF(("RX: readv put %zd bytes into iov in %ld seconds\n",
-		 len,
-		 (unsigned long)(after.tv_sec - before.tv_sec)));
+	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
 	if (len == 0) { /* Not actually anything to read -- EOF */
 		PPRINTF(("RX: readv fd=%d EOF => SHUTDOWN_TX\n", s->fd));
 		shutdown_local_sock(sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX, "RX");
@@ -1642,52 +1628,102 @@ static void *pci_vtsock_rx_thread(void *vsc)
 	struct vqueue_info *vq = &sc->vssc_vqs[VTSOCK_QUEUE_RX];
 	fd_set rfd;
 	bool poll_socks = true;
+	struct pci_vtsock_sock *s, *ts;
+	LIST_HEAD(rx_queue, pci_vtsock_sock) queue;
+	LIST_HEAD(rx_closing_queue, pci_vtsock_sock) closing_queue;
 
 	assert(sc);
 	assert(sc->rx_wake_fd != -1);
 
+rx_done:
+
 	while (1) {
-		int nrfd, maxfd, i, nr;
+		int nrfd, maxfd, nr;
 		bool did_some_work = true;
 
 		FD_ZERO(&rfd);
 
+		LIST_INIT(&queue);
+		LIST_INIT(&closing_queue);
 
 		FD_SET(sc->rx_wake_fd, &rfd);
 		maxfd = sc->rx_wake_fd;
 		nrfd = 1;
 
-		if (poll_socks) {
-			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-				uint32_t peer_free;
-				if (!s) continue;
-				if (s->state != SOCK_CONNECTED) {
-					put_sock(s);
-					continue;
-				}
-				if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
-					put_sock(s);
-					continue;
-				}
-				if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
-					put_sock(s);
-					continue;
-				}
-				assert(s->fd >= 0);
-				assert(s->fd < FD_SETSIZE);
-				peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
-				DPRINTF(("RX: sock %d (%d): peer free = %"PRId32"\n",
-					 i, s->fd, peer_free));
-				if (peer_free == 0) {
-					put_sock(s);
-					continue;
-				}
-				FD_SET(s->fd, &rfd);
-				maxfd = max_fd(s->fd, maxfd);
-				nrfd++;
+		pthread_rwlock_rdlock(&sc->list_rwlock);
+		LIST_FOREACH(s, &sc->inuse_list, list) {
+			uint32_t peer_free;
+
+			get_sock(s);
+
+			if (s->state == SOCK_CLOSING) { /* Closing comes through here */
+				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
+				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
+
+				DPRINTF(("RX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
+					 (void *)s, s->fd,
+					 s->local_shutdown,
+					 s->peer_shutdown));
+				PPRINTF(("RX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
+					 s->fd,
+					 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
+
+				close(s->fd);
+				s->fd = -1;
+
+				/* Cannot move to free list with only
+				 * rdlock on list_rwlock, queue on a
+				 * local list */
+				LIST_INSERT_HEAD(&closing_queue, s, rx_queue);
+
+				put_sock(s);
+				continue;
+			}
+
+			if (s->state != SOCK_CONNECTED || !poll_socks) {
+				put_sock(s);
+				continue;
+			}
+			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
+				put_sock(s);
+				continue;
+			}
+			if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
+				put_sock(s);
+				continue;
+			}
+			assert(s->fd >= 0);
+			assert(s->fd < FD_SETSIZE);
+			peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
+			DPRINTF(("RX: sock %p (%d): peer free = %"PRId32"\n",
+				 (void*)s, s->fd, peer_free));
+			if (peer_free == 0) {
+				put_sock(s);
+				continue;
+			}
+			FD_SET(s->fd, &rfd);
+			maxfd = max_fd(s->fd, maxfd);
+			nrfd++;
+			LIST_INSERT_HEAD(&queue, s, rx_queue);
+			put_sock(s);
+		}
+		pthread_rwlock_unlock(&sc->list_rwlock);
+
+		if (!LIST_EMPTY(&closing_queue)) {
+			pthread_rwlock_wrlock(&sc->list_rwlock);
+
+			LIST_FOREACH(s, &closing_queue, rx_queue) {
+				get_sock(s);
+
+				LIST_REMOVE(s, list);
+				s->state = SOCK_FREE;
+
+				LIST_INSERT_HEAD(&sc->free_list, s, list);
+
 				put_sock(s);
 			}
+
+			pthread_rwlock_unlock(&sc->list_rwlock);
 		}
 
 		/* Unlocked during select */
@@ -1699,8 +1735,6 @@ static void *pci_vtsock_rx_thread(void *vsc)
 		assert(nr >= 0);
 		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
 			 nr, nrfd, vq_has_descs(vq) ? "yes" : "no"));
-
-		pthread_mutex_lock(&sc->rx_mtx);
 
 		if (FD_ISSET(sc->rx_wake_fd, &rfd)) {
 			/* Eat the notification(s) */
@@ -1715,8 +1749,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 			DPRINTF(("RX: thread got %zd kicks (have descs: %s)\n",
 				 rd_dummy, vq_has_descs(vq) ? "yes" : "no"));
 
-// XXX need to check sockets in order to process closing, so cannot make this
-// tempting looking optimisation.
+// XXX need to check sockets in order to process the reply ring, so
+// cannot make this tempting looking optimisation.
 //
 //			if (nr == 1) {
 //				 /* Must have been the kicker fd, in
@@ -1759,29 +1793,11 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 			DPRINTF(("RX: Checking all socks\n"));
 
-			for(i = 0; i < VTSOCK_MAXSOCKS; i++) {
-				struct pci_vtsock_sock *s = lookup_sock_by_idx(sc, i);
-
-				if (!s) continue;
-
-				if (s->state == SOCK_CLOSING) { /* Closing comes through here */
-					assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
-					       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
-					DPRINTF(("RX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
-						 (void *)s, s->fd,
-						 s->local_shutdown,
-						 s->peer_shutdown));
-					PPRINTF(("RX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
-						 s->fd,
-						 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
-					close(s->fd);
-					s->fd = -1;
-					s->state = SOCK_FREE;
-					put_sock(s);
-					continue;
-				}
+			LIST_FOREACH_SAFE(s, &queue, rx_queue, ts) {
+				get_sock(s);
 
 				if (s->state != SOCK_CONNECTED) {
+					LIST_REMOVE(s, rx_queue);
 					put_sock(s);
 					continue;
 				}
@@ -1800,6 +1816,7 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						put_sock(s);
 						goto rx_done;
 					} else if (bytes == 0) {
+						LIST_REMOVE(s, rx_queue);
 						FD_CLR(s->fd, &rfd);
 					} else {
 						did_some_work = true;
@@ -1816,6 +1833,9 @@ static void *pci_vtsock_rx_thread(void *vsc)
 						put_sock(s);
 						goto rx_done;
 					}
+				} else {
+					/* Was nothing to do */
+					LIST_REMOVE(s, rx_queue);
 				}
 
 				put_sock(s);
@@ -1824,9 +1844,6 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 		DPRINTF(("RX: All work complete\n"));
 		vq_endchains(vq, 0);
- rx_done:
-		pthread_mutex_unlock(&sc->rx_mtx);
-
 	}
 }
 
@@ -2100,12 +2117,17 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		pi->pi_slot, pi->pi_func, path, guest_cid);
 
 	sc = calloc(1, sizeof(struct pci_vtsock_softc));
+
+	LIST_INIT(&sc->free_list);
+	LIST_INIT(&sc->inuse_list);
+
 	for (i = 0; i < VTSOCK_MAXSOCKS; i++) {
 		struct pci_vtsock_sock *str = &sc->socks[i];
 		int err = pthread_mutex_init(&str->mtx, NULL);
 		assert(err == 0);
 		str->state = SOCK_FREE;
 		str->fd = -1;
+		LIST_INSERT_HEAD(&sc->free_list, str, list);
 	}
 
 	sc->nr_fwds = 0;
@@ -2115,10 +2137,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	}
 
 	pthread_mutex_init(&sc->vssc_mtx, NULL);
-	pthread_mutex_init(&sc->tx_mtx, NULL);
-	pthread_mutex_init(&sc->rx_mtx, NULL);
 	pthread_mutex_init(&sc->reply_mtx, NULL);
-	pthread_mutex_init(&sc->alloc_mtx, NULL);
+	pthread_rwlock_init(&sc->list_rwlock, NULL);
 
 	sc->path = strdup(path);
 
@@ -2166,6 +2186,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return (1);
 	sc->tx_wake_fd = pipefds[0];
 	sc->tx_kick_fd = pipefds[1];
+
+	sc->rx_kick_pending = false;
 
 	if (pthread_create(&sc->tx_thread, NULL,
 			   pci_vtsock_tx_thread, sc))
