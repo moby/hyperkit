@@ -1,4 +1,5 @@
 GIT_VERSION := $(shell git describe --abbrev=6 --dirty --always --tags)
+GIT_VERSION_SHA1 := $(shell git rev-parse HEAD)
 
 ifeq ($V, 1)
 	VERBOSE =
@@ -53,6 +54,7 @@ XHYVE_SRC := \
 	src/pci_virtio_block.c \
 	src/pci_virtio_net_tap.c \
 	src/pci_virtio_net_vmnet.c \
+	src/pci_virtio_net_vpnkit.c \
 	src/pci_virtio_rnd.c \
 	src/pm.c \
 	src/post.c \
@@ -68,13 +70,6 @@ FIRMWARE_SRC := \
 	src/firmware/bootrom.c \
 	src/firmware/kexec.c \
 	src/firmware/fbsd.c
-
-ifneq ($(LIBVMNETD_DIR),)
-VMNETD_SRC := \
-	src/pci_virtio_net_ipc.c
-LDLIBS += $(LIBVMNETD_DIR)/libvmnetd.a
-CFLAGS += -I$(LIBVMNETD_DIR)
-endif
 
 HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; then echo YES ; else echo NO; fi)
 
@@ -109,14 +104,13 @@ SRC := \
 	$(VMM_SRC) \
 	$(XHYVE_SRC) \
 	$(FIRMWARE_SRC) \
-	$(VMNETD_SRC) \
 	$(OCAML_C_SRC)
 
 OBJ := $(SRC:src/%.c=build/%.o) $(OCAML_SRC:src/%.ml=build/%.o)
 DEP := $(OBJ:%.o=%.d)
 INC := -Iinclude
 
-CFLAGS += -DVERSION=\"$(GIT_VERSION)\"
+CFLAGS += -DVERSION=\"$(GIT_VERSION)\" -DVERSION_SHA1=\"$(GIT_VERSION_SHA1)\"
 
 TARGET = build/com.docker.hyperkit
 
