@@ -646,6 +646,8 @@ pci_vtnet_tx_thread(void *param)
 	struct vqueue_info *vq;
 	int error;
 
+	pthread_setname_np("net:vmnet:tx");
+
 	vq = &sc->vsc_queues[VTNET_TXQ];
 
 	/*
