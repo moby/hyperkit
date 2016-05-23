@@ -436,15 +436,14 @@ static void dprint_iovec(struct iovec *iov, int iovec_len, const char *ctx)
 			 ctx, i, iov[i].iov_len, (void *)iov[i].iov_base));
 }
 
-static void dprint_chain(struct iovec *iov, int iovec_len, uint16_t *flags,
-			 const char *ctx)
+static void dprint_chain(struct iovec *iov, int iovec_len, const char *ctx)
 {
 	int i;
 	if (!pci_vtsock_debug) return;
 	DPRINTF(("%s: CHAIN:%p ELEMS:%d\n", ctx, (void *)iov, iovec_len));
 	for (i = 0; i < iovec_len; i++)
-		DPRINTF(("%s:  %d = %zu @ %p (%"PRIx16")\n",
-			 ctx, i, iov[i].iov_len, (void *)iov[i].iov_base, flags[i]));
+		DPRINTF(("%s:  %d = %zu @ %p\n",
+			 ctx, i, iov[i].iov_len, (void *)iov[i].iov_base));
 }
 
 
@@ -1024,7 +1023,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 
 	DPRINTF(("TX: chain with %d buffers at idx %"PRIx16"\n",
 		 iovec_len, idx));
-	dprint_chain(iov, iovec_len, flags, "TX");
+	dprint_chain(iov, iovec_len, "TX");
 	//assert(iov[0].iov_len >= sizeof(*hdr));
 	//hdr = iov[0].iov_base;
 
@@ -1480,7 +1479,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 
 	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, flags);
 	DPRINTF(("RX: virtio-vsock: got %d elem rx chain\n", iovec_len));
-	dprint_chain(iov, iovec_len, flags, "RX");
+	dprint_chain(iov, iovec_len, "RX");
 
 	assert(iovec_len >= 1);
 	/* XXX needed so we can update len after the read */
@@ -1598,7 +1597,7 @@ static bool send_credit_update(struct vqueue_info *vq,
 
 	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, NULL);
 	DPRINTF(("RX: virtio-vsock: got %d elem rx chain for credit update\n", iovec_len));
-	dprint_chain(iov, iovec_len, NULL, "RX");
+	dprint_chain(iov, iovec_len, "RX");
 
 	assert(iovec_len >= 1);
 	assert(iov[0].iov_len >= sizeof(*hdr));
