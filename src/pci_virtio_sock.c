@@ -1332,6 +1332,8 @@ static void *pci_vtsock_tx_thread(void *vsc)
 	fd_set rfd, wfd;
 	LIST_HEAD(tx_queue, pci_vtsock_sock) queue;
 
+	pthread_setname_np("vsock:tx");
+
 	assert(sc);
 	assert(sc->tx_wake_fd != -1);
 	assert(sc->connect_fd != -1);
@@ -1633,6 +1635,8 @@ static void *pci_vtsock_rx_thread(void *vsc)
 
 	assert(sc);
 	assert(sc->rx_wake_fd != -1);
+
+	pthread_setname_np("vsock:rx");
 
 rx_done:
 
