@@ -1651,6 +1651,7 @@ rx_done:
 
 		pthread_rwlock_rdlock(&sc->list_rwlock);
 		LIST_FOREACH(s, &sc->inuse_list, list) {
+			bool polling = true;
 			uint32_t peer_free;
 
 			get_sock(s);
@@ -1679,31 +1680,36 @@ rx_done:
 				continue;
 			}
 
-			if (s->state != SOCK_CONNECTED || !poll_socks) {
+			if (s->state != SOCK_CONNECTED) {
 				put_sock(s);
 				continue;
 			}
-			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) {
-				put_sock(s);
-				continue;
-			}
-			if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
-				put_sock(s);
-				continue;
-			}
+
+			if (!poll_socks)
+				polling = false;
+
+			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX)
+				polling = false;
+
+			if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX)
+				polling = false;
+
 			assert(s->fd >= 0);
 			assert(s->fd < FD_SETSIZE);
 			peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
 			DPRINTF(("RX: sock %p (%d): peer free = %"PRId32"\n",
 				 (void*)s, s->fd, peer_free));
-			if (peer_free == 0) {
-				put_sock(s);
-				continue;
+			if (peer_free == 0)
+				polling = false;
+
+			if (polling) {
+				FD_SET(s->fd, &rfd);
+				maxfd = max_fd(s->fd, maxfd);
+				nrfd++;
 			}
-			FD_SET(s->fd, &rfd);
-			maxfd = max_fd(s->fd, maxfd);
-			nrfd++;
-			LIST_INSERT_HEAD(&queue, s, rx_queue);
+
+			if (polling || s->credit_update_required)
+				LIST_INSERT_HEAD(&queue, s, rx_queue);
 			put_sock(s);
 		}
 		pthread_rwlock_unlock(&sc->list_rwlock);
