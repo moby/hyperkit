@@ -1639,6 +1639,11 @@ rx_done:
 	while (1) {
 		int nrfd, maxfd, nr;
 		bool did_some_work = true;
+		bool pending_credit_updates = false;
+		struct timeval zero_timeout = {
+			.tv_sec = 0,
+			.tv_usec = 0,
+		};
 
 		FD_ZERO(&rfd);
 
@@ -1680,19 +1685,19 @@ rx_done:
 				continue;
 			}
 
-			if (s->state != SOCK_CONNECTED) {
+			if (s->state != SOCK_CONNECTED || !poll_socks) {
 				put_sock(s);
 				continue;
 			}
-
-			if (!poll_socks)
-				polling = false;
 
 			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX)
 				polling = false;
 
 			if (s->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX)
 				polling = false;
+
+			if (s->credit_update_required)
+				pending_credit_updates = true;
 
 			assert(s->fd >= 0);
 			assert(s->fd < FD_SETSIZE);
@@ -1710,6 +1715,7 @@ rx_done:
 
 			if (polling || s->credit_update_required)
 				LIST_INSERT_HEAD(&queue, s, rx_queue);
+
 			put_sock(s);
 		}
 		pthread_rwlock_unlock(&sc->list_rwlock);
@@ -1735,7 +1741,15 @@ rx_done:
 
 		DPRINTF(("RX: *** thread selecting on %d fds (socks: %s)\n",
 			 nrfd, poll_socks ? "yes" : "no"));
-		nr = select(maxfd + 1, &rfd, NULL, NULL, NULL);
+
+		/*
+		 * If we have pending_credit_updates then pass zero
+		 * timeout to poll the fds but don't block so we will
+		 * immediately handle whatever work we can, including
+		 * the pending credit updates.
+		 */
+		nr = select(maxfd + 1, &rfd, NULL, NULL,
+			    pending_credit_updates ? &zero_timeout : NULL);
 		if (nr < 0) DPRINTF(("RX: select returned %zd errno %d\n", nr, errno));
 		assert(nr >= 0);
 		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
