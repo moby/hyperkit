@@ -93,7 +93,7 @@ func glob(fs vfs.FileSystem, dir, pattern string, matches []string) (m []string,
 // recognized by Match.
 func hasMeta(path string) bool {
 	// TODO(niemeyer): Should other magic characters be added here?
-	return strings.IndexAny(path, "*?[") >= 0
+	return strings.ContainsAny(path, "*?[")
 }
 
 // byName implements sort.Interface.
