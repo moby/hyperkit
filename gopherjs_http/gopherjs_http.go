@@ -21,6 +21,8 @@ import (
 // StaticHtmlFile returns a handler that statically serves the given .html file, with the "text/go" script tags compiled to JavaScript via GopherJS.
 //
 // It reads file from disk and recompiles "text/go" script tags on startup only.
+//
+// Deprecated: Don't use this, use NewFS instead.
 func StaticHtmlFile(name string) http.Handler {
 	file, err := os.Open(name)
 	if err != nil {
@@ -45,6 +47,8 @@ func (this *staticHtmlFile) ServeHTTP(w http.ResponseWriter, req *http.Request) 
 // HtmlFile returns a handler that serves the given .html file, with the "text/go" script tags compiled to JavaScript via GopherJS.
 //
 // It reads file from disk and recompiles "text/go" script tags on every request.
+//
+// Deprecated: Don't use this, use NewFS instead.
 func HtmlFile(name string) http.Handler {
 	return &htmlFile{name: name}
 }
@@ -82,6 +86,8 @@ func compress(s string) string {
 // StaticGoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
 //
 // It reads files from disk and recompiles on startup only.
+//
+// Deprecated: Don't use this, use NewFS instead.
 func StaticGoFiles(goFiles ...string) http.Handler {
 	content := handleJsError(goFilesToJs(goFiles))
 	return &staticGoFiles{
@@ -104,6 +110,8 @@ func (this *staticGoFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // GoFiles returns a handler that serves the given .go files compiled to JavaScript via GopherJS.
 //
 // It reads files from disk and recompiles on every request.
+//
+// Deprecated: Don't use this, use NewFS instead.
 func GoFiles(files ...string) http.Handler {
 	return &goFiles{goFiles: files}
 }
@@ -131,6 +139,8 @@ func (this *goFiles) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // ProcessHtml takes HTML with "text/go" script tags and replaces them with compiled JavaScript script tags.
 //
 // TODO: Write into writer, no need for buffer (unless want to be able to abort on error?). Or, alternatively, parse html and serve minified version?
+//
+// Deprecated: Don't use this, use NewFS instead.
 func ProcessHtml(r io.Reader) *bytes.Buffer {
 	insideTextGo := false
 	tokenizer := html.NewTokenizer(r)
