@@ -90,6 +90,7 @@ struct blockif_elem {
 
 struct blockif_ctxt {
 	int bc_magic;
+	char ident[16];
 	/* Only one of fd and bc_mbh may be >= 0 */
 	int bc_fd;
 #ifdef HAVE_OCAML_QCOW
@@ -421,6 +422,8 @@ blockif_thr(void *arg)
 		buf = NULL;
 	t = pthread_self();
 
+	pthread_setname_np(bc->ident);
+
 	pthread_mutex_lock(&bc->bc_mtx);
 	for (;;) {
 		while (blockif_dequeue(bc, t, &be)) {
@@ -476,7 +479,7 @@ blockif_init(void)
 }
 
 struct blockif_ctxt *
-blockif_open(const char *optstr, UNUSED const char *ident)
+blockif_open(const char *optstr, const char *ident)
 {
 	// char name[MAXPATHLEN];
 	char *nopt, *xopts, *cp;
@@ -640,6 +643,7 @@ blockif_open(const char *optstr, UNUSED const char *ident)
 	}
 
 	bc->bc_magic = (int) BLOCKIF_SIG;
+	snprintf(bc->ident, sizeof(bc->ident), "blk:%s", ident);
 	bc->bc_fd = fd;
 #ifdef HAVE_OCAML_QCOW
 	bc->bc_mbh = mbh;

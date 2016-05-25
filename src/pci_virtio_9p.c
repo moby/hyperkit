@@ -323,6 +323,10 @@ pci_vt9p_thread(void *vsc)
 	int i, ii, j;
 	struct iovec *wiov;
 	uint8_t *buf;
+	char ident[16];
+
+	snprintf(ident, sizeof(ident), "9p:%s", sc->v9sc_cfg.tag);
+	pthread_setname_np(ident);
 
 	buf = calloc(1, BUFSIZE);
 	if (! buf) {
