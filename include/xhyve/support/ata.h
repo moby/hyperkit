@@ -379,7 +379,7 @@ struct ata_params {
 #define			ATA_SFPDMA_DSM_TRIM	0x01	/* Set trim bit in auxilary */
 #define		ATA_SFPDMA_HYBRID_EVICT	0x01	/* Hybrid Evict */
 #define		ATA_SFPDMA_WLDMA	0x02	/* Write Log DMA EXT */
-#define ATA_RECV_FPDMA_QUEUED           0x65    /* recieve DMA NCQ */
+#define ATA_RECV_FPDMA_QUEUED           0x65    /* receive DMA NCQ */
 #define ATA_SEP_ATTN                    0x67    /* SEP request */
 #define ATA_SEEK                        0x70    /* seek */
 #define ATA_PACKET_CMD                  0xa0    /* packet command */
