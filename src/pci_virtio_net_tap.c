@@ -393,6 +393,8 @@ pci_vtnet_tap_select_func(void *vsc) {
 	struct pci_vtnet_softc *sc;
 	fd_set rfd;
 
+	pthread_setname_np("net:tap:rx");
+
 	sc = vsc;
 
 	assert(sc);
@@ -488,6 +490,8 @@ pci_vtnet_tx_thread(void *param)
 	struct pci_vtnet_softc *sc = param;
 	struct vqueue_info *vq;
 	int error;
+
+	pthread_setname_np("net:tap:tx");
 
 	vq = &sc->vsc_queues[VTNET_TXQ];
 

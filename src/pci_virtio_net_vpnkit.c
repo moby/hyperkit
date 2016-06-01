@@ -78,13 +78,38 @@
 #include <xhyve/mevent.h>
 #include <xhyve/virtio.h>
 
-#include "protocol.h"
-#include "utils.h"
-
 #define WPRINTF(format, ...) printf(format, __VA_ARGS__)
 
 #define VTNET_RINGSZ 1024
 #define VTNET_MAXSEGS 32
+
+/*
+ * wire protocol
+ */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wpacked"
+struct msg_init {
+	uint8_t magic[5]; /* VMN3T */
+	uint32_t version;
+	uint8_t commit[40];
+} __packed;
+
+#define CMD_ETHERNET 1
+struct msg_common {
+	uint8_t command;
+} __packed;
+
+struct msg_ethernet {
+	uint8_t command; /* CMD_ETHERNET */
+	char uuid[36];
+} __packed;
+
+struct vif_info {
+	uint16_t mtu;
+	uint16_t max_packet_size;
+	uint8_t mac[6];
+} __packed;
+#pragma clang diagnostic pop
 
 /*
  * Host capabilities.  Note that we only offer a few of these.
@@ -163,7 +188,7 @@ struct pci_vtnet_softc {
 	struct virtio_softc vsc_vs;
 	struct vqueue_info vsc_queues[VTNET_MAXQ - 1];
 	pthread_mutex_t vsc_mtx;
-	struct ipcnet_state *state;
+	struct vpnkit_state *state;
 	int vsc_rx_ready;
 	volatile int resetting;/* set and checked outside lock */
 	uint64_t vsc_features; /* negotiated features */
@@ -185,7 +210,7 @@ static int pci_vtnet_cfgwrite(void *, int, int, uint32_t);
 static void pci_vtnet_neg_features(void *, uint64_t);
 
 static struct virtio_consts vtnet_vi_consts = {
-	"ipcnet",		/* our name */
+	"vpnkit",		/* our name */
 	VTNET_MAXQ - 1,		/* we currently support 2 virtqueues */
 	sizeof(struct virtio_net_config), /* config reg size */
 	pci_vtnet_reset,	/* reset */
@@ -196,12 +221,137 @@ static struct virtio_consts vtnet_vi_consts = {
 	VTNET_S_HOSTCAPS,	/* our capabilities */
 };
 
-struct ipcnet_state {
+struct vpnkit_state {
 	int fd;
 	struct vif_info vif;
 };
 
 #pragma clang diagnostic pop
+
+static int really_read(int fd, uint8_t *buffer, size_t total)
+{
+	size_t remaining = total;
+	ssize_t n;
+
+	while (remaining > 0) {
+		n = read(fd, buffer, remaining);
+
+		if (n == 0) {
+			fprintf(stderr, "virtio-net-vpnkit: read EOF\n");
+			goto err;
+		}
+
+		if (n < 0) {
+			fprintf(stderr, "virtio-net-vpnkit: read error: %s\n",
+				strerror(errno));
+			goto err;
+		}
+
+		remaining -= (size_t)n;
+		buffer = buffer + n;
+	}
+
+	return 0;
+
+err:
+	/* On error: stop reading from the socket and trigger a clean shutdown */
+	shutdown(fd, SHUT_RD);
+	return -1;
+}
+
+static int really_write(int fd, uint8_t *buffer, size_t total) {
+	size_t remaining = total;
+	ssize_t n;
+
+	while (remaining > 0) {
+		n = write(fd, buffer, remaining);
+
+		if (n == 0) {
+			fprintf(stderr, "virtio-net-vpnkit: wrote 0 bytes\n");
+			goto err;
+		}
+
+		if (n < 0) {
+			fprintf(stderr, "virtio-net-vpnkit: write error: %s\n",
+				strerror(errno));
+			goto err;
+		}
+
+		remaining -= (size_t) n;
+		buffer = buffer + n;
+	}
+
+	return 0;
+
+err:
+	/* On error: stop listening to the socket */
+	shutdown(fd, SHUT_WR);
+	return -1;
+}
+
+/*
+ * wire protocol
+ */
+static int vpnkit_connect(int fd, const char uuid[36], struct vif_info *vif)
+{
+	struct msg_init init_msg = {
+		.magic = { 'V', 'M', 'N', '3', 'T' },
+		.version = 1U,
+	};
+
+	/* msg.commit is not NULL terminated */
+	assert(sizeof(VERSION_SHA1) == sizeof(init_msg.commit) + 1);
+	memcpy(&init_msg.commit, VERSION_SHA1, sizeof(init_msg.commit));
+
+	if (really_write(fd, (uint8_t *)&init_msg, sizeof(init_msg)) < 0) {
+		fprintf(stderr, "virtio-net-vpnkit: failed to write init msg\n");
+		return -1;
+	}
+
+	struct msg_init init_reply;
+	if (really_read(fd, (uint8_t *)&init_reply, sizeof(init_reply)) < 0) {
+		fprintf(stderr, "virtio-net-vpnkit: failed to read init reply\n");
+		return -1;
+	}
+
+	if (memcmp(init_msg.magic, init_reply.magic, sizeof(init_reply.magic))) {
+		fprintf(stderr, "virtio-net-vpnkit: bad init magic: %c%c%c%c%c\n",
+			init_reply.magic[0],
+			init_reply.magic[1],
+			init_reply.magic[2],
+			init_reply.magic[3],
+			init_reply.magic[4]);
+		return -1;
+	}
+	if (init_reply.version != 1) {
+		fprintf(stderr, "virtio-net-vpnkit: bad init version %d\n",
+			init_reply.version);
+		return -1;
+	}
+
+	fprintf(stderr, "virtio-net-vpnkit: magic=%c%c%c%c%c version=%d commit=%*s\n",
+		init_reply.magic[0], init_reply.magic[1],
+		init_reply.magic[2], init_reply.magic[3],
+		init_reply.magic[4],
+		init_reply.version, (int)sizeof(init_reply.commit), init_reply.commit);
+
+	struct msg_ethernet cmd_ethernet = {
+		.command = CMD_ETHERNET,
+	};
+	memcpy(cmd_ethernet.uuid, uuid, sizeof(cmd_ethernet.uuid));
+
+	if (really_write(fd, (uint8_t*)&cmd_ethernet, sizeof(cmd_ethernet)) < 0) {
+		fprintf(stderr, "virtio-net-vpnkit: failed to write ethernet cmd\n");
+		return -1;
+	}
+
+	if (really_read(fd, (uint8_t*)vif, sizeof(*vif)) < 0) {
+		fprintf(stderr, "virtio-net-vpnkit: failed to read vif info\n");
+		return -1;
+	}
+
+	return 0;
+}
 
 static char *
 copy_up_to_comma(const char *from)
@@ -218,21 +368,20 @@ copy_up_to_comma(const char *from)
 }
 
 static int
-ipcnet_create(struct pci_vtnet_softc *sc, const char *opts)
+vpnkit_create(struct pci_vtnet_softc *sc, const char *opts)
 {
-	const char *path = "/var/tmp/com.docker.vmnetd.socket";
+	const char *path = "/var/tmp/com.docker.slirp.socket";
 	char *macfile = NULL;
-	char *errorfile = NULL;
-	int simulate_failure = 0;
 	char *tmp = NULL;
 	uuid_t uuid;
 	char uuid_string[37];
 	struct sockaddr_un addr;
 	int fd;
-	struct ipcnet_state *state = malloc(sizeof(struct ipcnet_state));
+	struct vpnkit_state *state = malloc(sizeof(struct vpnkit_state));
 	if (!state) abort();
-	bzero(state, sizeof(struct ipcnet_state));
-	fprintf(stdout, "virtio-net-ipc: initialising %s\n", opts);
+	bzero(state, sizeof(struct vpnkit_state));
+	fprintf(stdout, "virtio-net-vpnkit: initialising, opts=\"%s\"\n",
+		opts ? opts : "");
 
 	/* Use a random uuid by default */
 	uuid_generate_random(uuid);
@@ -260,11 +409,6 @@ ipcnet_create(struct pci_vtnet_softc *sc, const char *opts)
 			tmp = NULL;
 		} else if (strncmp(opts, "macfile=", 8) == 0) {
 			macfile = copy_up_to_comma(opts + 8);
-		} else if (strncmp(opts, "errorfile=", 10) == 0) {
-			errorfile = copy_up_to_comma(opts + 10);
-		} else if (strncmp(opts, "simulate-failure", 16) == 0) {
-			/* Allows easier testing of vmnet failures */
-			simulate_failure = 1;
 		} else {
 			fprintf(stderr, "invalid option: %s\r\n", opts);
 			return 1;
@@ -276,7 +420,6 @@ ipcnet_create(struct pci_vtnet_softc *sc, const char *opts)
 
 	state->vif.max_packet_size = 1500;
 	sc->state = state;
-	struct init_message *me = create_init_message();
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
@@ -290,62 +433,14 @@ ipcnet_create(struct pci_vtnet_softc *sc, const char *opts)
 		if(connect(fd, (struct sockaddr *) &addr, sizeof(struct sockaddr_un)) != 0) {
 			goto err;
 		}
-		if (write_init_message(fd, me) == -1){
-			goto err;
-		}
-		struct init_message you;
-		if (read_init_message(fd, &you) == -1){
-			goto err;
-		}
-		char *txt = print_init_message(&you);
-		DPRINTF(("Server reports %s\n", txt));
-		free(txt);
-		enum command command = ethernet;
-		if (write_command(fd, &command) == -1) {
-			goto err;
-		}
-		struct ethernet_args args;
-		memcpy(&args.uuid_string[0], &uuid_string[0], 36);
-		if (write_ethernet_args(fd, &args) == -1){
-			goto err;
-		}
-		if ((read_vif_info(fd, &state->vif) == -1) || simulate_failure) {
-			/* If this step fails it's almost certainly the vmnet.framework MAC
-			   address clash failure. */
-			if (errorfile != NULL) {
-				FILE *f = fopen(errorfile, "w");
-				if (f == NULL) {
-					goto err;
-				}
-				fprintf(f, "Unknown error connecting to vmnet.framework\n");
-				fclose(f);
-				exit(1);
-			}
-			/* If the caller doesn't want to know about errors, treat this
-			   as a soft failure */
-			bzero(&state->vif, sizeof(state->vif));
-			state->vif.mac[0] = 0xde;
-			state->vif.mac[1] = 0xad;
-			state->vif.mac[2] = 0xbe;
-			state->vif.mac[3] = 0xef;
-			state->vif.mac[4] = 0xde;
-			state->vif.mac[5] = 0xad;
-			state->vif.max_packet_size = 1500;
-			state->vif.mtu = 1500;
-			close(fd);
-			int fds[2];
-			/* Give it a socket that goes nowhere */
-			if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0){
-				goto err;
-			}
-			fd = fds[0];
-		}
 
-		/* success */
-		break;
+		if (vpnkit_connect(fd, uuid_string, &state->vif) == 0)
+			/* success */
+			break;
+
 err:
 		if (log_every_n_tries == 0) {
-			DPRINTF(("virtio-net-ipc: failed to connect to %s: %m\n", path));
+			DPRINTF(("virtio-net-vpnkit: failed to connect to %s: %m\n", path));
 		}
 		close(fd);
 		fd = -1;
@@ -446,12 +541,12 @@ static void hexdump(unsigned char *buffer, size_t len){
 }
 
 static ssize_t
-vmn_read(struct ipcnet_state *state, struct iovec *iov, int n) {
+vmn_read(struct vpnkit_state *state, struct iovec *iov, int n) {
 	uint8_t header[2];
 	int length, remaining, i = 0;
 
 	if (really_read(state->fd, &header[0], 2) == -1){
-		DPRINTF(("virtio-net-ipc: vmnet_read failed, pushing ACPI power button\n"));
+		DPRINTF(("virtio-net-vpnkit: read failed, pushing ACPI power button\n"));
 		push_power_button();
 		/* Block reading forever until we shutdown */
 		for (;;){
@@ -463,7 +558,7 @@ vmn_read(struct ipcnet_state *state, struct iovec *iov, int n) {
 	while (remaining > 0){
 		size_t batch = min((unsigned long)remaining, iov[i].iov_len);
 		if (really_read(state->fd, iov[i].iov_base, batch) == -1){
-			DPRINTF(("virtio-net-ipc: vmnet_read failed, pushing ACPI power button\n"));
+			DPRINTF(("virtio-net-vpnkit: read failed, pushing ACPI power button\n"));
 			push_power_button();
 			/* Block reading forever until we shutdown */
 			for (;;){
@@ -485,7 +580,7 @@ vmn_read(struct ipcnet_state *state, struct iovec *iov, int n) {
 }
 
 static void
-vmn_write(struct ipcnet_state *state, struct iovec *iov, int n) {
+vmn_write(struct vpnkit_state *state, struct iovec *iov, int n) {
 	uint8_t header[2];
 	size_t length = 0;
 
@@ -505,7 +600,7 @@ vmn_write(struct ipcnet_state *state, struct iovec *iov, int n) {
 	header[0] = (length >> 0) & 0xff;
 	header[1] = (length >> 8) & 0xff;
 	if (really_write(state->fd, &header[0], 2) == -1){
-		DPRINTF(("virtio-net-ipc: vmnet_write failed, pushing ACPI power button"));
+		DPRINTF(("virtio-net-vpnkit: write failed, pushing ACPI power button"));
 		push_power_button();
 		return;
 	}
@@ -727,6 +822,8 @@ pci_vtnet_tap_select_func(void *vsc) {
 	struct pci_vtnet_softc *sc;
 	fd_set rfd;
 
+	pthread_setname_np("net:ipc:rx");
+
 	sc = vsc;
 
 	assert(sc);
@@ -822,6 +919,8 @@ pci_vtnet_tx_thread(void *param)
 	struct vqueue_info *vq;
 	int error;
 
+	pthread_setname_np("net:ipc:tx");
+
 	vq = &sc->vsc_queues[VTNET_TXQ];
 
 	/*
@@ -877,16 +976,9 @@ pci_vtnet_ping_ctlq(void *vsc, struct vqueue_info *vq)
 static int
 pci_vtnet_init(struct pci_devinst *pi, char *opts)
 {
-	static int aslInitDone = 0;
 	struct pci_vtnet_softc *sc;
 	int mac_provided;
 	pthread_t sthrd;
-
-	if (!aslInitDone) {
-		aslInit("Docker", "com.docker.xhyve");
-		aslLog(ASL_LEVEL_NOTICE, "Starting xhyve");
-		aslInitDone = 1;
-	}
 
 	sc = calloc(1, sizeof(struct pci_vtnet_softc));
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
@@ -909,7 +1001,7 @@ pci_vtnet_init(struct pci_devinst *pi, char *opts)
 	 */
 	mac_provided = 0;
 
-	if (ipcnet_create(sc, opts) == -1) {
+	if (vpnkit_create(sc, opts) == -1) {
 		return (-1);
 	}
 
@@ -1008,7 +1100,7 @@ pci_vtnet_neg_features(void *vsc, uint64_t negotiated_features)
 }
 
 static struct pci_devemu pci_de_vnet_ipc = {
-	.pe_emu = 	"virtio-ipc",
+	.pe_emu = 	"virtio-vpnkit",
 	.pe_init =	pci_vtnet_init,
 	.pe_barwrite =	vi_pci_write,
 	.pe_barread =	vi_pci_read

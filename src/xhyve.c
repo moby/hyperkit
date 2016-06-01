@@ -250,10 +250,14 @@ vcpu_thread(void *param)
 	uint64_t rip_entry;
 	int vcpu;
 	int error;
+	char ident[16];
 
 	mtp = param;
 	vcpu = mtp->mt_vcpu;
 	rip_entry = 0xfff0;
+
+	snprintf(ident, sizeof(ident), "vcpu:%d", vcpu);
+	pthread_setname_np(ident);
 
 	error = xh_vcpu_create(vcpu);
 	assert(error == 0);
