@@ -159,6 +159,8 @@ static void *callout_thread_func(UNUSED void *arg) {
   uint64_t delta, mat;
   int ret;
 
+  pthread_setname_np("callout");
+
   pthread_mutex_lock(&callout_mtx);
 
   while (true) {

@@ -1,13 +1,51 @@
 ## [Hyperkit](http://github.com/docker/hyperkit)
 
-*Hyperkit* is a hypervisor for OS X built using the
-[Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It
-is a core component of Docker For Mac and has a focus on running lightweight
-Virtual Machines to host containers.
+![Build Status OSX](https://circleci.com/gh/docker/hyperkit.svg?style=shield&circle-token=cf8379b302eab2bbf33821cafe164dbefb71982d)
 
-## xhyve and bhyve
+*Hyperkit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on [xhyve](https://github.com/mist64/xhyve)/[bhyve](http://bhyve.org), which is optimized for lightweight virtual machines and container deployment.  It is designed to be interfaced with higher-level components such as the [VPNKit](https://github.com/docker/vpnkit) and [DataKit](https://github.com/docker/datakit).
 
-Hyperkit is derived from [xhyve](http://www.xhyve.org), which in turn
+Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
+
+
+## Requirements
+
+* OS X 10.10.3 Yosemite or later
+* a 2010 or later Mac (i.e. a CPU that supports EPT)
+
+## Usage
+
+    $ com.docker.hyperkit -h
+
+## Building
+
+    $ git clone https://github.com/docker/hyperkit
+    $ cd hyperkit
+    $ make
+
+The resulting binary will be in `build/com.docker.hyperkit`
+
+To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
+environment is required with the qcow-format module available. A
+suitable environment can be setup by installing `opam` via `brew` and
+using that to install the appropriate libraries:
+
+    $ brew install opam
+    $ opam init
+    $ eval `opam config env`
+    $ opam pin add qcow-format git://github.com/mirage/ocaml-qcow#master
+    $ opam install uri qcow-format
+
+Notes:
+
+- `opam config env` must be evaluated each time prior to building
+  hyperkit so the build will find the ocaml environment.
+- An explicit older version of sexplib is currently required to build
+  qcow format 0.2
+
+
+### Relationship to xhyve and bhyve
+
+Hyperkit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
 was derived from [bhyve](http://www.bhyve.org). See the [original xhyve
 README](README.xhyve.md) which incorporates the bhyve README.
 
@@ -15,7 +53,7 @@ We try to avoid deviating from these upstreams unnecessarily in order
 to more easily share code, for example the various device
 models/emulations should be easily shareable.
 
-## Reporting security issues
+### Reporting security issues
 
 The maintainers take security seriously. If you discover a security issue,
 please bring it to their attention right away!
@@ -28,22 +66,6 @@ We also like to send gifts&mdash;if you're into Docker schwag, make sure to let
 us know. We currently do not offer a paid security bounty program, but are not
 ruling it out in the future.
 
-## Requirements
-
-* OS X 10.10.3 Yosemite or later
-* a 2010 or later Mac (i.e. a CPU that supports EPT)
-
-## Building
-
-    $ git clone https://github.com/docker/hyperkit
-    $ cd hyperkit
-    $ make
-
-The resulting binary will be in `build/com.docker.hyperkit`
-
-## Usage
-
-    $ com.docker.hyperkit -h
 
 ## Copyright and license
 

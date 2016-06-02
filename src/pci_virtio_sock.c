@@ -211,6 +211,7 @@ struct pci_vtsock_sock {
 	 *     -1	Otherwise
 	 */
 	int fd;
+	uint16_t port_generation;
 	/* valid when SOCK_CONNECTED only */
 	uint32_t local_shutdown, peer_shutdown;
 
@@ -1129,7 +1130,8 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 
 	case VIRTIO_VSOCK_OP_SHUTDOWN:
 		if (!sock) {
-			PPRINTF(("TX: SHUTDOWN to non-existent sock\n"));
+			DPRINTF(("TX: SHUTDOWN to non-existent sock "PRIcid"."PRIport"\n",
+				 hdr.dst_cid, hdr.dst_port));
 			goto do_rst;
 		}
 		if (sock->state != SOCK_CONNECTED) {
@@ -1302,10 +1304,12 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 	sock->peer_addr.cid = cid;
 	sock->peer_addr.port = port;
 	sock->local_addr.cid = VMADDR_CID_HOST;
-	/* Start at 2^16 to be larger than a TCP port
+	/* Start at 2^16 to be larger than a TCP port, add a
+	 * generation counter to reduce port reuse.
 	 * XXX Allocate properly.
          */
-	sock->local_addr.port = 65536U + (uint32_t)(sock - &sc->socks[0]);
+	sock->local_addr.port = ((uint32_t)(sock - &sc->socks[0] + 1) << 16)
+		+ (++sock->port_generation);
 
 	rc = set_socket_options(sock);
 	if (rc < 0) goto err;
@@ -2150,6 +2154,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		assert(err == 0);
 		str->state = SOCK_FREE;
 		str->fd = -1;
+		str->port_generation = 0;
 		LIST_INSERT_HEAD(&sc->free_list, str, list);
 	}
 
