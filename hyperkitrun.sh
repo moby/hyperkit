@@ -1,5 +1,7 @@
 #!/bin/sh
 
+HYPERKIT="build/com.docker.hyperkit"
+
 # Linux
 KERNEL="test/vmlinuz"
 INITRD="test/initrd.gz"
@@ -20,7 +22,20 @@ LPC_DEV="-l com1,stdio"
 ACPI="-A"
 #UUID="-U deadbeef-dead-dead-dead-deaddeafbeef"
 
+if [ ! -x  "$HYPERKIT" ]; then
+  make
+  if [ ! $? -eq 0 ]; then
+    echo "Error whilst building $HYPERKIT"
+    exit 1
+  fi
+fi
+
 # Linux
+if [ ! -f "$KERNEL" ]; then
+ pushd test
+ ./tinycore.sh
+ popd
+fi
 build/com.docker.hyperkit $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f kexec,$KERNEL,$INITRD,"$CMDLINE"
 
 # FreeBSD
