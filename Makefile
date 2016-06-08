@@ -116,7 +116,7 @@ TARGET = build/com.docker.hyperkit
 
 all: $(TARGET) | build
 
-.PHONY: clean all
+.PHONY: clean all test
 .SUFFIXES:
 
 -include $(DEP)
@@ -148,3 +148,10 @@ $(TARGET): $(TARGET).sym
 
 clean:
 	@rm -rf build
+	@rm -f test/vmlinuz test/initrd.gz
+
+test/vmlinuz test/initrd.gz:
+	@cd test; ./tinycore.sh
+
+test: $(TARGET) test/vmlinuz test/initrd.gz
+	@./test_linux.exp

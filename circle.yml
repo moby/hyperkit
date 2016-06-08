@@ -13,3 +13,4 @@ test:
     - opam install --yes uri qcow-format ocamlfind
     - make clean
     - eval `opam config env` && make all
+    - make test
