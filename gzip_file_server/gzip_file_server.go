@@ -26,11 +26,11 @@ func New(root http.FileSystem) http.Handler {
 	return &gzipFileServer{root: root}
 }
 
-func (f *gzipFileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !strings.HasPrefix(r.URL.Path, "/") {
-		r.URL.Path = "/" + r.URL.Path
+func (f *gzipFileServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if !strings.HasPrefix(req.URL.Path, "/") {
+		req.URL.Path = "/" + req.URL.Path
 	}
-	f.serveFile(w, r, path.Clean(r.URL.Path))
+	f.serveFile(w, req, path.Clean(req.URL.Path))
 }
 
 // name is '/'-separated, not filepath.Separator.
