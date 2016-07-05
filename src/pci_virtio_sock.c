@@ -340,6 +340,34 @@ static int max_fd(int a, int b)
 		return b;
 }
 
+/*
+ * Returns >= 0 number of fds on success or -1 to indicate caller
+ * should retry. On any failure which cannot be retried logs and exits.
+ */
+static int xselect(const char *ctx,
+		   int nfds, fd_set *readfds, fd_set *writefds,
+		   fd_set *errorfds, struct timeval *timeout)
+{
+	int rc = select(nfds, readfds, writefds, errorfds, timeout);
+	if (rc >= 0) return rc;
+
+	/*
+	 * http://pubs.opengroup.org/onlinepubs/009695399/functions/select.html
+	 * lists EINTR, EBADF and EINVAL. EINTR is recoverable and should be
+	 * retried.
+	 */
+	if (errno == EINTR) return -1;
+	/*
+	 * OSX select(2) man page lists EAGAIN in addition to the above.
+	 * EAGAIN should be retried.
+	*/
+	if (errno == EAGAIN) return -1;
+
+	fprintf(stderr, "%s: select() failed %d: %s\n",
+		ctx, errno, strerror(errno));
+	abort();
+}
+
 static size_t iovec_clip(struct iovec **iov, int *iov_len, size_t bytes)
 {
 	size_t ret = 0;
@@ -615,6 +643,11 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 	if (fd < 0) {
 		DPRINTF(("TX: socket failed for %s: %s\n",
 			 un.sun_path, strerror(errno)));
+		goto err;
+	}
+
+	if (fd >= FD_SETSIZE) {
+		DPRINTF(("TX: socket fd %d > FD_SETSIZE %d\n", fd, FD_SETSIZE));
 		goto err;
 	}
 
@@ -1254,6 +1287,13 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 		return;
 	}
 
+	if (fd >= FD_SETSIZE) {
+		fprintf(stderr, "TX: Unable to accept incoming connection: fd %d > FD_SETSIZE %d\n",
+			fd, FD_SETSIZE);
+		close(fd);
+		goto err;
+	}
+
 	DPRINTF(("TX: Connect attempt on connect fd => %d\n", fd));
 
 	if (cid == VMADDR_CID_ANY) {
@@ -1375,7 +1415,6 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				continue;
 			}
 			assert(s->fd >= 0);
-			assert(s->fd < FD_SETSIZE);
 			if (sock_is_buffering(s)) {
 				FD_SET(s->fd, &wfd);
 				maxfd = max_fd(s->fd, maxfd);
@@ -1386,12 +1425,12 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			put_sock(s);
 		}
 		pthread_rwlock_unlock(&sc->list_rwlock);
+		assert(maxfd < FD_SETSIZE);
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
-		nr = select(maxfd + 1, &rfd, &wfd, NULL, NULL);
-		if (nr < 0) DPRINTF(("TX select returned %zd errno %d\n", nr, errno));
-		assert(nr >= 0);
+		nr = xselect("TX", maxfd + 1, &rfd, &wfd, NULL, NULL);
+		if (nr < 0) continue;
 		DPRINTF(("TX:\nTX: *** %d/%d fds are readable/writeable\n", nr, nrfd));
 
 		if (FD_ISSET(sc->tx_wake_fd, &rfd)) {
@@ -1708,7 +1747,6 @@ rx_done:
 				pending_credit_updates = true;
 
 			assert(s->fd >= 0);
-			assert(s->fd < FD_SETSIZE);
 			peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
 			DPRINTF(("RX: sock %p (%d): peer free = %"PRId32"\n",
 				 (void*)s, s->fd, peer_free));
@@ -1746,6 +1784,7 @@ rx_done:
 		}
 
 		/* Unlocked during select */
+		assert(maxfd < FD_SETSIZE);
 
 		DPRINTF(("RX: *** thread selecting on %d fds (socks: %s)\n",
 			 nrfd, poll_socks ? "yes" : "no"));
@@ -1756,10 +1795,9 @@ rx_done:
 		 * immediately handle whatever work we can, including
 		 * the pending credit updates.
 		 */
-		nr = select(maxfd + 1, &rfd, NULL, NULL,
+		nr = xselect("RX", maxfd + 1, &rfd, NULL, NULL,
 			    pending_credit_updates ? &zero_timeout : NULL);
-		if (nr < 0) DPRINTF(("RX: select returned %zd errno %d\n", nr, errno));
-		assert(nr >= 0);
+		if (nr < 0) continue;
 		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
 			 nr, nrfd, vq_has_descs(vq) ? "yes" : "no"));
 
@@ -1958,6 +1996,8 @@ static int open_connect_socket(struct pci_vtsock_softc *sc)
 	}
 
 	sc->connect_fd = fd;
+	assert(sc->connect_fd < FD_SETSIZE);
+
 	DPRINTF(("Connect socket %s is fd %d\n", un.sun_path, fd));
 
 	return 0;
@@ -2014,6 +2054,8 @@ static int open_one_forward_socket(struct pci_vtsock_softc *sc, uint32_t port)
 	}
 
 	fwd->listen_fd = fd;
+	assert(fwd->listen_fd < FD_SETSIZE);
+
 	fwd->port = port;
 
 	DPRINTF(("forwarding port %"PRId32" to the guest\n", port));
@@ -2215,6 +2257,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	sc->tx_wake_fd = pipefds[0];
 	sc->tx_kick_fd = pipefds[1];
 
+	assert(sc->tx_wake_fd < FD_SETSIZE);
+
 	sc->rx_kick_pending = false;
 
 	if (pthread_create(&sc->tx_thread, NULL,
@@ -2225,6 +2269,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return (1);
 	sc->rx_wake_fd = pipefds[0];
 	sc->rx_kick_fd = pipefds[1];
+
+	assert(sc->rx_wake_fd < FD_SETSIZE);
 
 	sc->reply_prod = 0;
 	sc->reply_cons = 0;
