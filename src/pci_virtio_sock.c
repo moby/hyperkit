@@ -646,6 +646,11 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 		goto err;
 	}
 
+	if (fd >= FD_SETSIZE) {
+		DPRINTF(("TX: socket fd %d > FD_SETSIZE %d\n", fd, FD_SETSIZE));
+		goto err;
+	}
+
 	rc = connect(fd, (struct sockaddr *)&un, sizeof(un));
 	if (rc < 0) {
 		DPRINTF(("TX: connect failed for %s: %s\n",
@@ -1282,6 +1287,13 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 		return;
 	}
 
+	if (fd >= FD_SETSIZE) {
+		fprintf(stderr, "TX: Unable to accept incoming connection: fd %d > FD_SETSIZE %d\n",
+			fd, FD_SETSIZE);
+		close(fd);
+		goto err;
+	}
+
 	DPRINTF(("TX: Connect attempt on connect fd => %d\n", fd));
 
 	if (cid == VMADDR_CID_ANY) {
@@ -1403,7 +1415,6 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				continue;
 			}
 			assert(s->fd >= 0);
-			assert(s->fd < FD_SETSIZE);
 			if (sock_is_buffering(s)) {
 				FD_SET(s->fd, &wfd);
 				maxfd = max_fd(s->fd, maxfd);
@@ -1414,6 +1425,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 			put_sock(s);
 		}
 		pthread_rwlock_unlock(&sc->list_rwlock);
+		assert(maxfd < FD_SETSIZE);
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
@@ -1735,7 +1747,6 @@ rx_done:
 				pending_credit_updates = true;
 
 			assert(s->fd >= 0);
-			assert(s->fd < FD_SETSIZE);
 			peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
 			DPRINTF(("RX: sock %p (%d): peer free = %"PRId32"\n",
 				 (void*)s, s->fd, peer_free));
@@ -1773,6 +1784,7 @@ rx_done:
 		}
 
 		/* Unlocked during select */
+		assert(maxfd < FD_SETSIZE);
 
 		DPRINTF(("RX: *** thread selecting on %d fds (socks: %s)\n",
 			 nrfd, poll_socks ? "yes" : "no"));
@@ -1984,6 +1996,8 @@ static int open_connect_socket(struct pci_vtsock_softc *sc)
 	}
 
 	sc->connect_fd = fd;
+	assert(sc->connect_fd < FD_SETSIZE);
+
 	DPRINTF(("Connect socket %s is fd %d\n", un.sun_path, fd));
 
 	return 0;
@@ -2040,6 +2054,8 @@ static int open_one_forward_socket(struct pci_vtsock_softc *sc, uint32_t port)
 	}
 
 	fwd->listen_fd = fd;
+	assert(fwd->listen_fd < FD_SETSIZE);
+
 	fwd->port = port;
 
 	DPRINTF(("forwarding port %"PRId32" to the guest\n", port));
@@ -2241,6 +2257,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	sc->tx_wake_fd = pipefds[0];
 	sc->tx_kick_fd = pipefds[1];
 
+	assert(sc->tx_wake_fd < FD_SETSIZE);
+
 	sc->rx_kick_pending = false;
 
 	if (pthread_create(&sc->tx_thread, NULL,
@@ -2251,6 +2269,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return (1);
 	sc->rx_wake_fd = pipefds[0];
 	sc->rx_kick_fd = pipefds[1];
+
+	assert(sc->rx_wake_fd < FD_SETSIZE);
 
 	sc->reply_prod = 0;
 	sc->reply_cons = 0;
