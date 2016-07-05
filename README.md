@@ -42,6 +42,16 @@ Notes:
 - An explicit older version of sexplib is currently required to build
   qcow format 0.2
 
+## Tracing
+
+HyperKit defines a number of static DTrace probes to simplify investigation of
+performance problems. To list the probes supported by your version of HyperKit,
+type the following command while HyperKit VM is running:
+
+ $ sudo dtrace -l -P 'hyperkit$target' -p $(pgrep hyperkit)
+
+Refer to scripts in dtrace/ directory for examples of possible usage and
+available probes.
 
 ### Relationship to xhyve and bhyve
 
