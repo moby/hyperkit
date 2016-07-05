@@ -340,6 +340,34 @@ static int max_fd(int a, int b)
 		return b;
 }
 
+/*
+ * Returns >= 0 number of fds on success or -1 to indicate caller
+ * should retry. On any failure which cannot be retried logs and exits.
+ */
+static int xselect(const char *ctx,
+		   int nfds, fd_set *readfds, fd_set *writefds,
+		   fd_set *errorfds, struct timeval *timeout)
+{
+	int rc = select(nfds, readfds, writefds, errorfds, timeout);
+	if (rc >= 0) return rc;
+
+	/*
+	 * http://pubs.opengroup.org/onlinepubs/009695399/functions/select.html
+	 * lists EINTR, EBADF and EINVAL. EINTR is recoverable and should be
+	 * retried.
+	 */
+	if (errno == EINTR) return -1;
+	/*
+	 * OSX select(2) man page lists EAGAIN in addition to the above.
+	 * EAGAIN should be retried.
+	*/
+	if (errno == EAGAIN) return -1;
+
+	fprintf(stderr, "%s: select() failed %d: %s\n",
+		ctx, errno, strerror(errno));
+	abort();
+}
+
 static size_t iovec_clip(struct iovec **iov, int *iov_len, size_t bytes)
 {
 	size_t ret = 0;
@@ -1389,9 +1417,8 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
-		nr = select(maxfd + 1, &rfd, &wfd, NULL, NULL);
-		if (nr < 0) DPRINTF(("TX select returned %zd errno %d\n", nr, errno));
-		assert(nr >= 0);
+		nr = xselect("TX", maxfd + 1, &rfd, &wfd, NULL, NULL);
+		if (nr < 0) continue;
 		DPRINTF(("TX:\nTX: *** %d/%d fds are readable/writeable\n", nr, nrfd));
 
 		if (FD_ISSET(sc->tx_wake_fd, &rfd)) {
@@ -1756,10 +1783,9 @@ rx_done:
 		 * immediately handle whatever work we can, including
 		 * the pending credit updates.
 		 */
-		nr = select(maxfd + 1, &rfd, NULL, NULL,
+		nr = xselect("RX", maxfd + 1, &rfd, NULL, NULL,
 			    pending_credit_updates ? &zero_timeout : NULL);
-		if (nr < 0) DPRINTF(("RX: select returned %zd errno %d\n", nr, errno));
-		assert(nr >= 0);
+		if (nr < 0) continue;
 		DPRINTF(("RX:\nRX: *** %d/%d fds are readable (descs: %s)\n",
 			 nr, nrfd, vq_has_descs(vq) ? "yes" : "no"));
 
