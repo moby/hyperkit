@@ -53,6 +53,7 @@
 #include <xhyve/vmm/x86.h>
 #include <xhyve/vmm/intel/vmx_controls.h>
 #include <xhyve/firmware/bootrom.h>
+#include <xhyve/dtrace.h>
 
 #define PROCBASED_CTLS_WINDOW_SETTING \
 	(PROCBASED_INT_WINDOW_EXITING | \
@@ -959,6 +960,7 @@ vmx_inject_interrupts(struct vmx *vmx, int vcpu, struct vlapic *vlapic,
 		vmx_set_int_window_exiting(vmx, vcpu);
 	}
 
+	HYPERKIT_VMX_INJECT_VIRQ(vcpu, vector);
 	VCPU_CTR1(vmx->vm, vcpu, "Injecting hwintr at vector %d", vector);
 
 	return;
@@ -1738,6 +1740,7 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 	vmexit->exitcode = VM_EXITCODE_BOGUS;
 
 	vmm_stat_incr(vmx->vm, vcpu, VMEXIT_COUNT, 1);
+	HYPERKIT_VMX_EXIT(vcpu, reason);
 
 	/*
 	 * VM exits that can be triggered during event delivery need to
@@ -2041,6 +2044,7 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		 * this must be an instruction that accesses MMIO space.
 		 */
 		gpa = vmcs_gpa(vcpu);
+		HYPERKIT_VMX_EPT_FAULT(vcpu, gpa, qual);
 		if (vm_mem_allocated(vmx->vm, gpa) ||
 		    bootrom_contains_gpa(gpa) ||
 		    apic_access_fault(vmx, vcpu, gpa)) {
