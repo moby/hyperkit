@@ -1688,6 +1688,7 @@ emulate_wrmsr(struct vmx *vmx, int vcpuid, u_int num, uint64_t val, bool *retu)
 {
 	int error;
 
+	HYPERKIT_VMX_WRITE_MSR(vcpuid, num, val);
 	if (lapic_msr(num))
 		error = lapic_wrmsr(vmx->vm, vcpuid, num, val, retu);
 	else
@@ -1713,7 +1714,9 @@ emulate_rdmsr(struct vmx *vmx, int vcpuid, u_int num, bool *retu)
 		reg_write(vcpuid, HV_X86_RAX, eax);
 		edx = (uint32_t) (result >> 32);
 		reg_write(vcpuid, HV_X86_RDX, edx);
-	}
+	} else
+		result = 0;
+	HYPERKIT_VMX_READ_MSR(vcpuid, num, result);
 
 	return (error);
 }
@@ -1856,7 +1859,6 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		retu = false;
 		ecx = (uint32_t) reg_read(vcpu, HV_X86_RCX);
 		VCPU_CTR1(vmx->vm, vcpu, "rdmsr 0x%08x", ecx);
-		// printf("EXIT_REASON_RDMSR 0x%08x\n", ecx);
 		error = emulate_rdmsr(vmx, vcpu, ecx, &retu);
 		if (error) {
 			vmexit->exitcode = VM_EXITCODE_RDMSR;
@@ -1877,8 +1879,6 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		edx = (uint32_t) reg_read(vcpu, HV_X86_RDX);
 		VCPU_CTR2(vmx->vm, vcpu, "wrmsr 0x%08x value 0x%016llx",
 		    ecx, (uint64_t)edx << 32 | eax);
-		// printf("EXIT_REASON_WRMSR 0x%08x value 0x%016llx\n",
-		//     ecx, (uint64_t)edx << 32 | eax);
 		error = emulate_wrmsr(vmx, vcpu, ecx,
 		    (uint64_t)edx << 32 | eax, &retu);
 		if (error) {
