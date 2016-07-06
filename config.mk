@@ -38,6 +38,7 @@ CFLAGS_WARN := \
   -Wno-unknown-warning-option \
   -Wno-reserved-id-macro \
   -Wno-dollar-in-identifier-extension \
+  -Wno-gnu-statement-expression \
   -pedantic
 
 CFLAGS_DIAG := \

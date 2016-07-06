@@ -47,6 +47,7 @@
 #include <xhyve/xhyve.h>
 #include <xhyve/mevent.h>
 #include <xhyve/block_if.h>
+#include <xhyve/dtrace.h>
 
 #include "mirage_block_c.h"
 
@@ -148,24 +149,56 @@ pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 	return writev(fd, iov, iovcnt);
 }
 
+static inline size_t iovec_len(const struct iovec *iov, int iovcnt)
+{
+	size_t len = 0;
+	int i;
+
+	for (i = 0; i < iovcnt; i++)
+		len += iov[i].iov_len;
+	return len;
+}
+
 static ssize_t
 block_preadv(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt, off_t offset)
 {
-	if (bc->bc_fd >= 0) return preadv(bc->bc_fd, iov, iovcnt, offset);
+	ssize_t ret;
+
+	if (HYPERKIT_BLOCK_PREADV_ENABLED())
+		HYPERKIT_BLOCK_PREADV(offset, iovec_len(iov, iovcnt));
+
+	if (bc->bc_fd >= 0)
+		ret = preadv(bc->bc_fd, iov, iovcnt, offset);
 #ifdef HAVE_OCAML_QCOW
-	if (bc->bc_mbh >= 0) return mirage_block_preadv(bc->bc_mbh, iov, iovcnt, offset);
+	else if (bc->bc_mbh >= 0)
+		ret = mirage_block_preadv(bc->bc_mbh, iov, iovcnt, offset);
 #endif
-	abort();
+	else
+		abort();
+
+	HYPERKIT_BLOCK_PREADV_DONE(offset, ret);
+	return ret;
 }
 
 static ssize_t
 block_pwritev(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt, off_t offset)
 {
-	if (bc->bc_fd >= 0) return pwritev(bc->bc_fd, iov, iovcnt, offset);
+	ssize_t ret;
+
+	if (HYPERKIT_BLOCK_PWRITEV_ENABLED())
+		HYPERKIT_BLOCK_PWRITEV(offset, iovec_len(iov, iovcnt));
+
+	if (bc->bc_fd >= 0)
+		ret = pwritev(bc->bc_fd, iov, iovcnt, offset);
 #ifdef HAVE_OCAML_QCOW
-	if (bc->bc_mbh >= 0) return mirage_block_pwritev(bc->bc_mbh, iov, iovcnt, offset);
+	else if (bc->bc_mbh >= 0)
+		ret = mirage_block_pwritev(bc->bc_mbh, iov, iovcnt, offset);
 #endif
-	abort();
+	else
+		abort();
+
+	HYPERKIT_BLOCK_PWRITEV_DONE(offset, ret);
+	return ret;
 }
 
 static int
