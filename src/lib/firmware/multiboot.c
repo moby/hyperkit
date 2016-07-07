@@ -1,5 +1,6 @@
 /*-
  * Copyright (c) 2016 Thomas Haggett
+ * Copyright (c) 2017 Pavel Borzenkov
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,7 +28,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
+
+#include <sys/stat.h>
+#include <sys/fcntl.h>
+#include <sys/mman.h>
 
 #include <xhyve/firmware/multiboot.h>
 #include <xhyve/vmm/vmm_api.h>
@@ -35,363 +43,431 @@
 #define MULTIBOOT_MAGIC 0x1BADB002
 #define MULTIBOOT_SEARCH_END 0x2000
 
-struct multiboot_header {
-  uint32_t magic;
-  uint32_t flags;
-  uint32_t checksum;
+struct multiboot_load_header {
+	uint32_t header_addr;
+	uint32_t load_addr;
+	uint32_t load_end_addr;
+	uint32_t bss_end_addr;
+	uint32_t entry_addr;
 };
 
-struct multiboot_load_header {
-  uint32_t header_addr;
-  uint32_t load_addr;
-  uint32_t load_end_addr;
-  uint32_t bss_end_addr;
-  uint32_t entry_addr;
+struct multiboot_video_header {
+	uint32_t mode_type;
+	uint32_t width;
+	uint32_t height;
+	uint32_t depth;
+};
+
+struct multiboot_header {
+	struct {
+		uint32_t magic;
+		uint32_t flags;
+		uint32_t checksum;
+	} hdr;
+	struct multiboot_load_header lhdr;
+	struct multiboot_video_header vhdr;
 };
 
 struct multiboot_info  {
-  uint32_t flags;
-  uint32_t mem_lower;
-  uint32_t mem_upper;
-  uint32_t boot_device;
-  uint32_t cmdline_addr;
-  uint32_t mods_count;
-  uint32_t mods_addr;
+	uint32_t flags;
+	uint32_t mem_lower;
+	uint32_t mem_upper;
+	uint32_t boot_device;
+	uint32_t cmdline_addr;
+	uint32_t mods_count;
+	uint32_t mods_addr;
 };
 
 struct multiboot_module_entry {
-  uint32_t addr_start;
-  uint32_t addr_end;
-  uint32_t cmdline;
-  uint32_t pad;
+	uint32_t addr_start;
+	uint32_t addr_end;
+	uint32_t cmdline;
+	uint32_t pad;
 };
 
 static struct multiboot_config {
-  char* kernel_path;
-  char* module_list;
-  char* kernel_append;
+	char* kernel_path;
+	char* module_list;
+	char* kernel_append;
 } config;
 
-struct boot_config {
-  long header_offset;
-  uint16_t load_alignment;
-  char provide_mem_headers;
-  char padding1[5];
-  uintptr_t guest_mem_base;
-  uintptr_t guest_mem_size;
-
-  char padding2[4];
-  struct multiboot_load_header kernel_load_data;
+struct image {
+	void *mapping;
+	uint32_t size;
 };
 
-// #define ALIGN(p,n) (void*)((((uintptr_t)p/n) + 1)*n)
+struct multiboot_state {
+	uintptr_t guest_mem_base; // HVA of guest's memory
+	uint32_t guest_mem_size; // size of guest's memory
 
-int multiboot_find_header(FILE* image, struct boot_config* boot_config);
-size_t multiboot_load_image(FILE* image, struct boot_config *boot_config);
-uint64_t multiboot_set_guest_state(struct boot_config* boot_config);
+	uint32_t load_addr; // current data load GPA
 
-//
-// called by xhyve to pass in the firmware arguments
-//
-void multiboot_init(char *kernel_path, char *module_list, char *kernel_append) {
-  config.kernel_path = kernel_path;
-  config.module_list = module_list;
-  config.kernel_append = kernel_append;
+	uint32_t kernel_load_addr; // kernel load GPA
+	uint32_t kernel_size; // size of the kernel
+	uint32_t kernel_offset; // offset of the kernel in file
+	uint32_t kernel_entry_addr; // kernel entry GPA
+
+	uint32_t mbi_addr; // GPA of MBI header
+
+	struct multiboot_info mbi; // MBI
+	struct multiboot_module_entry *modules; // modules info
+	unsigned modules_count;
+
+	char *cmdline; // combined kernel and modules cmdline
+	uint32_t cmdline_len;
+};
+
+struct elf_ehdr {
+	uint8_t e_ident[16];
+	uint16_t e_type;
+	uint16_t e_machine;
+	uint32_t e_version;
+	uint32_t e_entry;
+	uint32_t e_phoff;
+	uint32_t e_shoff;
+	uint32_t e_flags;
+	uint16_t e_hsize;
+	uint16_t e_phentsize;
+	uint16_t e_phnum;
+	uint16_t e_shentsize;
+	uint16_t e_shnum;
+	uint16_t e_shstrndx;
+};
+
+#define EM_X86_64 62
+
+struct elf_phdr {
+	uint32_t p_type;
+	uint32_t p_offset;
+	uint32_t p_vaddr;
+	uint32_t p_paddr;
+	uint32_t p_filesz;
+	uint32_t p_memsz;
+	uint32_t p_flags;
+	uint32_t p_align;
+};
+
+#define PT_LOAD 1
+
+#define PF_X 0x1
+
+#define ROUND_UP(a, b) (((a) + (b) - 1) / (b) * (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define PAGE_SIZE 4096
+
+static void __attribute__((noreturn,format(printf,1,2)))
+die(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	va_end(args);
+
+	exit(1);
 }
 
-// 
-// scans the configured kernel for it's multiboot header.
-// returns 0 if no multiboot header is found, non-zero if one is.
-int multiboot_find_header(FILE* image, struct boot_config* boot_config) {
-  struct multiboot_header header;
-  uint8_t found = 0;
+// get_image maps file at path into process's address space.
+static void
+get_image(char *path, struct image *img)
+{
+	int fd;
+	struct stat st;
 
-  fseek(image, 0L, SEEK_SET);
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		die("multiboot: failed to open '%s': %s\n", path, strerror(errno));
+	if (fstat(fd, &st) < 0) {
+		close(fd);
+		die("multiboot: failed to stat '%s': %s\n", path, strerror(errno));
+	}
+	img->size = (uint32_t)st.st_size;
 
-  while(!found || !feof(image) || ftell(image) < MULTIBOOT_SEARCH_END) {
-
-    boot_config->header_offset = ftell(image);
-    // fill our header struct with data from the file
-    if( 1 != fread(&header, sizeof(struct multiboot_header), 1, image)) {
-      perror("error reading from kernel");
-      return 0;
-    }
-    
-    if(header.magic == MULTIBOOT_MAGIC && header.checksum + header.flags + header.magic == 0) {
-      found = 1;
-      break;
-    }
-      
-    // make sure to jump 64-bits back in the file, so that if there happens to be two
-    // magic values one after another, the second one doesn't get missed. The only 
-    // requirement is the header is 32-bit aligned.
-    fseek(image, -8, SEEK_CUR);
-  }
-
-  if( found == 0 ) return 0;
-
-  printf("Parsing multiboot header:\n");
-
-  // are there any mandatory flags that we don't support? (any other than 0 and 1 set)
-  uint16_t supported_mandatory = ((1<<1) | (1<<0));
-  if( ((header.flags & ~supported_mandatory) & 0xFFFF) != 0x0) {
-    printf("Multiboot header has unsupported mandatory flags, bailing.\n");
-    return 0;
-  }
-
-  // at this point, we need to check the flags and pull in the additional sections
-  if( header.flags & (1<<0) ) {
-    printf(" (bit 0) Loading modules with 4K alignment\n");
-    boot_config->load_alignment = 4096;
-  } else {
-    boot_config->load_alignment = 1;
-  }
-
-  if( header.flags & (1<<1) ) {
-    printf(" (bit 1) Must provide mem_* fields in multiboot header\n");
-    boot_config->provide_mem_headers = 1;
-  } else {
-    boot_config->provide_mem_headers = 0;
-  }
-
-  if( header.flags & (1<<16) ) {
-    printf(" (bit 16) Multiboot image placement fields are valid\n");
-
-    // read the memory placement header directly into the boot config struct
-    if( 1 != fread((void*)&boot_config->kernel_load_data, sizeof(struct multiboot_load_header), 1, image) ) {
-      perror("failed to read image placement data from multiboot header");
-      return 0;
-    }
-
-  } else {
-    printf(" (no bit 16) Image placement fields aren't valid - TODO: still try to load?\n");
-    return 0;
-  }
-  
-  return found;
+	img->mapping = mmap(NULL, ROUND_UP(img->size, 4096), PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (img->mapping == (void *)MAP_FAILED)
+		die("multiboot: failed to mmap '%s': %s\n", path, strerror(errno));
 }
 
-void* guest_to_host(void* guest_addr, struct boot_config *boot_config);
-void* host_to_guest(void* host_addr, struct boot_config *boot_config);
-void* guest_to_host(void* guest_addr, struct boot_config *boot_config) {
-  return (void*)(boot_config->guest_mem_base + (uintptr_t)guest_addr);
-}
-void* host_to_guest(void* host_addr, struct boot_config *boot_config) {
-  return (void*)((uintptr_t)host_addr - boot_config->guest_mem_base);
-}
+// put_image releases mmaped file.
+static int
+put_image(struct image *img)
+{
+	if (munmap(img->mapping, ROUND_UP(img->size, 4096)) < 0)
+		die("multiboot: failed to munmap: %s\n", strerror(errno));
+	img->mapping = NULL;
+	img->size = 0;
 
-size_t multiboot_load_image(FILE* image, struct boot_config *boot_config) {
-
-  size_t image_load_size;
-  unsigned long load_offset = (unsigned long)(boot_config->kernel_load_data.header_addr - boot_config->header_offset);
-
-  // if there wasn't a load_end_addr provided, then default it to the length of the image file
-  if( boot_config->kernel_load_data.load_end_addr == 0x0 ) {
-    fseek(image, 0x0, SEEK_END);
-    boot_config->kernel_load_data.load_end_addr = (uint32_t) ftell(image) + (uint32_t)load_offset;
-  }
-  image_load_size = boot_config->kernel_load_data.load_end_addr - boot_config->kernel_load_data.load_addr;
-  printf("image load size is %zu\n", image_load_size);
-  printf("header addr   = %x\n", boot_config->kernel_load_data.header_addr);
-  printf("load addr     = %x\n", boot_config->kernel_load_data.load_addr);
-  printf("load end addr = %x\n", boot_config->kernel_load_data.load_end_addr);
-  printf("bss end addr  = %x\n", boot_config->kernel_load_data.bss_end_addr);
-  printf("entry addr    = %x\n", boot_config->kernel_load_data.entry_addr);
-
-  printf("Header offset is %lu, wants physical address %u\n", boot_config->header_offset, boot_config->kernel_load_data.header_addr);
-
-  // Jump to the load offset
-  printf("Load addr is %i, offset is %lu seeking to %li in file\n", boot_config->kernel_load_data.load_addr,load_offset, boot_config->kernel_load_data.load_addr - (long)load_offset);
-  if(0 != fseek(image, boot_config->kernel_load_data.load_addr - (long)load_offset, SEEK_SET)) {
-    perror("fseek() to specified load_addr failed on the kernel image");
-    return 0;
-  }
-  
-  if( 1 != fread(guest_to_host((void *)(uintptr_t)boot_config->kernel_load_data.load_addr, boot_config), image_load_size, 1, image)) {
-    perror("fread() kernel image");
-    return 0;
-  }
-
-  void* magic_addr = guest_to_host((void*)(uintptr_t)boot_config->kernel_load_data.header_addr, boot_config);
-  printf("sanity-check: this should be the magic value: %x\n", *(uint32_t*)magic_addr);
-
-  return image_load_size;
+	return 0;
 }
 
-uint64_t multiboot_set_guest_state(struct boot_config* boot_config) {
-
-  struct multiboot_header* header = (struct multiboot_header*)boot_config->guest_mem_base;
-  void* guest_header_ptr = host_to_guest(header, boot_config);
-  header->flags = 0x1234;
-
-
-  xh_vcpu_reset(0);
-  xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
-  xh_vm_set_register(0, VM_REG_GUEST_RAX, 0x2BADB002);
-  xh_vm_set_register(0, VM_REG_GUEST_RBX, (uint64_t)guest_header_ptr);
-  xh_vm_set_register(0, VM_REG_GUEST_RIP, boot_config->kernel_load_data.entry_addr);
-
-  // xh_vm_set_desc(0, VM_REG_GUEST_GDTR, (uintptr_t)gdt_entry - (uintptr_t)gpa_map, 0x1f, 0);
-  // xh_vm_set_desc(0, VM_REG_GUEST_CS, 0, 0xffffffff, 0xc09b);
-  // xh_vm_set_desc(0, VM_REG_GUEST_DS, 0, 0xffffffff, 0xc093);
-  // xh_vm_set_desc(0, VM_REG_GUEST_ES, 0, 0xffffffff, 0xc093);
-  // xh_vm_set_desc(0, VM_REG_GUEST_SS, 0, 0xffffffff, 0xc093);
-  xh_vm_set_register(0, VM_REG_GUEST_CS, 0x10);
-  xh_vm_set_register(0, VM_REG_GUEST_DS, 0x18);
-  xh_vm_set_register(0, VM_REG_GUEST_ES, 0x18);
-  xh_vm_set_register(0, VM_REG_GUEST_SS, 0x18);
-  
-  // xh_vm_set_register(0, VM_REG_GUEST_RBP, 0);
-  // xh_vm_set_register(0, VM_REG_GUEST_RDI, 0);
-  // xh_vm_set_register(0, VM_REG_GUEST_RFLAGS, 0x2);
-  // xh_vm_set_register(0, VM_REG_GUEST_RSI, 0x0);
-  
-  return boot_config->kernel_load_data.entry_addr;
+// multiboot_init is called by xhyve to pass in the firmware arguments.
+void
+multiboot_init(char *kernel_path, char *module_list, char *kernel_append)
+{
+	config.kernel_path = kernel_path;
+	config.module_list = module_list;
+	config.kernel_append = kernel_append;
 }
 
-uint64_t multiboot(void) {
-  struct boot_config boot_config;
+// multiboot_parse_elf parses ELF header and determines kernel load/entry
+// addresses.
+static void
+multiboot_parse_elf(struct multiboot_state *s, struct image *img)
+{
+	struct elf_ehdr *ehdr = img->mapping;
+	struct elf_phdr *phdr;
+	uint32_t low = (uint32_t)-1, high = 0, memsize, addr, entry;
+	int i;
 
-  FILE* kernel = fopen(config.kernel_path, "r");
-  if(kernel == NULL) {
-    perror("failed to open kernel");
-    exit(1);
-  }
+	if (ehdr->e_ident[0] != 0x7f ||
+			ehdr->e_ident[1] != 'E' ||
+			ehdr->e_ident[2] != 'L' ||
+			ehdr->e_ident[3] != 'F')
+		die("multiboot: invalid ELF magic\n");
+	if (ehdr->e_machine == EM_X86_64)
+		die("multiboot: 64-bit ELFs are not supported\n");
 
-  // peek at the first bit of the image, looking for a multiboot header,
-  // if found, load any image specific config that we understand into 
-  // boot_config
-  if(0x0 == multiboot_find_header(kernel, &boot_config)) {
-    printf("Didn't find a multiboot header in '%s'\n", config.kernel_path);
-    exit(1);
-  }
+	entry = ehdr->e_entry;
 
-  // get the guest's memory range
-  void* gpa = xh_vm_map_gpa(0, xh_vm_get_lowmem_size());
-  boot_config.guest_mem_base = (uintptr_t)gpa;
-  boot_config.guest_mem_size = xh_vm_get_lowmem_size();
+	phdr = (struct elf_phdr *)((uintptr_t)img->mapping + ehdr->e_phoff);
+	for (i = 0; i < ehdr->e_phnum; i++) {
+		if (phdr[i].p_type != PT_LOAD)
+			continue;
+		memsize = phdr[i].p_filesz;
+		addr = phdr[i].p_paddr;
 
-  // actually load the image into the guest's memory
-  size_t image_length = multiboot_load_image(kernel, &boot_config);
-  if(0x0 == image_length) {
-    printf("Failed to load kernel image into memory\n");
-    exit(1);
-  }
+		if (phdr[i].p_flags & PF_X &&
+				phdr[i].p_vaddr != phdr[i].p_paddr &&
+				entry >= phdr[i].p_vaddr &&
+				entry < phdr[i].p_vaddr + phdr[i].p_filesz)
+			entry = entry - phdr[i].p_vaddr + phdr[i].p_paddr;
 
-  // kernel image, we're done with you now.
-  if(kernel != NULL)
-    fclose(kernel);
+		if (addr < low)
+			low = addr;
+		if (addr + memsize > high)
+			high = addr + memsize;
+	}
 
-  // load in all the specified modules
-  char *s, *m;
-  int mods_count = 0;
+	if (low == (uint32_t)-1 || high == 0)
+		die("multiboot: failed to parse ELF file\n");
 
-  s = m = config.module_list;
-  
-  if(config.module_list) {
-    while(*m != 0x0) {
-      while(*m != 0x0 && *m != ':') { m++; }
-      if( *m == ':') m++;
-      printf("module\n");
-      mods_count++;
-    }
-  }
-
-
-
-
-
-
-  return multiboot_set_guest_state(&boot_config);
+	s->kernel_load_addr = low;
+	s->kernel_size = high - low;
+	s->kernel_entry_addr = entry;
 }
 
-//   // write out the multiboot info struct
-//   void* p = (char*)((uintptr_t)host_load_addr + image_length);
-//   struct multiboot_info* mb_info = (struct multiboot_info*)p;
-//   p = (void*) ((uintptr_t)p +  sizeof(struct multiboot_info));
-//   mb_info->flags = 0x0;
+// multiboot_find_header scans the configured kernel for it's multiboot header.
+static void
+multiboot_find_header(struct multiboot_state *s, struct image *img)
+{
+	struct multiboot_header *header = NULL;
+	uintptr_t ptr = (uintptr_t)img->mapping;
+	uintptr_t sz = MIN(img->size, MULTIBOOT_SEARCH_END);
+	uintptr_t end = ptr + sz - sizeof(struct multiboot_header);
+	int found = 0;
 
+	for (; ptr < end; ptr += 4) {
+		header = (struct multiboot_header *)ptr;
 
-//   // write out all the modules!!
-//   char *s, *m, *name, *v;
+		if (header->hdr.magic != MULTIBOOT_MAGIC)
+			continue;
+		if (header->hdr.checksum + header->hdr.flags + header->hdr.magic != 0)
+			continue;
 
-//   s = m = modulestring;
+		found = 1;
+		break;
+	}
+	if (!found)
+		die("multiboot: failed to find multiboot header in '%s'\n", config.kernel_path);
 
+	// are there any mandatory flags that we don't support? (any other than 0 and 1 set)
+	uint16_t supported_mandatory = ((1 << 1) | (1 << 0));
+	if (((header->hdr.flags & ~supported_mandatory) & 0xFFFF) != 0x0)
+		die("multiboot: header has unsupported mandatory flags (0x%x), bailing.\n", header->hdr.flags & 0xFFFF);
 
-//   // count the number of modules
-//   mb_info->mods_count = 0;
-//   if(modulestring) {
-//     while(*m != 0x0) {
-//       while(*m != 0x0 && *m != ':') { m++; }
-//       if( *m == ':') m++;
-//       printf("module\n");
-//       mb_info->mods_count++;
-//     }
-//   }
-//   printf("There are %i modules\n", mb_info->mods_count);
-  
-//   struct multiboot_module_entry *table = (struct multiboot_module_entry*)p;
-//   mb_info->mods_addr =(uint32_t)( (uintptr_t)p - (uintptr_t)gpa_map);
+	if (!(header->hdr.flags & (1 << 16))) {
+		multiboot_parse_elf(s, img);
+		return;
+	}
 
-//   p = (void*) ((uintptr_t)p + sizeof(struct multiboot_module_entry) * mb_info->mods_count);
-  
-//   if(modulestring) {
+	s->kernel_offset = (uint32_t)((uintptr_t)header - (uintptr_t)img->mapping -
+		(header->lhdr.header_addr - header->lhdr.load_addr));
+	if (header->lhdr.load_end_addr) {
+		s->kernel_size = header->lhdr.load_end_addr - header->lhdr.load_addr;
+	} else {
+		s->kernel_size = img->size - s->kernel_offset;
+	}
+	s->kernel_load_addr = header->lhdr.load_addr;
+	s->kernel_entry_addr = header->lhdr.entry_addr;
+}
 
-//     mb_info->flags |= (1<<4);
-//     printf("Writing out modules!\n");
+// guest_to_host translates GPA to HVA.
+static uintptr_t
+guest_to_host(uint32_t guest_addr, struct multiboot_state *s)
+{
+	return s->guest_mem_base + guest_addr;
+}
 
-//     s = m = modulestring;
-//     while(*m != 0x0) {
-//       while(*m != 0x0 && *m != ':') { m++; }
-//       printf("p=%lu ",(uintptr_t) p);
-//       p = ALIGN_4K(p);
-//       printf("aligned p = %lu\n", (uintptr_t)p);
-//       memcpy(p, s, (m - s) + 1);
-//       name = p;
-//       p =  (void*) ((uintptr_t)p + ((uintptr_t)m-(uintptr_t)s));
-//       v = (char*)p;
-//       *v = 0x0;
-//       p =  (void*) ((uintptr_t)p + 1);
-      
-//       printf("Got a module: %s\n", name);
+// multiboot_load_data loads data pointed to by from of size into current load
+// address in guest's memory. The load address is advanced taken align into
+// account.
+static uint32_t
+multiboot_load_data(struct multiboot_state *s, void *from, uint32_t size, unsigned align)
+{
+	uintptr_t to = guest_to_host(s->load_addr, s);
+	uint32_t loaded_at = s->load_addr;
 
-//       uint32_t module_size;
+	if (from == NULL || size == 0)
+		return 0;
 
-//       printf("Got module '%s'\n", name);
+	if ((s->load_addr >= s->guest_mem_size) ||
+			((s->load_addr + size) > s->guest_mem_size))
+		die("multiboot: %x+%x is beyond guest's memory\n", s->load_addr, size);
 
-//       FILE* module = fopen(name, "r");
-//       fseek(module, 0x0, SEEK_END);
-//       module_size = (uint32_t)ftell(module);
-//       fseek(module, 0x0, SEEK_SET);
+	memcpy((void *)to, from, size);
 
-//       printf("  size=%i bytes\n", module_size);
+	s->load_addr = s->load_addr + size;
+	if (align)
+		s->load_addr = ROUND_UP(s->load_addr, align);
 
-//       p = ALIGN_4K(p);
-//       table->cmdline = (uint32_t)(name - (uintptr_t)gpa_map);
-//       table->addr_start = (uint32_t)((uint32_t)p - (uintptr_t)gpa_map);
-//       if( 1 != fread(p, module_size, 1, module)) perror("Failed to read module");
-//       p = (void*)((uintptr_t)p + module_size);
-//       table->addr_end = (uint32_t)((uint32_t)p - (uintptr_t)gpa_map);
+	return loaded_at;
+}
 
-//       fclose(module);
+// multiboot_set_guest_state prepares guest registers/descriptors per Multiboot
+// specification.
+static uint64_t
+multiboot_set_guest_state(struct multiboot_state *s)
+{
+	xh_vcpu_reset(0);
+	xh_vm_set_register(0, VM_REG_GUEST_RAX, 0x2BADB002);
+	xh_vm_set_register(0, VM_REG_GUEST_RBX, s->mbi_addr);
+	xh_vm_set_register(0, VM_REG_GUEST_RIP, s->kernel_entry_addr);
 
-//       table++;
+	xh_vm_set_desc(0, VM_REG_GUEST_CS, 0, 0xffffffff, 0xc09b);
+	xh_vm_set_desc(0, VM_REG_GUEST_DS, 0, 0xffffffff, 0xc093);
+	xh_vm_set_desc(0, VM_REG_GUEST_ES, 0, 0xffffffff, 0xc093);
+	xh_vm_set_desc(0, VM_REG_GUEST_FS, 0, 0xffffffff, 0xc093);
+	xh_vm_set_desc(0, VM_REG_GUEST_GS, 0, 0xffffffff, 0xc093);
+	xh_vm_set_desc(0, VM_REG_GUEST_SS, 0, 0xffffffff, 0xc093);
 
-//       if( *m == ':') m++;
-//       s = m;
-//     }
-//   }
+	xh_vm_set_register(0, VM_REG_GUEST_CR0, 0x21);
 
+	return s->kernel_entry_addr;
+}
 
-//   if( boot_cmdline ) {
-//     unsigned long length = (unsigned long)sprintf((char*)p,"%s %s", kernel_path_string, boot_cmdline);
+// multiboot_add_cmdline add boot_file cmdline into combined command line
+// buffer.
+static uint32_t
+multiboot_add_cmdline(struct multiboot_state *s, char *boot_file, char *cmdline)
+{
+	uint32_t offset = s->cmdline_len;
 
-//     mb_info->flags |= (1<<2);
-//     mb_info->cmdline_addr = (uint32_t)((uintptr_t)p - (uintptr_t)gpa_map);
-//     printf("cmdline addr is %x\n", mb_info->cmdline_addr);
-//     p = (void*) ((uintptr_t)p +  length + 1);
-//   }
+	unsigned len = (unsigned)strlen(boot_file) + 1;
+	if (cmdline != NULL)
+		len += (unsigned)strlen(cmdline) + 1;
 
-//   mb_info->flags |= (1<<0);
-//   mb_info->mem_lower = (uint32_t)640*1024;
-//   mb_info->mem_upper = (uint32_t)xh_vm_get_lowmem_size();
+	s->cmdline = realloc(s->cmdline, s->cmdline_len + len);
+	if (s->cmdline == NULL)
+		die("multiboot: failed to allocate memory for command line\n");
+
+	if (cmdline != NULL)
+		snprintf(s->cmdline + s->cmdline_len, len, "%s %s", boot_file, cmdline);
+	else
+		snprintf(s->cmdline + s->cmdline_len, len, "%s", boot_file);
+	s->cmdline_len += len;
+
+	return offset;
+}
+
+// multiboot_count_modules returns the amount of passed modules.
+static unsigned
+multiboot_count_modules()
+{
+	if (config.module_list == NULL || !*config.module_list)
+		return 0;
+
+	unsigned count = 1;
+	char *p = config.module_list;
+	while (*p) {
+		if (*p == ':')
+			count++;
+		p++;
+	}
+	return count;
+}
+
+// multiboot_process_module processes a single module.
+static void
+multiboot_process_module(struct multiboot_state *s, char *modname, struct multiboot_module_entry *mod_info)
+{
+	char *cmd = NULL, *d;
+	struct image img;
+	if ((d = strchr(modname, ';')) != NULL) {
+		cmd = d + 1;
+		*d = '\0';
+	}
+
+	get_image(modname, &img);
+	mod_info->addr_start = multiboot_load_data(s, img.mapping, img.size, PAGE_SIZE);
+	mod_info->addr_end = mod_info->addr_start + img.size;
+	put_image(&img);
+	mod_info->cmdline = multiboot_add_cmdline(s, modname, cmd);
+}
+
+uint64_t
+multiboot(void)
+{
+	void *gpa = xh_vm_map_gpa(0, xh_vm_get_lowmem_size());
+	uint32_t mem_size = (uint32_t)xh_vm_get_lowmem_size();
+	struct multiboot_state state = {
+		.guest_mem_base = (uintptr_t)gpa,
+		.guest_mem_size = mem_size,
+	};
+	struct image img;
+
+	// mmap kernel and locate multiboot header
+	get_image(config.kernel_path, &img);
+	multiboot_find_header(&state, &img);
+	state.load_addr = state.kernel_load_addr;
+
+	// actually load the image into the guest's memory
+	multiboot_load_data(&state, (void *)((uintptr_t)img.mapping + state.kernel_offset), state.kernel_size, PAGE_SIZE);
+	put_image(&img);
+
+	// prepare memory for modules info
+	state.modules_count = multiboot_count_modules();
+	state.modules = malloc(sizeof(*state.modules) * state.modules_count);
+	if (state.modules == NULL)
+		die("multiboot: failed to allocate memory for modules info info\n");
+	memset(state.modules, 0, sizeof(*state.modules) * state.modules_count);
+
+	// load modules and their command lines
+	char *modname;
+	unsigned i = 0;
+	while ((modname = strsep(&config.module_list, ":")) != NULL)
+		multiboot_process_module(&state, modname, &state.modules[i++]);
+
+	// load combined command line (all modules + kernel)
+	if (config.kernel_append) {
+		state.mbi.cmdline_addr = multiboot_add_cmdline(&state, config.kernel_path, config.kernel_append);
+		state.mbi.cmdline_addr += state.load_addr;
+	}
+	for (i = 0; i < state.modules_count; i++)
+		state.modules[i].cmdline += state.load_addr;
+	multiboot_load_data(&state, state.cmdline, state.cmdline_len, 4);
+
+	// finally load MBI header
+	state.mbi_addr = state.load_addr;
+	state.mbi.flags = (1 << 0) | (1 << 2) | (1 << 3);
+	state.mbi.mem_lower = (uint32_t)640;
+	state.mbi.mem_upper = state.guest_mem_size / 1024 - 1024;
+	state.mbi.mods_count = state.modules_count;
+	state.mbi.mods_addr = state.mbi_addr + sizeof(state.mbi);
+	multiboot_load_data(&state, &state.mbi, sizeof(state.mbi), 0);
+	multiboot_load_data(&state, state.modules, sizeof(*state.modules) * state.modules_count, 0);
+
+	free(state.modules);
+	free(state.cmdline);
+	return multiboot_set_guest_state(&state);
+}

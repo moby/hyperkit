@@ -789,7 +789,7 @@ fail:
 		"    -f kexec,'kernel','initrd','\"cmdline\"'\n"
 		"    -f fbsd,'userboot','boot volume','\"kernel env\"'\n"
 		"    -f bootrom,'ROM',,\n" /* FIXME: trailing commas _required_! */
-		"    -f multiboot,'kernel',module:module:...,cmdline\n");
+		"    -f multiboot,'kernel',[module[;cmdline][:module[;cmdline]]...],[cmdline]\n");
 
 	return -1;
 }

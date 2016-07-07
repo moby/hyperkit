@@ -299,12 +299,14 @@ Launch
 .Ar kernel
 using the Linux kexec protocol.
 .It fbsd , Ns Pa userboot , Ns Pa bootvolume , Ns Pa kernelenv
-Boot using the fbsd protocol
+Boot using the fbsd protocol.
 .It bootrom , Ns Pa path , Ns ,
 Boot using
 .Ar path
 as a firmware image. Allows booting a UEFI/tianocore binary, such as
 the one from bhyve (source: <https://github.com/freebsd/uefi-edk2.git>; binary <https://people.freebsd.org/~grehan/bhyve_uefi/>).
+.It multiboot , Ns Pa kernel , Ns Oo Pa module Ns Oo ;cmdline Ns Oc Ns Oo :module Ns Oo ;cmdline Ns Oc Ns Oc Ns ... Oc , Ns Oo Pa cmdline Ns Oc
+Boot using the multiboot protocol.
 .El
 .Pp
 Note that all the commas are required in each case, even if the
