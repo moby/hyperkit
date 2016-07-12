@@ -124,6 +124,12 @@ all: $(TARGET) | build
 build:
 	@mkdir -p build
 
+include/xhyve/dtrace.h: src/dtrace.d
+	@echo gen $<
+	$(VERBOSE) $(DTRACE) -h -s $< -o $@
+
+$(SRC): include/xhyve/dtrace.h
+
 build/%.o: src/%.c
 	@echo cc $<
 	@mkdir -p $(dir $@)
@@ -148,6 +154,7 @@ $(TARGET): $(TARGET).sym
 
 clean:
 	@rm -rf build
+	@rm -f include/xhyve/dtrace.h
 	@rm -f test/vmlinuz test/initrd.gz
 
 test/vmlinuz test/initrd.gz:

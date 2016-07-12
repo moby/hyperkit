@@ -18,6 +18,7 @@ AS := clang
 LD := clang
 STRIP := strip
 DSYM := dsymutil
+DTRACE := dtrace
 
 ENV := \
   LANG=en_US.US-ASCII
@@ -36,6 +37,8 @@ CFLAGS_WARN := \
   -Werror \
   -Wno-unknown-warning-option \
   -Wno-reserved-id-macro \
+  -Wno-dollar-in-identifier-extension \
+  -Wno-gnu-statement-expression \
   -pedantic
 
 CFLAGS_DIAG := \

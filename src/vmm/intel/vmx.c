@@ -53,6 +53,7 @@
 #include <xhyve/vmm/x86.h>
 #include <xhyve/vmm/intel/vmx_controls.h>
 #include <xhyve/firmware/bootrom.h>
+#include <xhyve/dtrace.h>
 
 #define PROCBASED_CTLS_WINDOW_SETTING \
 	(PROCBASED_INT_WINDOW_EXITING | \
@@ -959,6 +960,7 @@ vmx_inject_interrupts(struct vmx *vmx, int vcpu, struct vlapic *vlapic,
 		vmx_set_int_window_exiting(vmx, vcpu);
 	}
 
+	HYPERKIT_VMX_INJECT_VIRQ(vcpu, vector);
 	VCPU_CTR1(vmx->vm, vcpu, "Injecting hwintr at vector %d", vector);
 
 	return;
@@ -1686,6 +1688,7 @@ emulate_wrmsr(struct vmx *vmx, int vcpuid, u_int num, uint64_t val, bool *retu)
 {
 	int error;
 
+	HYPERKIT_VMX_WRITE_MSR(vcpuid, num, val);
 	if (lapic_msr(num))
 		error = lapic_wrmsr(vmx->vm, vcpuid, num, val, retu);
 	else
@@ -1711,7 +1714,9 @@ emulate_rdmsr(struct vmx *vmx, int vcpuid, u_int num, bool *retu)
 		reg_write(vcpuid, HV_X86_RAX, eax);
 		edx = (uint32_t) (result >> 32);
 		reg_write(vcpuid, HV_X86_RDX, edx);
-	}
+	} else
+		result = 0;
+	HYPERKIT_VMX_READ_MSR(vcpuid, num, result);
 
 	return (error);
 }
@@ -1738,6 +1743,7 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 	vmexit->exitcode = VM_EXITCODE_BOGUS;
 
 	vmm_stat_incr(vmx->vm, vcpu, VMEXIT_COUNT, 1);
+	HYPERKIT_VMX_EXIT(vcpu, reason);
 
 	/*
 	 * VM exits that can be triggered during event delivery need to
@@ -1853,7 +1859,6 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		retu = false;
 		ecx = (uint32_t) reg_read(vcpu, HV_X86_RCX);
 		VCPU_CTR1(vmx->vm, vcpu, "rdmsr 0x%08x", ecx);
-		// printf("EXIT_REASON_RDMSR 0x%08x\n", ecx);
 		error = emulate_rdmsr(vmx, vcpu, ecx, &retu);
 		if (error) {
 			vmexit->exitcode = VM_EXITCODE_RDMSR;
@@ -1874,8 +1879,6 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		edx = (uint32_t) reg_read(vcpu, HV_X86_RDX);
 		VCPU_CTR2(vmx->vm, vcpu, "wrmsr 0x%08x value 0x%016llx",
 		    ecx, (uint64_t)edx << 32 | eax);
-		// printf("EXIT_REASON_WRMSR 0x%08x value 0x%016llx\n",
-		//     ecx, (uint64_t)edx << 32 | eax);
 		error = emulate_wrmsr(vmx, vcpu, ecx,
 		    (uint64_t)edx << 32 | eax, &retu);
 		if (error) {
@@ -2041,6 +2044,7 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 		 * this must be an instruction that accesses MMIO space.
 		 */
 		gpa = vmcs_gpa(vcpu);
+		HYPERKIT_VMX_EPT_FAULT(vcpu, gpa, qual);
 		if (vm_mem_allocated(vmx->vm, gpa) ||
 		    bootrom_contains_gpa(gpa) ||
 		    apic_access_fault(vmx, vcpu, gpa)) {
