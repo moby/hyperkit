@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <assert.h>
+#include <os/lock.h>
 #include <libkern/OSAtomic.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
@@ -69,7 +70,8 @@ struct vlapic;
  * (x) initialized before use
  */
 struct vcpu {
-	OSSpinLock lock; /* (o) protects 'state' */
+	// OSSpinLock lock; /* (o) protects 'state' */
+  os_unfair_lock lock;
 	pthread_mutex_t state_sleep_mtx;
 	pthread_cond_t state_sleep_cnd;
 	pthread_mutex_t vcpu_sleep_mtx;
@@ -90,9 +92,9 @@ struct vcpu {
 	uint64_t nextrip; /* (x) next instruction to execute */
 };
 
-#define vcpu_lock_init(v) (v)->lock = OS_SPINLOCK_INIT;
-#define vcpu_lock(v) OSSpinLockLock(&(v)->lock)
-#define vcpu_unlock(v) OSSpinLockUnlock(&(v)->lock)
+// #define vcpu_lock_init(v) (v)->lock = OS_SPINLOCK_INIT;
+#define vcpu_lock(v) os_unfair_lock_lock(&(v)->lock)
+#define vcpu_unlock(v) os_unfair_lock_unlock(&(v)->lock)
 
 struct mem_seg {
 	uint64_t gpa;
@@ -189,7 +191,7 @@ vcpu_cleanup(struct vm *vm, int i, bool destroy)
 
 	VLAPIC_CLEANUP(vm->cookie, vcpu->vlapic);
 	if (destroy) {
-		vmm_stat_free(vcpu->stats);	
+		vmm_stat_free(vcpu->stats);
 	}
 }
 
@@ -200,11 +202,11 @@ vcpu_init(struct vm *vm, int vcpu_id, bool create)
 
 	KASSERT(vcpu_id >= 0 && vcpu_id < VM_MAXCPU,
 	    ("vcpu_init: invalid vcpu %d", vcpu_id));
-	  
+
 	vcpu = &vm->vcpu[vcpu_id];
 
 	if (create) {
-		vcpu_lock_init(vcpu);
+		// vcpu_lock_init(vcpu);
 		pthread_mutex_init(&vcpu->state_sleep_mtx, NULL);
 		pthread_cond_init(&vcpu->state_sleep_cnd, NULL);
 		pthread_mutex_init(&vcpu->vcpu_sleep_mtx, NULL);
@@ -266,7 +268,7 @@ vmm_init(void)
 	error = vmm_mem_init();
 	if (error)
 		return (error);
-	
+
 	ops = &vmm_ops_intel;
 
 	error = VMM_INIT();
@@ -516,7 +518,7 @@ vm_malloc(struct vm *vm, uint64_t gpa, size_t len)
 
 	if ((gpa & XHYVE_PAGE_MASK) || (len & XHYVE_PAGE_MASK) || len == 0)
 		return (EINVAL);
-	
+
 	available = allocated = 0;
 	g = gpa;
 	while (g < gpa + len) {
@@ -985,7 +987,7 @@ vm_handle_inst_emul(struct vm *vm, int vcpuid, bool *retu)
 		vme->inst_length = vie->num_processed;
 		vcpu->nextrip += vie->num_processed;
 	}
- 
+
 	/* return to userland unless this is an in-kernel emulated device */
 	if (gpa >= DEFAULT_APIC_BASE && gpa < DEFAULT_APIC_BASE + XHYVE_PAGE_SIZE) {
 		mread = lapic_mmio_read;
@@ -1958,7 +1960,7 @@ vm_copyin(UNUSED struct vm *vm, UNUSED int vcpuid, struct vm_copyinfo *copyinfo,
 {
 	char *dst;
 	int idx;
-	
+
 	dst = kaddr;
 	idx = 0;
 	while (len > 0) {

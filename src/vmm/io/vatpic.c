@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <assert.h>
+#include <os/lock.h>
 #include <libkern/OSAtomic.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/i8259.h>
@@ -38,9 +39,9 @@
 #include <xhyve/vmm/io/vatpic.h>
 #include <xhyve/vmm/io/vioapic.h>
 
-#define VATPIC_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
-#define VATPIC_LOCK(v) OSSpinLockLock(&(v)->lock)
-#define VATPIC_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+// #define VATPIC_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
+#define VATPIC_LOCK(v) os_unfair_lock_lock(&(v)->lock)
+#define VATPIC_UNLOCK(v) os_unfair_lock_unlock(&(v)->lock)
 
 enum irqstate {
 	IRQSTATE_ASSERT,
@@ -70,7 +71,7 @@ struct atpic {
 
 struct vatpic {
 	struct vm *vm;
-	OSSpinLock lock;
+	os_unfair_lock lock;
 	struct atpic atpic[2];
 	uint8_t elc[2];
 };
@@ -700,11 +701,11 @@ vatpic_master_handler(struct vm *vm, UNUSED int vcpuid, bool in, int port,
 
 	if (bytes != 1)
 		return (-1);
- 
+
 	if (in) {
 		return (vatpic_read(vatpic, atpic, in, port, bytes, eax));
 	}
- 
+
 	return (vatpic_write(vatpic, atpic, in, port, bytes, eax));
 }
 
@@ -780,7 +781,7 @@ vatpic_init(struct vm *vm)
 	bzero(vatpic, sizeof(struct vatpic));
 	vatpic->vm = vm;
 
-	VATPIC_LOCK_INIT(vatpic);
+	// VATPIC_LOCK_INIT(vatpic);
 
 	return (vatpic);
 }
