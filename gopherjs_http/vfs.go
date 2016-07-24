@@ -124,12 +124,23 @@ func (fs *gopherJSFS) compileGoPackage(dir string) (http.File, error) {
 
 	var goFiles []os.FileInfo
 	for _, f := range fis {
-		if !f.IsDir() && pathpkg.Ext(f.Name()) == ".go" {
-			goFiles = append(goFiles, f)
+		// TODO: Use build.Import or equivalent to get GoFiles and CgoFiles. The below approximates it, but fails to use build tags correctly, etc.
+		if f.IsDir() {
+			continue
 		}
+		if pathpkg.Ext(f.Name()) != ".go" {
+			continue
+		}
+		if strings.HasPrefix(f.Name(), ".") || strings.HasPrefix(f.Name(), "_") {
+			continue
+		}
+		if strings.HasSuffix(f.Name(), "_test.go") {
+			continue
+		}
+		goFiles = append(goFiles, f)
 	}
 	if len(goFiles) == 0 {
-		return nil, fmt.Errorf("%s has no .go files", dir)
+		return nil, fmt.Errorf("%s has no matching .go files", dir)
 	}
 
 	// TODO: Clean this up.
