@@ -30,10 +30,9 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <libkern/OSAtomic.h>
 #include <xhyve/support/apicreg.h>
 #include <xhyve/vmm/vmm_callout.h>
-#include <os/lock.h>
+#include <xhyve/support/platform_locks.h>
 
 /*
  * APIC Register:		Offset	   Description
@@ -164,7 +163,11 @@ struct vlapic {
 	struct bintime timer_fire_bt; /* callout expiry time */
 	struct bintime timer_freq_bt; /* timer frequency */
 	struct bintime timer_period_bt; /* timer period */
+#ifdef XHYVE_USE_OSLOCKS
 	os_unfair_lock timer_lock;
+#else
+	OSSpinLock timer_lock;
+#endif
 	/*
 	 * The 'isrvec_stk' is a stack of vectors injected by the local apic.
 	 * A vector is popped from the stack when the processor does an EOI.
