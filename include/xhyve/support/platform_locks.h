@@ -26,7 +26,7 @@
 
 #include <Availability.h>
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_12
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1012
 #define XHYVE_USE_OSLOCKS 1
 #include <os/lock.h>
 #else
