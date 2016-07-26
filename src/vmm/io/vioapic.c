@@ -32,7 +32,7 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <assert.h>
-#include <libkern/OSAtomic.h>
+#include <xhyve/support/platform_locks.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/apicreg.h>
 #include <xhyve/vmm/vmm_ktr.h>
@@ -49,7 +49,11 @@
 #pragma clang diagnostic ignored "-Wpadded"
 struct vioapic {
 	struct vm *vm;
-	OSSpinLock lock;
+#ifdef XHYVE_USE_OSLOCKS
+  os_unfair_lock lock;
+#else
+  OSSpinLock lock;
+#endif
 	uint32_t id;
 	uint32_t ioregsel;
 	struct {
@@ -59,9 +63,14 @@ struct vioapic {
 };
 #pragma clang diagnostic pop
 
+#ifdef XHYVE_USE_OSLOCKS
+#define VIOAPIC_LOCK(v) os_unfair_lock_lock(&(v)->lock)
+#define VIOAPIC_UNLOCK(v) os_unfair_lock_unlock(&(v)->lock)
+#else
 #define VIOAPIC_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
 #define VIOAPIC_LOCK(v) OSSpinLockLock(&(v)->lock)
 #define VIOAPIC_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+#endif
 
 #define	VIOAPIC_CTR1(vioapic, fmt, a1) \
 	VM_CTR1((vioapic)->vm, fmt, a1)
@@ -460,9 +469,9 @@ vioapic_init(struct vm *vm)
 	assert(vioapic);
 	bzero(vioapic, sizeof(struct vioapic));
 	vioapic->vm = vm;
-
+#ifndef XHYVE_USE_OSLOCKS
 	VIOAPIC_LOCK_INIT(vioapic);
-
+#endif
 	/* Initialize all redirection entries to mask all interrupts */
 	for (i = 0; i < REDIR_ENTRIES; i++)
 		vioapic->rtbl[i].reg = 0x0001000000010000UL;

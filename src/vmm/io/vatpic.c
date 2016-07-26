@@ -37,10 +37,15 @@
 #include <xhyve/vmm/vmm_ktr.h>
 #include <xhyve/vmm/io/vatpic.h>
 #include <xhyve/vmm/io/vioapic.h>
+#include <xhyve/support/platform_locks.h>
 
-#define VATPIC_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
+#ifdef XHYVE_USE_OSLOCKS
+#define VATPIC_LOCK(v) os_unfair_lock_lock(&(v)->lock)
+#define VATPIC_UNLOCK(v) os_unfair_lock_unlock(&(v)->lock)
+#else
 #define VATPIC_LOCK(v) OSSpinLockLock(&(v)->lock)
 #define VATPIC_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+#endif
 
 enum irqstate {
 	IRQSTATE_ASSERT,
@@ -70,7 +75,11 @@ struct atpic {
 
 struct vatpic {
 	struct vm *vm;
+#ifdef XHYVE_USE_OSLOCKS
+	os_unfair_lock lock;
+#else
 	OSSpinLock lock;
+#endif
 	struct atpic atpic[2];
 	uint8_t elc[2];
 };
@@ -700,11 +709,11 @@ vatpic_master_handler(struct vm *vm, UNUSED int vcpuid, bool in, int port,
 
 	if (bytes != 1)
 		return (-1);
- 
+
 	if (in) {
 		return (vatpic_read(vatpic, atpic, in, port, bytes, eax));
 	}
- 
+
 	return (vatpic_write(vatpic, atpic, in, port, bytes, eax));
 }
 
@@ -779,9 +788,9 @@ vatpic_init(struct vm *vm)
 	assert(vatpic);
 	bzero(vatpic, sizeof(struct vatpic));
 	vatpic->vm = vm;
-
+#ifndef XHYVE_USE_OSLOCKS
 	VATPIC_LOCK_INIT(vatpic);
-
+#endif
 	return (vatpic);
 }
 
