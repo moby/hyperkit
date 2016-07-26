@@ -29,8 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <os/lock.h>
-#include <libkern/OSAtomic.h>
+#include <xhyve/support/platform_locks.h>
 #include <xhyve/support/timerreg.h>
 #include <xhyve/vmm/vmm_callout.h>
 #include <xhyve/vmm/vmm_ktr.h>
@@ -38,9 +37,14 @@
 #include <xhyve/vmm/io/vatpit.h>
 #include <xhyve/vmm/io/vioapic.h>
 
-// #define VATPIT_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
+#ifdef XHYVE_USE_OSLOCKS
 #define VATPIT_LOCK(v) os_unfair_lock_lock(&(v)->lock)
 #define VATPIT_UNLOCK(v) os_unfair_lock_unlock(&(v)->lock)
+#else
+#define VATPIT_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
+#define VATPIT_LOCK(v) OSSpinLockLock(&(v)->lock)
+#define VATPIT_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+#endif
 
 #define	TIMER_SEL_MASK		0xc0
 #define	TIMER_RW_MASK		0x30
@@ -86,7 +90,11 @@ struct channel {
 
 struct vatpit {
 	struct vm *vm;
-	os_unfair_lock lock;
+	#ifdef XHYVE_USE_OSLOCKS
+    os_unfair_lock lock;
+  #else
+    OSSpinLock lock;
+  #endif
 	sbintime_t freq_sbt;
 	struct channel channel[3];
 };

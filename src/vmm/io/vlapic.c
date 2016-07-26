@@ -31,7 +31,7 @@
 #include <stdbool.h>
 #include <strings.h>
 #include <errno.h>
-#include <os/lock.h>
+#include <xhyve/support/platform_locks.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
 #include <xhyve/support/specialreg.h>
@@ -57,10 +57,14 @@
  * - timer_freq_bt, timer_period_bt, timer_fire_bt
  * - timer LVT register
  */
-// #define VLAPIC_TIMER_LOCK_INIT(v) (v)->timer_lock = OS_SPINLOCK_INIT;
+#ifdef XHYVE_USE_OSLOCKS
 #define VLAPIC_TIMER_LOCK(v) os_unfair_lock_lock(&(v)->timer_lock)
 #define VLAPIC_TIMER_UNLOCK(v) os_unfair_lock_unlock(&(v)->timer_lock)
-
+#else
+#define VLAPIC_TIMER_LOCK_INIT(v) (v)->timer_lock = OS_SPINLOCK_INIT;
+#define VLAPIC_TIMER_LOCK(v) OSSpinLockLock(&(v)->timer_lock)
+#define VLAPIC_TIMER_UNLOCK(v) OSSpinLockUnlock(&(v)->timer_lock)
+#endif
 /*
  * APIC timer frequency:
  * - arbitrary but chosen to be in the ballpark of contemporary hardware.
@@ -137,7 +141,6 @@ void
 vlapic_id_write_handler(struct vlapic *vlapic)
 {
 	struct LAPIC *lapic;
-
 	/*
 	 * We don't allow the ID register to be modified so reset it back to
 	 * its default value.
@@ -225,7 +228,6 @@ vlapic_dcr_write_handler(struct vlapic *vlapic)
 	divisor = vlapic_timer_divisor(lapic->dcr_timer);
 	VLAPIC_CTR2(vlapic, "vlapic dcr_timer=%#x, divisor=%d",
 	    lapic->dcr_timer, divisor);
-
 	/*
 	 * Update the timer frequency and the timer period.
 	 *
@@ -626,7 +628,6 @@ static void
 vlapic_fire_timer(struct vlapic *vlapic)
 {
 	uint32_t lvt;
-
 	// The timer LVT always uses the fixed delivery mode.
 	lvt = vlapic_get_lvt(vlapic, APIC_OFFSET_TIMER_LVT);
 	if (vlapic_fire_lvt(vlapic, lvt | APIC_LVT_DM_FIXED)) {

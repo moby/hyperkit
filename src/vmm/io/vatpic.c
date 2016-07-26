@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <assert.h>
-
 #include <libkern/OSAtomic.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/i8259.h>

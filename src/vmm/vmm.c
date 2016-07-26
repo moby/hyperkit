@@ -33,8 +33,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <assert.h>
-#include <os/lock.h>
-#include <libkern/OSAtomic.h>
+#include <xhyve/support/platform_locks.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
 #include <xhyve/support/cpuset.h>
@@ -70,8 +69,11 @@ struct vlapic;
  * (x) initialized before use
  */
 struct vcpu {
-	// OSSpinLock lock; /* (o) protects 'state' */
-  os_unfair_lock lock;
+	#ifdef XHYVE_USE_OSLOCKS
+    os_unfair_lock lock;
+  #else
+    OSSpinLock timer_lock;
+  #endif
 	pthread_mutex_t state_sleep_mtx;
 	pthread_cond_t state_sleep_cnd;
 	pthread_mutex_t vcpu_sleep_mtx;
@@ -92,9 +94,14 @@ struct vcpu {
 	uint64_t nextrip; /* (x) next instruction to execute */
 };
 
-// #define vcpu_lock_init(v) (v)->lock = OS_SPINLOCK_INIT;
+#ifdef XHYVE_USE_OSLOCKS
 #define vcpu_lock(v) os_unfair_lock_lock(&(v)->lock)
 #define vcpu_unlock(v) os_unfair_lock_unlock(&(v)->lock)
+#else
+#define vcpu_lock_init(v) (v)->lock = OS_SPINLOCK_INIT;
+#define vcpu_lock(v) OSSpinLockLock(&(v)->lock)
+#define vcpu_unlock(v) OSSpinLockUnlock(&(v)->lock)
+#endif
 
 struct mem_seg {
 	uint64_t gpa;
@@ -206,7 +213,7 @@ vcpu_init(struct vm *vm, int vcpu_id, bool create)
 	vcpu = &vm->vcpu[vcpu_id];
 
 	if (create) {
-		// vcpu_lock_init(vcpu);
+    // vcpu_lock_init(vcpu);
 		pthread_mutex_init(&vcpu->state_sleep_mtx, NULL);
 		pthread_cond_init(&vcpu->state_sleep_cnd, NULL);
 		pthread_mutex_init(&vcpu->vcpu_sleep_mtx, NULL);
