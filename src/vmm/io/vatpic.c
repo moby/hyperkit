@@ -788,9 +788,9 @@ vatpic_init(struct vm *vm)
 	assert(vatpic);
 	bzero(vatpic, sizeof(struct vatpic));
 	vatpic->vm = vm;
-
-	// VATPIC_LOCK_INIT(vatpic);
-
+#ifndef XHYVE_USE_OSLOCKS
+	VATPIC_LOCK_INIT(vatpic);
+#endif
 	return (vatpic);
 }
 

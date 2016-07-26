@@ -1510,7 +1510,9 @@ vlapic_init(struct vlapic *vlapic)
 	 * Therefore the timer mutex must be a spinlock because blockable
 	 * mutexes cannot be acquired in a critical section.
 	 */
-	// VLAPIC_TIMER_LOCK_INIT(vlapic);
+#ifndef XHYVE_USE_OSLOCKS
+	VLAPIC_TIMER_LOCK_INIT(vlapic);
+#endif
 	callout_init(&vlapic->callout, 1);
 
 	vlapic->msr_apicbase = DEFAULT_APIC_BASE | APICBASE_ENABLED;

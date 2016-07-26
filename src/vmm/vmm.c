@@ -69,11 +69,11 @@ struct vlapic;
  * (x) initialized before use
  */
 struct vcpu {
-	#ifdef XHYVE_USE_OSLOCKS
-    os_unfair_lock lock;
-  #else
-    OSSpinLock timer_lock;
-  #endif
+#ifdef XHYVE_USE_OSLOCKS
+  os_unfair_lock lock;
+#else
+  OSSpinLock timer_lock;
+#endif
 	pthread_mutex_t state_sleep_mtx;
 	pthread_cond_t state_sleep_cnd;
 	pthread_mutex_t vcpu_sleep_mtx;
@@ -213,7 +213,9 @@ vcpu_init(struct vm *vm, int vcpu_id, bool create)
 	vcpu = &vm->vcpu[vcpu_id];
 
 	if (create) {
-    // vcpu_lock_init(vcpu);
+  #ifndef XHYVE_USE_OSLOCKS
+    vcpu_lock_init(vcpu);
+  #endif
 		pthread_mutex_init(&vcpu->state_sleep_mtx, NULL);
 		pthread_cond_init(&vcpu->state_sleep_cnd, NULL);
 		pthread_mutex_init(&vcpu->vcpu_sleep_mtx, NULL);

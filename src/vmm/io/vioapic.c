@@ -49,11 +49,11 @@
 #pragma clang diagnostic ignored "-Wpadded"
 struct vioapic {
 	struct vm *vm;
-	#ifdef XHYVE_USE_OSLOCKS
-    os_unfair_lock lock;
-  #else
-    OSSpinLock lock;
-  #endif
+#ifdef XHYVE_USE_OSLOCKS
+  os_unfair_lock lock;
+#else
+  OSSpinLock lock;
+#endif
 	uint32_t id;
 	uint32_t ioregsel;
 	struct {
@@ -469,9 +469,9 @@ vioapic_init(struct vm *vm)
 	assert(vioapic);
 	bzero(vioapic, sizeof(struct vioapic));
 	vioapic->vm = vm;
-
-	// VIOAPIC_LOCK_INIT(vioapic);
-
+#ifndef XHYVE_USE_OSLOCKS
+	VIOAPIC_LOCK_INIT(vioapic);
+#endif
 	/* Initialize all redirection entries to mask all interrupts */
 	for (i = 0; i < REDIR_ENTRIES; i++)
 		vioapic->rtbl[i].reg = 0x0001000000010000UL;

@@ -90,11 +90,11 @@ struct channel {
 
 struct vatpit {
 	struct vm *vm;
-	#ifdef XHYVE_USE_OSLOCKS
-    os_unfair_lock lock;
-  #else
-    OSSpinLock lock;
-  #endif
+#ifdef XHYVE_USE_OSLOCKS
+  os_unfair_lock lock;
+#else
+  OSSpinLock lock;
+#endif
 	sbintime_t freq_sbt;
 	struct channel channel[3];
 };
@@ -431,9 +431,9 @@ vatpit_init(struct vm *vm)
 	assert(vatpit);
 	bzero(vatpit, sizeof(struct vatpit));
 	vatpit->vm = vm;
-
-	// VATPIT_LOCK_INIT(vatpit)
-
+#ifndef XHYVE_USE_OSLOCKS
+	VATPIT_LOCK_INIT(vatpit)
+#endif
 	FREQ2BT(PIT_8254_FREQ, &bt);
 	vatpit->freq_sbt = bttosbt(bt);
 
