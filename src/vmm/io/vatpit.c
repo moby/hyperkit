@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
-#include <libkern/OSAtomic.h>
+#include <xhyve/support/misc.h>
 #include <xhyve/support/timerreg.h>
 #include <xhyve/vmm/vmm_callout.h>
 #include <xhyve/vmm/vmm_ktr.h>
@@ -37,9 +37,9 @@
 #include <xhyve/vmm/io/vatpit.h>
 #include <xhyve/vmm/io/vioapic.h>
 
-#define VATPIT_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
-#define VATPIT_LOCK(v) OSSpinLockLock(&(v)->lock)
-#define VATPIT_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+#define VATPIT_LOCK_INIT(v) xpthread_mutex_init(&(v)->lock)
+#define VATPIT_LOCK(v) xpthread_mutex_lock(&(v)->lock)
+#define VATPIT_UNLOCK(v) xpthread_mutex_unlock(&(v)->lock)
 
 #define	TIMER_SEL_MASK		0xc0
 #define	TIMER_RW_MASK		0x30
@@ -85,7 +85,7 @@ struct channel {
 
 struct vatpit {
 	struct vm *vm;
-	OSSpinLock lock;
+	pthread_mutex_t lock;
 	sbintime_t freq_sbt;
 	struct channel channel[3];
 };
@@ -423,7 +423,7 @@ vatpit_init(struct vm *vm)
 	bzero(vatpit, sizeof(struct vatpit));
 	vatpit->vm = vm;
 
-	VATPIT_LOCK_INIT(vatpit)
+	VATPIT_LOCK_INIT(vatpit);
 
 	FREQ2BT(PIT_8254_FREQ, &bt);
 	vatpit->freq_sbt = bttosbt(bt);
