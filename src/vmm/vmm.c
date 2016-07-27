@@ -69,7 +69,7 @@ struct vlapic;
  * (x) initialized before use
  */
 struct vcpu {
-	OSSpinLock lock; /* (o) protects 'state' */
+	pthread_mutex_t lock; /* (o) protects 'state' */
 	pthread_mutex_t state_sleep_mtx;
 	pthread_cond_t state_sleep_cnd;
 	pthread_mutex_t vcpu_sleep_mtx;
@@ -90,9 +90,9 @@ struct vcpu {
 	uint64_t nextrip; /* (x) next instruction to execute */
 };
 
-#define vcpu_lock_init(v) (v)->lock = OS_SPINLOCK_INIT;
-#define vcpu_lock(v) OSSpinLockLock(&(v)->lock)
-#define vcpu_unlock(v) OSSpinLockUnlock(&(v)->lock)
+#define vcpu_lock_init(v) xpthread_mutex_init(&(v)->lock)
+#define vcpu_lock(v) xpthread_mutex_lock(&(v)->lock)
+#define vcpu_unlock(v) xpthread_mutex_unlock(&(v)->lock)
 
 struct mem_seg {
 	uint64_t gpa;
