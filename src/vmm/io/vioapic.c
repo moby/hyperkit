@@ -32,7 +32,6 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <assert.h>
-#include <libkern/OSAtomic.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/apicreg.h>
 #include <xhyve/vmm/vmm_ktr.h>
@@ -49,7 +48,7 @@
 #pragma clang diagnostic ignored "-Wpadded"
 struct vioapic {
 	struct vm *vm;
-	OSSpinLock lock;
+	pthread_mutex_t lock;
 	uint32_t id;
 	uint32_t ioregsel;
 	struct {
@@ -59,9 +58,9 @@ struct vioapic {
 };
 #pragma clang diagnostic pop
 
-#define VIOAPIC_LOCK_INIT(v) (v)->lock = OS_SPINLOCK_INIT;
-#define VIOAPIC_LOCK(v) OSSpinLockLock(&(v)->lock)
-#define VIOAPIC_UNLOCK(v) OSSpinLockUnlock(&(v)->lock)
+#define VIOAPIC_LOCK_INIT(v) xpthread_mutex_init(&(v)->lock);
+#define VIOAPIC_LOCK(v) xpthread_mutex_lock(&(v)->lock)
+#define VIOAPIC_UNLOCK(v) xpthread_mutex_unlock(&(v)->lock)
 
 #define	VIOAPIC_CTR1(vioapic, fmt, a1) \
 	VM_CTR1((vioapic)->vm, fmt, a1)
