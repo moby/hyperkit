@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <strings.h>
 #include <errno.h>
+#include <assert.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/support/atomic.h>
 #include <xhyve/support/specialreg.h>
@@ -56,9 +57,9 @@
  * - timer_freq_bt, timer_period_bt, timer_fire_bt
  * - timer LVT register
  */
-#define VLAPIC_TIMER_LOCK_INIT(v) (v)->timer_lock = OS_SPINLOCK_INIT;
-#define VLAPIC_TIMER_LOCK(v) OSSpinLockLock(&(v)->timer_lock)
-#define VLAPIC_TIMER_UNLOCK(v) OSSpinLockUnlock(&(v)->timer_lock)
+#define VLAPIC_TIMER_LOCK_INIT(v) xpthread_mutex_init(&(v)->timer_lock)
+#define VLAPIC_TIMER_LOCK(v) xpthread_mutex_lock(&(v)->timer_lock)
+#define VLAPIC_TIMER_UNLOCK(v) xpthread_mutex_unlock(&(v)->timer_lock)
 
 /*
  * APIC timer frequency:
