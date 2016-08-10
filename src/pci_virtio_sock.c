@@ -178,33 +178,62 @@ struct pci_vtsock_sock {
 	 *
 	 * To free a sock:
 	 *
-	 *   Set state to CLOSING and kick the rx sock.
+	 *   Set state to CLOSING_TX and kick the tx thread[*].
 	 *
-	 *   The RX loop will take list_rwlock for reading (as part of
-	 *   its normal start of loop processing) and:
+	 * Then the following will happen:
 	 *
-	 *     Take the socket's lock and discover state == CLOSING
+	 * ,-TX thread:
+	 * |
+	 * | The TX loop will take list_rwlock for reading (as part of
+	 * | its normal start of loop processing) and:
+	 * |
+	 * |   Take the socket's lock and discover state == CLOSING_TX
+	 * |
+	 * |   Set state == CLOSING_RX
+	 * |
+	 * |   Note that an RX kick is needed
+	 * |
+         * | Release list_rwlock
+	 * |
+	 * `-Kick the rx thread if required
 	 *
-	 *     Put the socket on a local "to be closed" queue
+	 * ,-RX thread:
+	 * |
+	 * | The RX loop will take list_rwlock for reading (as part of
+	 * | its normal start of loop processing) and:
+	 * |
+	 * |   Take the socket's lock and discover state == CLOSING_RX
+	 * |
+	 * |   Put the socket on a local "to be closed" queue
+	 * |
+         * | Release list_rwlock
+	 * |
+	 * | If there a sockets to be closed, take list_rwlock for
+	 * | writing, and for each socket:
+	 * |
+	 * |   close the fd, set state == FREE
+	 * |
+	 * |   remove socket from inuse_list, add to free_list
+	 * |
+	 * |   drop the socket's lock
+	 * |
+	 * `-Drop list_rwlock
 	 *
-         *   Release list_rwlock
-	 *
-	 *   If there a sockets to be closed, take list_rwlock for
-	 *   writing, and for each socket:
-	 *
-	 *     close the fd, set state == FREE
-	 *
-	 *     remove socket from inuse_list, add to free_list
-	 *
-	 *     drop the socket's lock
-	 *
-	 *  Drop list_rwlock
+	 * [*] Callers in the TX loop (only) may when closing a socket
+	 * choose to skip the initial CLOSING_TX state (which exists
+	 * only to ensure that the fd is not current in the tx select,
+	 * which it cannot be if the TX thread is doing the close) and
+	 * go straight to CLOSING_RX kicking the rx thread instead. If
+	 * the close is initiated by the RX thread (or anywhere else)
+	 * then it must go through the full
+	 * CLOSING_TX->CLOSING_RX->FREE path.
 	 */
 	enum {
 		SOCK_FREE, /* Initial state */
 		SOCK_CONNECTING,
 		SOCK_CONNECTED,
-		SOCK_CLOSING,
+		SOCK_CLOSING_TX,
+		SOCK_CLOSING_RX,
 	} state;
 	/* fd is:
 	 *   >= 0	When state == CONNECTED,
@@ -764,8 +793,9 @@ static uint32_t shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 /* The caller must have sent something (probably OP_RST, but perhaps
  * OP_SHUTDOWN) to the peer already.
  */
-static void close_sock(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
-		       const char *ctx)
+static void close_sock_common(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
+			      const char *ctx, unsigned int state,
+			      void (*kicker)(struct pci_vtsock_softc *sc, const char *why))
 {
 	if (!s) return;
 	DPRINTF(("%s: Closing sock %p\n", ctx, (void *)s));
@@ -776,16 +806,33 @@ static void close_sock(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
 	 * shutdown() call on s->fd */
 	s->local_shutdown = VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL;
 
-	s->state = SOCK_CLOSING;
-	kick_rx(sc, "sock closed");
+	s->state = state;
+	kicker(sc, "sock closed");
 }
 
-static void shutdown_peer_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
-			       uint32_t mode, const char *ctx)
+/* Only to be called from the TX thread */
+static void close_sock_tx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s)
 {
+	assert(pthread_self() == sc->tx_thread);
+	close_sock_common(sc, s, "TX", SOCK_CLOSING_RX, &kick_rx);
+}
+
+/* Only to be called from the RX thread */
+static void close_sock_rx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s)
+{
+	assert(pthread_self() == sc->rx_thread);
+	close_sock_common(sc, s, "RX", SOCK_CLOSING_TX, &kick_tx);
+}
+
+/* Only to be called from the TX thread */
+static void shutdown_peer_sock_tx(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
+				  uint32_t mode)
+{
+	const char *ctx = "TX";
 	bool kick = false;
 	uint32_t set;
 
+	assert(pthread_self() == sc->tx_thread);
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
 
 	if (s->state != SOCK_CONNECTED) goto done;
@@ -804,7 +851,7 @@ static void shutdown_peer_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_so
 	if (/*set &&*/ mode == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL &&
 	    /*s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL &&*/
 	    s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) {
-		s->state = SOCK_CLOSING;
+		s->state = SOCK_CLOSING_RX;
 		kick = true;
 	}
 
@@ -812,13 +859,18 @@ done:
 	if (kick) kick_rx(sc, "shutdown (peer)");
 }
 
-/* Caller should send OP_SHUTDOWN with flags == s->local_shutdown after calling this */
-static void shutdown_local_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
-				uint32_t mode, const char *ctx)
+/*
+ * Caller should send OP_SHUTDOWN with flags == s->local_shutdown after calling this.
+ * Only to be called from the RX thread.
+ */
+static void shutdown_local_sock_rx(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
+				uint32_t mode)
 {
+	const char *ctx = "RX";
 	bool kick = false;
 	uint32_t new, set;
 
+	assert(pthread_self() == sc->rx_thread);
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
 
 	if (s->state != SOCK_CONNECTED) goto done;
@@ -839,12 +891,12 @@ static void shutdown_local_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_s
 	if (set &&
 	    s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL /*&&
 	    s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL*/) {
-		s->state = SOCK_CLOSING;
+		s->state = SOCK_CLOSING_TX;
 		kick = true;
 	}
 
 done:
-	if (kick) kick_rx(sc, "shutdown (local)");
+	if (kick) kick_tx(sc, "shutdown (local)");
 }
 
 static void set_credit_update_required(struct pci_vtsock_softc *sc,
@@ -967,7 +1019,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
 			PPRINTF(("TX: writev fd=%d failed with EPIPE => SHUTDOWN_RX\n", sock->fd));
-			shutdown_local_sock(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX, "RX");
+			shutdown_local_sock_rx(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return;
@@ -977,7 +1029,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 			PPRINTF(("TX: write fd=%d failed with %d %s\n", sock->fd,
 				 errno, strerror(errno)));
 			send_response_sock(sc, VIRTIO_VSOCK_OP_RST, 0, sock);
-			close_sock(sc, sock, "TX");
+			close_sock_tx(sc, sock);
 			return;
 		}
 	}
@@ -1018,7 +1070,7 @@ static int handle_write(struct pci_vtsock_softc *sc,
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
 			PPRINTF(("TX: writev fd=%d failed with EPIPE => SHUTDOWN_RX\n", sock->fd));
-			shutdown_local_sock(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX, "RX");
+			shutdown_local_sock_rx(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return 0;
@@ -1157,7 +1209,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		/* No response */
 		if (!sock)
 			PPRINTF(("TX: RST to non-existent sock\n"));
-		close_sock(sc, sock, "TX");
+		close_sock_tx(sc, sock);
 		vq_relchain(vq, idx, 0);
 		break;
 
@@ -1183,7 +1235,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 			goto do_rst; /* ??? */
 		}
 
-		shutdown_peer_sock(sc, sock, hdr.flags, "TX");
+		shutdown_peer_sock_tx(sc, sock, hdr.flags);
 
 		vq_relchain(vq, idx, 0);
 		break;
@@ -1267,7 +1319,7 @@ do_rst:
 					     .port =hdr.src_port
 				     });
 	vq_relchain(vq, idx, 0);
-	close_sock(sc, sock, "TX");
+	close_sock_tx(sc, sock);
 	if (sock) put_sock(sock);
 	return;
 }
@@ -1383,6 +1435,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 	assert(sc->connect_fd != -1);
 
 	while(1) {
+		bool kick_rx_closing = false;
 		int i, nrfd, maxfd, nr;
 		int buffering = 0;
 		struct pci_vtsock_sock *s;
@@ -1410,6 +1463,27 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		pthread_rwlock_rdlock(&sc->list_rwlock);
 		LIST_FOREACH(s, &sc->inuse_list, list) {
 			get_sock(s);
+
+			if (s->state == SOCK_CLOSING_TX) { /* Closing comes through here */
+				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
+				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
+
+				DPRINTF(("TX: Closing sock %p fd %d local %"PRIx32" peer %"PRIx32"\n",
+					 (void *)s, s->fd,
+					 s->local_shutdown,
+					 s->peer_shutdown));
+				PPRINTF(("TX: SOCK closed (%d) "PRIaddr" <=> "PRIaddr"\n",
+					 s->fd,
+					 FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
+
+				s->state = SOCK_CLOSING_RX;
+
+				kick_rx_closing = true;
+
+				put_sock(s);
+				continue;
+			}
+
 			if (s->state != SOCK_CONNECTED) {
 				put_sock(s);
 				continue;
@@ -1426,6 +1500,9 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		}
 		pthread_rwlock_unlock(&sc->list_rwlock);
 		assert(maxfd < FD_SETSIZE);
+
+		if (kick_rx_closing)
+			kick_rx(sc, "tx closing");
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
@@ -1561,13 +1638,13 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		hdr->len = 0;
 		dprint_header(hdr, 0, "RX");
 		vq_relchain(vq, idx, sizeof(*hdr));
-		close_sock(sc, s, "RX");
+		close_sock_rx(sc, s);
 		return 0;
 	}
 	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
 	if (len == 0) { /* Not actually anything to read -- EOF */
 		PPRINTF(("RX: readv fd=%d EOF => SHUTDOWN_TX\n", s->fd));
-		shutdown_local_sock(sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX, "RX");
+		shutdown_local_sock_rx(sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX);
 		hdr->op = VIRTIO_VSOCK_OP_SHUTDOWN;
 		hdr->flags = s->local_shutdown;
 		hdr->len = 0;
@@ -1708,7 +1785,7 @@ rx_done:
 
 			get_sock(s);
 
-			if (s->state == SOCK_CLOSING) { /* Closing comes through here */
+			if (s->state == SOCK_CLOSING_RX) { /* Closing comes through here */
 				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
 				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 
