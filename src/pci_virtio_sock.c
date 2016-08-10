@@ -310,6 +310,23 @@ struct pci_vtsock_softc {
 #define VTSOCK_REPLYRINGSZ (2*VTSOCK_RINGSZ)
 	struct virtio_sock_hdr reply_ring[VTSOCK_REPLYRINGSZ];
 	int reply_prod, reply_cons;
+	/*
+	 * If reply_prod == reply_cons then the ring is empty,
+	 * otherwise there is data in it.
+	 *
+	 * If the ring is not empty then there MUST always be a 1 slot
+	 * buffer between the producer and the consumer pointers
+	 * (i.e. the ring size is effectively one less than expected).
+	 *
+	 * If this invariant is violated and we consume the final free
+	 * slot then reply_prod would have caught up to reply_cons and
+	 * the ring would be considered empty rather than
+	 * full. Therefore we consider the ring full when:
+	 *
+	 *    (reply_prod + 1) % VTSOCK_REPLYRINGSZ == reply_cons.
+	 */
+#define REPLY_RING_EMPTY(sc) (sc->reply_cons == sc->reply_prod)
+//#define REPLY_RING_FULL(sc) ((sc->reply_prod + 1) % VTSOCK_REPLYRINGSZ == sc->reply_cons)
 };
 
 #pragma clang diagnostic pop
@@ -924,11 +941,14 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 	slot = sc->reply_prod++;
 	if (sc->reply_prod == VTSOCK_REPLYRINGSZ)
 		sc->reply_prod = 0;
-	/* check for reply ring overflow */
-	/* XXX correct check? */
 	DPRINTF(("TX: QUEUING REPLY IN SLOT %x (prod %x, cons %x)\n",
 		 slot, sc->reply_prod, sc->reply_cons));
-	assert(sc->reply_cons != sc->reply_prod);
+	/*
+	 * We have just incremented reply_prod above but we hold the
+	 * lock so the consumer cannot have caught us up. Hence for
+	 * the ring to appear empty it must actually have just overflowed.
+	 */
+	assert(!REPLY_RING_EMPTY(sc));
 
 	hdr = &sc->reply_ring[slot];
 
@@ -1675,7 +1695,7 @@ static bool rx_do_one_reply(struct pci_vtsock_softc *sc,
 	int slot;
 	bool more_to_do = false;
 
-	if (sc->reply_cons == sc->reply_prod)
+	if (REPLY_RING_EMPTY(sc))
 		goto done;
 
 	slot = sc->reply_cons++;
@@ -1695,7 +1715,7 @@ static bool rx_do_one_reply(struct pci_vtsock_softc *sc,
 
 	vq_relchain(vq, idx, sizeof(*hdr));
 
-	more_to_do = sc->reply_cons != sc->reply_prod;
+	more_to_do = !REPLY_RING_EMPTY(sc);
 
 done:
 	return more_to_do;
