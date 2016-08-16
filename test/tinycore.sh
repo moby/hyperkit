@@ -9,7 +9,7 @@ set -e
 
 BASE_URL="http://distro.ibiblio.org/tinycorelinux/"
 
-TMP_DIR=$(mktemp -d)
+TMP_DIR=$(mktemp -d -t hyperkit)
 INITRD_DIR="${TMP_DIR}"/initrd
 
 echo Downloading tinycore linux
