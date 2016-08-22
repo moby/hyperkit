@@ -880,14 +880,13 @@ done:
  * Caller should send OP_SHUTDOWN with flags == s->local_shutdown after calling this.
  * Only to be called from the RX thread.
  */
-static void shutdown_local_sock_rx(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
+static void shutdown_local_sock(const char *ctx,
+				struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
 				uint32_t mode)
 {
-	const char *ctx = "RX";
 	bool kick = false;
 	uint32_t new, set;
 
-	assert(pthread_self() == sc->rx_thread);
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
 
 	if (s->state != SOCK_CONNECTED) goto done;
@@ -1038,8 +1037,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 	if (nr == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
-			PPRINTF(("TX: writev fd=%d failed with EPIPE => SHUTDOWN_RX\n", sock->fd));
-			shutdown_local_sock_rx(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
+			shutdown_local_sock("TX", sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return;
@@ -1090,7 +1088,7 @@ static int handle_write(struct pci_vtsock_softc *sc,
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
 			PPRINTF(("TX: writev fd=%d failed with EPIPE => SHUTDOWN_RX\n", sock->fd));
-			shutdown_local_sock_rx(sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
+			shutdown_local_sock("TX", sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return 0;
@@ -1664,7 +1662,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
 	if (len == 0) { /* Not actually anything to read -- EOF */
 		PPRINTF(("RX: readv fd=%d EOF => SHUTDOWN_TX\n", s->fd));
-		shutdown_local_sock_rx(sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX);
+		shutdown_local_sock("RX", sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX);
 		hdr->op = VIRTIO_VSOCK_OP_SHUTDOWN;
 		hdr->flags = s->local_shutdown;
 		hdr->len = 0;
