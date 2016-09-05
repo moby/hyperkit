@@ -161,7 +161,7 @@ func (fs *gopherJSFS) compileGoPackage(dir string) (http.File, error) {
 		}
 
 		fmt.Printf("REBUILDING SOURCE for: %s using %+v\n", name, names)
-		content := []byte(handleJsError(goReadersToJs(names, goReaders)))
+		content := []byte(handleJsError(goReadersToJS(names, goReaders)))
 
 		for _, closer := range goClosers {
 			closer.Close()

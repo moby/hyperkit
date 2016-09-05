@@ -24,14 +24,16 @@ func handleJsError(jsCode string, err error) string {
 // Needed to prevent race condition until https://github.com/go-on/gopherjslib/issues/2 is resolved.
 var gopherjslibLock sync.Mutex
 
-func goReadersToJs(names []string, goReaders []io.Reader) (jsCode string, err error) {
+const minify = true
+
+func goReadersToJS(names []string, goReaders []io.Reader) (jsCode string, err error) {
 	started := time.Now()
-	defer func() { fmt.Println("goReadersToJs taken:", time.Since(started)) }()
+	defer func() { fmt.Printf("goReadersToJS (minify=%v) taken: %v\n", minify, time.Since(started)) }()
 	gopherjslibLock.Lock()
 	defer gopherjslibLock.Unlock()
 
 	var out bytes.Buffer
-	builder := gopherjslib.NewBuilder(&out, &gopherjslib.Options{Minify: true})
+	builder := gopherjslib.NewBuilder(&out, &gopherjslib.Options{Minify: minify})
 
 	for i, goReader := range goReaders {
 		builder.Add(names[i], goReader)
