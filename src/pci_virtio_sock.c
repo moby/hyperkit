@@ -81,7 +81,7 @@
  * Config space "registers"
  */
 struct vtsock_config {
-	uint32_t guest_cid;
+	uint64_t guest_cid;
 } __packed;
 
 /*
@@ -89,9 +89,9 @@ struct vtsock_config {
  */
 
 struct virtio_sock_hdr {
-	uint32_t src_cid;
+	uint64_t src_cid;
+	uint64_t dst_cid;
 	uint32_t src_port;
-	uint32_t dst_cid;
 	uint32_t dst_port;
 	uint32_t len;
 #define VIRTIO_VSOCK_TYPE_STREAM 1
@@ -133,10 +133,15 @@ static int pci_vtsock_debug = 0;
 /* XXX need to use rx and tx more consistently */
 
 struct vsock_addr {
-	uint32_t cid, port;
+	uint64_t cid;
+	uint32_t port;
 };
-#define PRIcid "%08"PRIx32
+#define PRIcid "%08"PRIx64
 #define PRIport "%08"PRIx32
+
+#define SCNcid "%08"SCNx64
+#define SCNport "%08"SCNx32
+#define SCNaddr SCNcid "." SCNport
 
 #ifdef PRI_ADDR_PREFIX
 #define PRIaddr PRI_ADDR_PREFIX PRIcid "." PRIport
@@ -338,6 +343,8 @@ struct pci_vtsock_softc {
 //#define VMADDR_CID_HYPERVISOR 0
 //#define VMADDR_CID_RESERVED 1
 #define VMADDR_CID_HOST 2
+
+#define VMADDR_CID_MAX UINT32_MAX /* Athough CID's are 64-bit in the protocol, we only support 32-bits */
 
 static void pci_vtsock_reset(void *);
 static void pci_vtsock_notify_tx(void *, struct vqueue_info *);
@@ -1342,7 +1349,7 @@ do_rst:
 	return;
 }
 
-static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32_t cid, uint32_t port)
+static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64_t cid, uint32_t port)
 {
 	int fd, rc;
 	char buf[8 + 1 + 8 + 1 + 1]; /* %08x.%08x\n\0 */
@@ -1385,16 +1392,20 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 
 		DPRINTF(("TX: Connect to %s", buf));
 
-		rc = sscanf(buf, "%08x.%08x\n", &cid, &port);
+		rc = sscanf(buf, SCNaddr"\n", &cid, &port);
 		if (rc != 2) {
 			DPRINTF(("TX: Failed to parse connect attempt\n"));
 			goto err;
 		}
-		DPRINTF(("TX: Connection requested to %08x.%08x\n", cid, port));
+		DPRINTF(("TX: Connection requested to "PRIaddr"\n", cid, port));
 	} else {
-		DPRINTF(("TX: Forwarding connection to %08x.%08x\n", cid, port));
+		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n", cid, port));
 	}
 
+	if (cid >= VMADDR_CID_MAX) {
+		DPRINTF(("TX: Attempt to connect to CID over 32-bit\n"));
+		goto err;
+	}
 	if (cid != sc->vssc_cfg.guest_cid) {
 		DPRINTF(("TX: Attempt to connect to non-guest CID\n"));
 		goto err;
@@ -2217,7 +2228,7 @@ copy_up_to_comma(const char *from)
 static int
 pci_vtsock_init(struct pci_devinst *pi, char *opts)
 {
-	uint32_t guest_cid = VMADDR_CID_ANY;
+	uint64_t guest_cid = VMADDR_CID_ANY;
 	const char *path = NULL;
 	char *guest_forwards = NULL;
 	struct pci_vtsock_softc *sc;
@@ -2261,8 +2272,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return 1;
 	}
 
-	if (guest_cid <= VMADDR_CID_HOST) {
-		fprintf(stderr, "invalid guest_cid %"PRIx32"\n", guest_cid);
+	if (guest_cid <= VMADDR_CID_HOST || guest_cid >= VMADDR_CID_MAX) {
+		fprintf(stderr, "invalid guest_cid "PRIcid"\n", guest_cid);
 		return 1;
 	}
 
@@ -2277,7 +2288,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 
 	/* XXX confirm path exists and is a directory */
 
-	fprintf(stderr, "vsock init %d:%d = %s, guest_cid = %"PRIx32"\n\r",
+	fprintf(stderr, "vsock init %d:%d = %s, guest_cid = "PRIcid"\n\r",
 		pi->pi_slot, pi->pi_func, path, guest_cid);
 
 	sc = calloc(1, sizeof(struct pci_vtsock_softc));
