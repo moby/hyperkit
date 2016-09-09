@@ -1927,6 +1927,7 @@ rx_done:
 		}
 
 		while (did_some_work) {
+			int nr_data_rx = 0;
 			bool more_replies_pending = true; /* Assume there is */
 			did_some_work = false;
 
@@ -1949,6 +1950,22 @@ rx_done:
 			DPRINTF(("RX: Checking all socks\n"));
 
 			LIST_FOREACH_SAFE(s, &queue, rx_queue, ts) {
+				/*
+				 * Check for new replies in the reply
+				 * ring frequently in order to avoid
+				 * possible deadlock due to filling
+				 * both vrings with data leaving no
+				 * space for replies. See "Virtqueue
+				 * Flow Control" in the spec.
+				 */
+				if (nr_data_rx++ >= 8) {
+					bool replies_pending;
+					pthread_mutex_lock(&sc->reply_mtx);
+					replies_pending = !REPLY_RING_EMPTY(sc);
+					pthread_mutex_unlock(&sc->reply_mtx);
+					if (replies_pending) break;
+				}
+
 				get_sock(s);
 
 				if (s->state != SOCK_CONNECTED) {
