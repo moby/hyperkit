@@ -67,6 +67,11 @@
 #define VTSOCK_MAXSOCKS	1024
 #define VTSOCK_MAXFWDS	4
 
+/* Number of seconds to wait after sending an OP_SHUTDOWN flags == ALL before
+ * we RST the connection ourselves.
+ */
+#define SHUTDOWN_RST_DELAY	30
+
 /*
  * Host capabilities
  */
@@ -81,7 +86,7 @@
  * Config space "registers"
  */
 struct vtsock_config {
-	uint32_t guest_cid;
+	uint64_t guest_cid;
 } __packed;
 
 /*
@@ -89,9 +94,9 @@ struct vtsock_config {
  */
 
 struct virtio_sock_hdr {
-	uint32_t src_cid;
+	uint64_t src_cid;
+	uint64_t dst_cid;
 	uint32_t src_port;
-	uint32_t dst_cid;
 	uint32_t dst_port;
 	uint32_t len;
 #define VIRTIO_VSOCK_TYPE_STREAM 1
@@ -133,10 +138,15 @@ static int pci_vtsock_debug = 0;
 /* XXX need to use rx and tx more consistently */
 
 struct vsock_addr {
-	uint32_t cid, port;
+	uint64_t cid;
+	uint32_t port;
 };
-#define PRIcid "%08"PRIx32
+#define PRIcid "%08"PRIx64
 #define PRIport "%08"PRIx32
+
+#define SCNcid "%08"SCNx64
+#define SCNport "%08"SCNx32
+#define SCNaddr SCNcid "." SCNport
 
 #ifdef PRI_ADDR_PREFIX
 #define PRIaddr PRI_ADDR_PREFIX PRIcid "." PRIport
@@ -243,6 +253,7 @@ struct pci_vtsock_sock {
 	uint16_t port_generation;
 	/* valid when SOCK_CONNECTED only */
 	uint32_t local_shutdown, peer_shutdown;
+	time_t rst_deadline; /* When local_shutdown==ALL, expect RST before */
 
 	struct vsock_addr local_addr;
 	struct vsock_addr peer_addr;
@@ -338,6 +349,8 @@ struct pci_vtsock_softc {
 //#define VMADDR_CID_HYPERVISOR 0
 //#define VMADDR_CID_RESERVED 1
 #define VMADDR_CID_HOST 2
+
+#define VMADDR_CID_MAX UINT32_MAX /* Athough CID's are 64-bit in the protocol, we only support 32-bits */
 
 static void pci_vtsock_reset(void *);
 static void pci_vtsock_notify_tx(void *, struct vqueue_info *);
@@ -761,7 +774,7 @@ static void kick_tx(struct pci_vtsock_softc *sc, const char *why)
 }
 
 /* Reflect peer_shutdown into local fd */
-static uint32_t shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
+static void shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 				       const char *ctx)
 {
 	int rc;
@@ -778,7 +791,7 @@ static uint32_t shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 
 	switch (set) {
 	case 0:
-		return 0;
+		return;
 	case VIRTIO_VSOCK_FLAG_SHUTDOWN_TX:
 		how = SHUT_WR;
 		how_str = "SHUT_WR";
@@ -804,7 +817,6 @@ static uint32_t shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 	}
 
 	s->peer_shutdown = new;
-	return set;
 }
 
 /* The caller must have sent something (probably OP_RST, but perhaps
@@ -841,55 +853,18 @@ static void close_sock_rx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *
 	close_sock_common(sc, s, "RX", SOCK_CLOSING_TX, &kick_tx);
 }
 
-/* Only to be called from the TX thread */
-static void shutdown_peer_sock_tx(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
-				  uint32_t mode)
-{
-	const char *ctx = "TX";
-	bool kick = false;
-	uint32_t set;
-
-	assert(pthread_self() == sc->tx_thread);
-	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
-
-	if (s->state != SOCK_CONNECTED) goto done;
-
-	assert(s->local_shutdown != VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
-
-	DPRINTF(("%s: fd %d: PEER SHUTDOWN 0x%"PRIx32" (0x%"PRIx32")\n",
-		 ctx, s->fd, mode, s->peer_shutdown));
-
-	set = shutdown_peer_local_fd(s, mode, ctx);
-
-	DPRINTF(("%s: setting 0x%"PRIx32" mode is now 0x%"PRIx32" (local 0x%"PRIx32")\n",
-		 ctx, set, s->peer_shutdown, s->local_shutdown));
-
-	/* Is everything now closed? */
-	if (/*set &&*/ mode == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL &&
-	    /*s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL &&*/
-	    s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) {
-		s->state = SOCK_CLOSING_RX;
-		kick = true;
-	}
-
-done:
-	if (kick) kick_rx(sc, "shutdown (peer)");
-}
-
 /*
  * Caller should send OP_SHUTDOWN with flags == s->local_shutdown after calling this.
- * Only to be called from the RX thread.
  */
 static void shutdown_local_sock(const char *ctx,
-				struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s,
+				struct pci_vtsock_sock *s,
 				uint32_t mode)
 {
-	bool kick = false;
 	uint32_t new, set;
 
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
 
-	if (s->state != SOCK_CONNECTED) goto done;
+	if (s->state != SOCK_CONNECTED) return;
 
 	assert(s->local_shutdown != VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 
@@ -903,16 +878,8 @@ static void shutdown_local_sock(const char *ctx,
 	DPRINTF(("%s: setting 0x%"PRIx32" mode is now 0x%"PRIx32" (peer 0x%"PRIx32")\n",
 		 ctx, set, s->local_shutdown, s->peer_shutdown));
 
-	/* Did we do something and is everything now closed? */
-	if (set &&
-	    s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL /*&&
-	    s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL*/) {
-		s->state = SOCK_CLOSING_TX;
-		kick = true;
-	}
-
-done:
-	if (kick) kick_tx(sc, "shutdown (local)");
+	if (s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL)
+		s->rst_deadline = time(NULL) + SHUTDOWN_RST_DELAY;
 }
 
 static void set_credit_update_required(struct pci_vtsock_softc *sc,
@@ -1037,7 +1004,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 	if (nr == -1) {
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
-			shutdown_local_sock("TX", sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
+			shutdown_local_sock("TX", sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return;
@@ -1088,7 +1055,7 @@ static int handle_write(struct pci_vtsock_softc *sc,
 		if (errno == EPIPE) {
 			/* Assume EOF and shutdown */
 			PPRINTF(("TX: writev fd=%d failed with EPIPE => SHUTDOWN_RX\n", sock->fd));
-			shutdown_local_sock("TX", sc, sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
+			shutdown_local_sock("TX", sock, VIRTIO_VSOCK_FLAG_SHUTDOWN_RX);
 			send_response_sock(sc, VIRTIO_VSOCK_OP_SHUTDOWN,
 					   sock->local_shutdown, sock);
 			return 0;
@@ -1253,7 +1220,13 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 			goto do_rst; /* ??? */
 		}
 
-		shutdown_peer_sock_tx(sc, sock, hdr.flags);
+		shutdown_peer_local_fd(sock, hdr.flags, "TX");
+
+		/* If the peer is now SHUTDOWN_ALL then we should send
+		 * a RST to the peer to finalise the shutdown.
+		 */
+		if (sock->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL)
+			goto do_rst;
 
 		vq_relchain(vq, idx, 0);
 		break;
@@ -1342,7 +1315,7 @@ do_rst:
 	return;
 }
 
-static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32_t cid, uint32_t port)
+static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64_t cid, uint32_t port)
 {
 	int fd, rc;
 	char buf[8 + 1 + 8 + 1 + 1]; /* %08x.%08x\n\0 */
@@ -1385,16 +1358,20 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint32
 
 		DPRINTF(("TX: Connect to %s", buf));
 
-		rc = sscanf(buf, "%08x.%08x\n", &cid, &port);
+		rc = sscanf(buf, SCNaddr"\n", &cid, &port);
 		if (rc != 2) {
 			DPRINTF(("TX: Failed to parse connect attempt\n"));
 			goto err;
 		}
-		DPRINTF(("TX: Connection requested to %08x.%08x\n", cid, port));
+		DPRINTF(("TX: Connection requested to "PRIaddr"\n", cid, port));
 	} else {
-		DPRINTF(("TX: Forwarding connection to %08x.%08x\n", cid, port));
+		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n", cid, port));
 	}
 
+	if (cid >= VMADDR_CID_MAX) {
+		DPRINTF(("TX: Attempt to connect to CID over 32-bit\n"));
+		goto err;
+	}
 	if (cid != sc->vssc_cfg.guest_cid) {
 		DPRINTF(("TX: Attempt to connect to non-guest CID\n"));
 		goto err;
@@ -1457,6 +1434,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		int i, nrfd, maxfd, nr;
 		int buffering = 0;
 		struct pci_vtsock_sock *s;
+		struct timeval *select_timeout = NULL, select_timeout_5s;
 
 		LIST_INIT(&queue);
 
@@ -1507,6 +1485,23 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				continue;
 			}
 			assert(s->fd >= 0);
+
+			if (s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) {
+				time_t now = time(NULL);
+
+				/* Has deadline for peer to return a RST expired? */
+				if (now > s->rst_deadline) {
+					send_response_sock(sc, VIRTIO_VSOCK_OP_RST, 0, s);
+					close_sock_tx(sc, s);
+					put_sock(s);
+					continue;
+				} else if (select_timeout == NULL) {
+					select_timeout_5s.tv_sec = 5;
+					select_timeout_5s.tv_usec = 0;
+					select_timeout = &select_timeout_5s;
+				}
+			}
+
 			if (sock_is_buffering(s)) {
 				FD_SET(s->fd, &wfd);
 				maxfd = max_fd(s->fd, maxfd);
@@ -1524,7 +1519,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 		DPRINTF(("TX: *** selecting on %d fds (buffering: %d)\n",
 			 nrfd, buffering));
-		nr = xselect("TX", maxfd + 1, &rfd, &wfd, NULL, NULL);
+		nr = xselect("TX", maxfd + 1, &rfd, &wfd, NULL, select_timeout);
 		if (nr < 0) continue;
 		DPRINTF(("TX:\nTX: *** %d/%d fds are readable/writeable\n", nr, nrfd));
 
@@ -1662,7 +1657,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
 	if (len == 0) { /* Not actually anything to read -- EOF */
 		PPRINTF(("RX: readv fd=%d EOF => SHUTDOWN_TX\n", s->fd));
-		shutdown_local_sock("RX", sc, s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX);
+		shutdown_local_sock("RX", s, VIRTIO_VSOCK_FLAG_SHUTDOWN_TX);
 		hdr->op = VIRTIO_VSOCK_OP_SHUTDOWN;
 		hdr->flags = s->local_shutdown;
 		hdr->len = 0;
@@ -1932,6 +1927,7 @@ rx_done:
 		}
 
 		while (did_some_work) {
+			int nr_data_rx = 0;
 			bool more_replies_pending = true; /* Assume there is */
 			did_some_work = false;
 
@@ -1954,6 +1950,22 @@ rx_done:
 			DPRINTF(("RX: Checking all socks\n"));
 
 			LIST_FOREACH_SAFE(s, &queue, rx_queue, ts) {
+				/*
+				 * Check for new replies in the reply
+				 * ring frequently in order to avoid
+				 * possible deadlock due to filling
+				 * both vrings with data leaving no
+				 * space for replies. See "Virtqueue
+				 * Flow Control" in the spec.
+				 */
+				if (nr_data_rx++ >= 8) {
+					bool replies_pending;
+					pthread_mutex_lock(&sc->reply_mtx);
+					replies_pending = !REPLY_RING_EMPTY(sc);
+					pthread_mutex_unlock(&sc->reply_mtx);
+					if (replies_pending) break;
+				}
+
 				get_sock(s);
 
 				if (s->state != SOCK_CONNECTED) {
@@ -2217,7 +2229,7 @@ copy_up_to_comma(const char *from)
 static int
 pci_vtsock_init(struct pci_devinst *pi, char *opts)
 {
-	uint32_t guest_cid = VMADDR_CID_ANY;
+	uint64_t guest_cid = VMADDR_CID_ANY;
 	const char *path = NULL;
 	char *guest_forwards = NULL;
 	struct pci_vtsock_softc *sc;
@@ -2261,8 +2273,8 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 		return 1;
 	}
 
-	if (guest_cid <= VMADDR_CID_HOST) {
-		fprintf(stderr, "invalid guest_cid %"PRIx32"\n", guest_cid);
+	if (guest_cid <= VMADDR_CID_HOST || guest_cid >= VMADDR_CID_MAX) {
+		fprintf(stderr, "invalid guest_cid "PRIcid"\n", guest_cid);
 		return 1;
 	}
 
@@ -2277,7 +2289,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 
 	/* XXX confirm path exists and is a directory */
 
-	fprintf(stderr, "vsock init %d:%d = %s, guest_cid = %"PRIx32"\n\r",
+	fprintf(stderr, "vsock init %d:%d = %s, guest_cid = "PRIcid"\n\r",
 		pi->pi_slot, pi->pi_func, path, guest_cid);
 
 	sc = calloc(1, sizeof(struct pci_vtsock_softc));
