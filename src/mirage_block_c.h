@@ -31,10 +31,9 @@ mirage_block_unregister_thread(void);
 /* An opened mirage-block device */
 typedef int mirage_block_handle;
 
-/* Open a mirage block device with the given URI. If buffered is true then
-   attempt to use buffering, if available. Otherwise operations are synchronous */
+/* Open a mirage block device with the given string configuration. */
 extern mirage_block_handle
-mirage_block_open(const char *uri, int buffered);
+mirage_block_open(const char *config);
 
 /* Query a mirage block device. */
 extern int

@@ -576,7 +576,7 @@ blockif_open(const char *optstr, const char *ident)
 	if (use_mirage) {
 #ifdef HAVE_OCAML_QCOW
 		mirage_block_register_thread();
-		mbh = mirage_block_open(nopt, 1);
+		mbh = mirage_block_open(nopt);
 		if (mbh < 0) {
 			perror("Could not open mirage-block device");
 			goto err;
