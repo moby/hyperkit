@@ -57,7 +57,7 @@ end
 module Protocol = struct
   module Request = struct
     type t =
-      | Connect of string
+      | Connect of Block.Config.t
       | Get_info of int
       | Disconnect of int
       | Read of int * int * (Cstruct.t list)
@@ -144,23 +144,21 @@ module C = struct
       raise (Mirage_block.Error.Error x)
     | `Ok x -> x
 
-  let mirage_block_open uri buffered : int =
-    Printf.fprintf stdout "mirage_block_open %s buffered = %b\n%!" uri buffered;
-    let uri = Uri.of_string uri in
-    match Uri.scheme uri with
-    | Some "file" ->
-      let path = Uri.pct_decode (Uri.path uri) in
-      begin match ok_exn (Protocol.rpc (Protocol.Request.Connect path)) with
-        | Protocol.Response.Connect t ->
-          Printf.fprintf stdout "mirage_block_open returning %d\n%!" t;
-          t
-        | _ ->
-          Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
-          exit 1
-      end
-    | _ ->
-      Printf.fprintf stderr "Unknown URI scheme\n";
-      raise Not_found
+  let mirage_block_open config : int =
+    Printf.fprintf stdout "mirage_block_open: %s\n%!" config;
+    match Block.Config.of_string config with
+      | `Ok config' ->
+        begin match ok_exn (Protocol.rpc (Protocol.Request.Connect config')) with
+          | Protocol.Response.Connect t ->
+            Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" config t;
+            t
+          | _ ->
+            Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
+            exit 1
+        end
+      | `Error (`Msg m) ->
+        Printf.fprintf stderr "mirage_block_open %s: %s\n%!" config m;
+        exit 1
 
   let mirage_block_stat (h: int) : (bool * int * int64) =
     Printf.fprintf stdout "mirage_block_stat\n%!";
@@ -255,8 +253,8 @@ let process_one t =
   let open Mirage_block.Error.Monad in
   let open Mirage_block.Error.Monad.Infix in
   let result_t = match t.request with
-    | Request.Connect path ->
-      Block.connect path
+    | Request.Connect config ->
+      Block.of_config config
       >>= fun base ->
       B.connect base
       >>= fun block ->
