@@ -359,6 +359,8 @@ static int pci_vtsock_cfgread(void *, int, int, uint32_t *);
 static int pci_vtsock_cfgwrite(void *, int, int, uint32_t);
 static void *pci_vtsock_rx_thread(void *vssc);
 
+static bool sock_is_buffering(struct pci_vtsock_sock *sock);
+
 static struct virtio_consts vtsock_vi_consts = {
 	"vtsock", /* our name */
 	VTSOCK_QUEUES,
@@ -782,6 +784,7 @@ static void shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 	const char *how_str;
 	uint32_t new = mode | s->peer_shutdown;
 	uint32_t set = s->peer_shutdown ^ new;
+	uint32_t new_local = s->local_shutdown;
 
 	assert((mode & ~VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL) == 0);
 	assert(mode != 0);
@@ -793,29 +796,49 @@ static void shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 	case 0:
 		return;
 	case VIRTIO_VSOCK_FLAG_SHUTDOWN_TX:
-		how = SHUT_WR;
-		how_str = "SHUT_WR";
+		if (sock_is_buffering(s))
+		{
+			PPRINTF(("%s: fd: %d SHUT_WR while buffering, deferring local shutdown\n", ctx, s->fd));
+			how = 0;
+			how_str = "none";
+		} else  {
+			how = SHUT_WR;
+			how_str = "SHUT_WR";
+			new_local |= VIRTIO_VSOCK_FLAG_SHUTDOWN_RX;
+		}
 		break;
 	case VIRTIO_VSOCK_FLAG_SHUTDOWN_RX:
 		how = SHUT_RD;
 		how_str = "SHUT_RD";
+		new_local = s->local_shutdown | VIRTIO_VSOCK_FLAG_SHUTDOWN_TX;
 		break;
 	case VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL:
-		how = SHUT_RDWR;
-		how_str = "SHUT_RDWR";
+		if (sock_is_buffering(s)) {
+			PPRINTF(("%s: fd: %d SHUT_RDWR while buffering, deferring local SHUT_WR\n", ctx, s->fd));
+			how = SHUT_RD;
+			how_str = "SHUT_RD";
+			new_local |= VIRTIO_VSOCK_FLAG_SHUTDOWN_TX;
+		} else {
+			how = SHUT_RDWR;
+			how_str = "SHUT_RDWR";
+			new_local |= VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL;
+		}
 		break;
 	default:
 		abort();
 	}
 
-	rc = shutdown(s->fd, how);
-	DPRINTF(("%s: shutdown_peer: shutdown(%d, %s)\n", ctx, s->fd, how_str));
-	if (rc < 0 && errno != ENOTCONN) {
-		DPRINTF(("%s: shutdown(%d, %s) for peer shutdown failed: %s\n",
-			 ctx, s->fd, how_str, strerror(errno)));
-		abort();
+	if (how) {
+		rc = shutdown(s->fd, how);
+		DPRINTF(("%s: shutdown_peer: shutdown(%d, %s)\n", ctx, s->fd, how_str));
+		if (rc < 0 && errno != ENOTCONN) {
+			DPRINTF(("%s: shutdown(%d, %s) for peer shutdown failed: %s\n",
+				 ctx, s->fd, how_str, strerror(errno)));
+			abort();
+		}
 	}
 
+	s->local_shutdown = new_local;
 	s->peer_shutdown = new;
 }
 
@@ -831,10 +854,6 @@ static void close_sock_common(struct pci_vtsock_softc *sc,  struct pci_vtsock_so
 
 	shutdown_peer_local_fd(s, VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL, ctx);
 
-	/* The call to peer_local_fd will have done any required
-	 * shutdown() call on s->fd */
-	s->local_shutdown = VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL;
-
 	s->state = state;
 	kicker(sc, "sock closed");
 }
@@ -843,7 +862,8 @@ static void close_sock_common(struct pci_vtsock_softc *sc,  struct pci_vtsock_so
 static void close_sock_tx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s)
 {
 	assert(pthread_self() == sc->tx_thread);
-	close_sock_common(sc, s, "TX", SOCK_CLOSING_RX, &kick_rx);
+	close_sock_common(sc, s, "TX",
+			  s && sock_is_buffering(s) ? SOCK_CLOSING_TX : SOCK_CLOSING_RX, &kick_rx);
 }
 
 /* Only to be called from the RX thread */
@@ -1034,6 +1054,20 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 		 sock->fd, sock->write_buf_head));
 	sock->fwd_cnt += sock->write_buf_head;
 	sock->write_buf_head = sock->write_buf_tail = 0;
+
+	/* shutdown_peer_local_fd will have deferred this if we were buffering */
+	if ((sock->peer_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_TX) &&
+	    !(sock->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX)) {
+		int rc = shutdown(sock->fd, SHUT_WR);
+		PPRINTF(("TX: buffer_drained, performing pending shutdown(%d, SHUT_WR)\n", sock->fd));
+		if (rc < 0 && errno != ENOTCONN) {
+			DPRINTF(("TX: shutdown(%d, SHUT_WR) after buffer drain failed: %s\n",
+				 sock->fd, strerror(errno)));
+			abort();
+		}
+		sock->local_shutdown |= VIRTIO_VSOCK_FLAG_SHUTDOWN_RX;
+	}
+
 	set_credit_update_required(sc, sock);
 }
 
@@ -1460,7 +1494,12 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		LIST_FOREACH(s, &sc->inuse_list, list) {
 			get_sock(s);
 
-			if (s->state == SOCK_CLOSING_TX) { /* Closing comes through here */
+			switch (s->state) {
+			case SOCK_CLOSING_TX: /* Closing comes through here */
+				if (sock_is_buffering(s))
+					break;
+
+			        /* Close down */
 				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
 				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 
@@ -1478,9 +1517,11 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 				put_sock(s);
 				continue;
-			}
-
-			if (s->state != SOCK_CONNECTED) {
+			case SOCK_CONNECTED:
+				break;
+			case SOCK_FREE:
+			case SOCK_CONNECTING:
+			case SOCK_CLOSING_RX:
 				put_sock(s);
 				continue;
 			}
