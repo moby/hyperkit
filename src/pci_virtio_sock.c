@@ -845,32 +845,16 @@ static void shutdown_peer_local_fd(struct pci_vtsock_sock *s, uint32_t mode,
 /* The caller must have sent something (probably OP_RST, but perhaps
  * OP_SHUTDOWN) to the peer already.
  */
-static void close_sock_common(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
-			      const char *ctx, unsigned int state,
-			      void (*kicker)(struct pci_vtsock_softc *sc, const char *why))
+static void close_sock(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s,
+		       const char *ctx)
 {
 	if (!s) return;
 	DPRINTF(("%s: Closing sock %p\n", ctx, (void *)s));
 
 	shutdown_peer_local_fd(s, VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL, ctx);
 
-	s->state = state;
-	kicker(sc, "sock closed");
-}
-
-/* Only to be called from the TX thread */
-static void close_sock_tx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s)
-{
-	assert(pthread_self() == sc->tx_thread);
-	close_sock_common(sc, s, "TX",
-			  s && sock_is_buffering(s) ? SOCK_CLOSING_TX : SOCK_CLOSING_RX, &kick_rx);
-}
-
-/* Only to be called from the RX thread */
-static void close_sock_rx(struct pci_vtsock_softc *sc,  struct pci_vtsock_sock *s)
-{
-	assert(pthread_self() == sc->rx_thread);
-	close_sock_common(sc, s, "RX", SOCK_CLOSING_TX, &kick_tx);
+	s->state = SOCK_CLOSING_TX;
+	kick_tx(sc, "sock closed");
 }
 
 /*
@@ -1040,7 +1024,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 			PPRINTF(("TX: write fd=%d failed with %d %s\n", sock->fd,
 				 errno, strerror(errno)));
 			send_response_sock(sc, VIRTIO_VSOCK_OP_RST, 0, sock);
-			close_sock_tx(sc, sock);
+			close_sock(sc, sock, "TX");
 			return;
 		}
 	}
@@ -1234,7 +1218,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 		/* No response */
 		if (!sock)
 			PPRINTF(("TX: RST to non-existent sock\n"));
-		close_sock_tx(sc, sock);
+		close_sock(sc, sock, "TX");
 		vq_relchain(vq, idx, 0);
 		break;
 
@@ -1350,7 +1334,7 @@ do_rst:
 					     .port =hdr.src_port
 				     });
 	vq_relchain(vq, idx, 0);
-	close_sock_tx(sc, sock);
+	close_sock(sc, sock, "TX");
 	if (sock) put_sock(sock);
 	return;
 }
@@ -1539,7 +1523,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				/* Has deadline for peer to return a RST expired? */
 				if (now > s->rst_deadline) {
 					send_response_sock(sc, VIRTIO_VSOCK_OP_RST, 0, s);
-					close_sock_tx(sc, s);
+					close_sock(sc, s, "TX");
 					put_sock(s);
 					continue;
 				} else if (select_timeout == NULL) {
@@ -1703,7 +1687,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		hdr->len = 0;
 		dprint_header(hdr, 0, "RX");
 		vq_relchain(vq, idx, sizeof(*hdr));
-		close_sock_rx(sc, s);
+		close_sock(sc, s, "RX");
 		return 0;
 	}
 	DPRINTF(("RX: readv put %zd bytes into iov\n", len));
