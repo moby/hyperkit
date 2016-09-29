@@ -1502,6 +1502,11 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				}
 			}
 
+			if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX) {
+				put_sock(s);
+				continue;
+			}
+
 			if (sock_is_buffering(s)) {
 				FD_SET(s->fd, &wfd);
 				maxfd = max_fd(s->fd, maxfd);
