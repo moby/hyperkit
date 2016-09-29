@@ -1,4 +1,5 @@
-// Package httpstoppable offers ListenAndServe, like http.ListenAndServe, but with ability to stop it externally.
+// Package httpstoppable provides ListenAndServe like http.ListenAndServe,
+// but with ability to stop it gracefully.
 package httpstoppable
 
 import (
@@ -9,10 +10,22 @@ import (
 	"time"
 )
 
-// ListenAndServe is like http.ListenAndServe, but it closes listener socket when stop receives a value.
+// ListenAndServe listens on the TCP network address addr
+// and then calls Serve with handler to handle requests
+// on incoming connections.
+// Accepted connections are configured to enable TCP keep-alives.
+// Handler is typically nil, in which case the http.DefaultServeMux is
+// used.
+//
+// When receiving from stop unblocks (because it's closed or a value is sent),
+// listener is closed and ListenAndServe returns with nil error.
+// Otherise, it always returns a non-nil error.
 func ListenAndServe(addr string, handler http.Handler, stop <-chan struct{}) error {
 	srv := &http.Server{Addr: addr, Handler: handler}
-	ln, err := net.Listen("tcp", srv.Addr)
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
@@ -24,9 +37,7 @@ func ListenAndServe(addr string, handler http.Handler, stop <-chan struct{}) err
 		}
 	}()
 	err = srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
-	switch {
-	case err == nil:
-		panic("Supposed to get an error from Serve due to listener closed, but didn't...")
+	switch { // Serve always returns a non-nil error.
 	case strings.Contains(err.Error(), "use of closed network connection"):
 		return nil
 	default:
