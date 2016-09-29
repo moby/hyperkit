@@ -898,6 +898,12 @@ static void shutdown_local_sock(const char *ctx,
 	DPRINTF(("%s: setting 0x%"PRIx32" mode is now 0x%"PRIx32" (peer 0x%"PRIx32")\n",
 		 ctx, set, s->local_shutdown, s->peer_shutdown));
 
+	if (s->local_shutdown & VIRTIO_VSOCK_FLAG_SHUTDOWN_RX && s->write_buf_tail > 0) {
+		PPRINTF(("%s: discarding %d bytes from buffer\n", ctx,
+			 s->write_buf_tail - s->write_buf_head));
+		s->write_buf_tail = s->write_buf_head = 0;
+	}
+
 	if (s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL)
 		s->rst_deadline = time(NULL) + SHUTDOWN_RST_DELAY;
 }
