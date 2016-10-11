@@ -10,27 +10,29 @@ endif
 include config.mk
 
 VMM_LIB_SRC := \
-	src/lib/vmm/x86.c \
-	src/lib/vmm/vmm.c \
-	src/lib/vmm/vmm_host.c \
-	src/lib/vmm/vmm_mem.c \
-	src/lib/vmm/vmm_lapic.c \
-	src/lib/vmm/vmm_instruction_emul.c \
-	src/lib/vmm/vmm_ioport.c \
-	src/lib/vmm/vmm_callout.c \
-	src/lib/vmm/vmm_stat.c \
-	src/lib/vmm/vmm_util.c \
-	src/lib/vmm/vmm_api.c \
+	src/lib/vmm/intel/vmcs.c \
 	src/lib/vmm/intel/vmx.c \
 	src/lib/vmm/intel/vmx_msr.c \
-	src/lib/vmm/intel/vmcs.c \
+	\
 	src/lib/vmm/io/vatpic.c \
 	src/lib/vmm/io/vatpit.c \
 	src/lib/vmm/io/vhpet.c \
 	src/lib/vmm/io/vioapic.c \
 	src/lib/vmm/io/vlapic.c \
 	src/lib/vmm/io/vpmtmr.c \
-	src/lib/vmm/io/vrtc.c
+	src/lib/vmm/io/vrtc.c \
+	\
+	src/lib/vmm/vmm.c \
+	src/lib/vmm/vmm_api.c \
+	src/lib/vmm/vmm_callout.c \
+	src/lib/vmm/vmm_host.c \
+	src/lib/vmm/vmm_instruction_emul.c \
+	src/lib/vmm/vmm_ioport.c \
+	src/lib/vmm/vmm_lapic.c \
+	src/lib/vmm/vmm_mem.c \
+	src/lib/vmm/vmm_stat.c \
+	src/lib/vmm/vmm_util.c \
+	src/lib/vmm/x86.c
 
 HYPERKIT_LIB_SRC := \
 	src/lib/acpitbl.c \
