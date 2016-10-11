@@ -1,3 +1,4 @@
+/.opam
 /build/
 /include/xhyve/dtrace.h
 /test/vmlinuz
