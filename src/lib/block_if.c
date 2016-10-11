@@ -620,7 +620,7 @@ blockif_open(const char *optstr, const char *ident)
 	candelete = geom = 0;
 	if (S_ISCHR(sbuf.st_mode)) {
 		perror("xhyve: raw device support unimplemented");
-		goto err;		
+		goto err;
 		// if (ioctl(fd, DIOCGMEDIASIZE, &size) < 0 ||
 		// 	ioctl(fd, DIOCGSECTORSIZE, &sectsz))
 		// {

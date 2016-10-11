@@ -410,7 +410,7 @@ lpc_pirq_routed(void)
 	if (lpc_bridge == NULL)
 		return;
 
- 	for (pin = 0; pin < 4; pin++)
+	for (pin = 0; pin < 4; pin++)
 		pci_set_cfgdata8(lpc_bridge, 0x60 + pin, pirq_read(pin + 1));
 	for (pin = 0; pin < 4; pin++)
 		pci_set_cfgdata8(lpc_bridge, 0x68 + pin, pirq_read(pin + 5));

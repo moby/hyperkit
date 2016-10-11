@@ -179,7 +179,7 @@ clock_ct_to_ts(struct clocktime *ct, struct timespec *ts)
 
 	/* Months */
 	for (i = 1; i < ct->mon; i++)
-	  	days += days_in_month(year, i);
+		days += days_in_month(year, i);
 	days += (ct->day - 1);
 
 	ts->tv_sec = (((time_t)days * 24 + ct->hour) * 60 + ct->min) * 60 +
@@ -450,7 +450,7 @@ rtc_to_secs(struct vrtc *vrtc)
 
 	/*
 	 * Ignore 'rtc->dow' because some guests like Linux don't bother
-	 * setting it at all while others like OpenBSD/i386 set it incorrectly. 
+	 * setting it at all while others like OpenBSD/i386 set it incorrectly.
 	 *
 	 * clock_ct_to_ts() does not depend on 'ct.dow' anyways so ignore it.
 	 */
@@ -1084,7 +1084,7 @@ vrtc_init(struct vm *vm)
 	assert(vrtc);
 	bzero(vrtc, sizeof(struct vrtc));
 	vrtc->vm = vm;
-	
+
 	pthread_mutex_init(&vrtc->mtx, NULL);
 
 	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &mach_clock);

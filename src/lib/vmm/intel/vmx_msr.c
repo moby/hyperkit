@@ -142,7 +142,7 @@ vmx_msr_init(void) {
 	uint64_t bus_freq, tsc_freq, ratio;
 	size_t length;
 	int i;
-	
+
 	length = sizeof(uint64_t);
 
 	if (sysctlbyname("machdep.tsc.frequency", &tsc_freq, &length, NULL, 0)) {
@@ -290,7 +290,7 @@ vmx_wrmsr(struct vmx *vmx, int vcpuid, u_int num, uint64_t val)
 	uint64_t *guest_msrs;
 	uint64_t changed;
 	int error;
-	
+
 	guest_msrs = vmx->guest_msrs[vcpuid];
 	error = 0;
 

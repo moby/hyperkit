@@ -60,25 +60,25 @@ static inline uint64_t abs_to_nanos(uint64_t abs) {
 
 static inline uint64_t sbt2mat(sbintime_t sbt) {
   uint64_t s, ns;
-  
+
   s = (((uint64_t) sbt) >> 32);
   ns = (((uint64_t) 1000000000) * (uint32_t) sbt) >> 32;
-  
+
   return (nanos_to_abs((s * 1000000000) + ns));
 }
 
 static inline void mat_to_ts(uint64_t mat, struct timespec *ts) {
   uint64_t ns;
-  
+
   ns = abs_to_nanos(mat);
-  
+
   ts->tv_sec = (ns / 1000000000);
   ts->tv_nsec = (ns % 1000000000);
 }
 
 void binuptime(struct bintime *bt) {
   uint64_t ns;
-  
+
   ns = abs_to_nanos(mach_absolute_time());
 
   bt->sec = (ns / 1000000000);
@@ -105,7 +105,7 @@ static void callout_insert(struct callout *c) {
     c->queued = 1;
     return;
   }
-  
+
   if (callout_cmp(c, node)) {
     node->prev = c;
     c->prev = NULL;
@@ -114,7 +114,7 @@ static void callout_insert(struct callout *c) {
     c->queued = 1;
     return;
   }
-  
+
   while (node->next) {
     if (callout_cmp(c, node->next)) {
       c->prev = node;
@@ -126,7 +126,7 @@ static void callout_insert(struct callout *c) {
     }
     node = node->next;
   }
-  
+
   c->prev = node;
   c->next = NULL;
   node->next = c;
@@ -143,11 +143,11 @@ static void callout_remove(struct callout *c) {
   } else {
     callout_queue = c->next;
   }
-  
+
   if (c->next) {
     c->next->prev = c->prev;
   }
-  
+
   c->prev = NULL;
   c->next = NULL;
   c->queued = 0;
@@ -203,7 +203,7 @@ static void *callout_thread_func(UNUSED void *arg) {
     pthread_mutex_unlock(&callout_mtx);
     c->callout(c->argument);
     pthread_mutex_lock(&callout_mtx);
-    
+
     /* note: after the handler has been invoked the callout structure can look
      *       much differently, the handler may have rescheduled the callout or
      *       even freed it.
@@ -240,20 +240,20 @@ void callout_init(struct callout *c, int mpsafe) {
 
 static int callout_stop_safe_locked(struct callout *c, int drain) {
   int result = 0;
-  
+
   if ((drain) && (pthread_self() != callout_thread) && (callout_pending(c) ||
     (callout_active(c) && !callout_completed(c))))
   {
     if (c->flags & CALLOUT_WAITING) {
       abort();
     }
-    
+
     /* wait for callout */
     c->flags |= CALLOUT_WAITING;
     work = true;
 
     pthread_cond_signal(&callout_cnd);
-  
+
     while (!(c->flags & CALLOUT_COMPLETED)) {
       pthread_cond_wait(&c->wait, &callout_mtx);
     }
@@ -261,13 +261,13 @@ static int callout_stop_safe_locked(struct callout *c, int drain) {
     c->flags &= ~CALLOUT_WAITING;
     result = 1;
   }
-  
+
   callout_remove(c);
-  
+
   /* clear flags */
   c->flags &= ~(CALLOUT_ACTIVE | CALLOUT_PENDING | CALLOUT_COMPLETED |
     CALLOUT_WAITING);
-  
+
   return (result);
 }
 
@@ -283,11 +283,11 @@ int callout_reset_sbt(struct callout *c, sbintime_t sbt,
 {
   int result;
   bool is_next_timeout;
-  
+
   is_next_timeout = false;
 
   pthread_mutex_lock(&callout_mtx);
-  
+
   if (!((flags == 0) || (flags == C_ABSOLUTE)) || (c->flags !=0)) {
     /* FIXME */
     //printf("XHYVE: callout_reset_sbt 0x%08x 0x%08x\r\n", flags, c->flags);
@@ -295,31 +295,31 @@ int callout_reset_sbt(struct callout *c, sbintime_t sbt,
   }
 
   c->timeout = sbt2mat(sbt);
-  
+
   if (flags != C_ABSOLUTE) {
     c->timeout += mach_absolute_time();
   }
 
   result = callout_stop_safe_locked(c, 0);
-  
+
   c->callout = ftn;
   c->argument = arg;
   c->flags |= (CALLOUT_PENDING | CALLOUT_ACTIVE);
-  
+
   callout_insert(c);
-  
+
   if (c == callout_queue) {
     work = true;
     is_next_timeout = true;
   }
-  
+
   pthread_mutex_unlock(&callout_mtx);
-  
+
   if (is_next_timeout) {
     pthread_cond_signal(&callout_cnd);
     is_next_timeout = false;
   }
-  
+
   return (result);
 }
 
@@ -329,30 +329,30 @@ void callout_system_init(void) {
   }
 
   mach_timebase_info(&timebase_info);
-  
+
   if (pthread_mutex_init(&callout_mtx, NULL)) {
     abort();
   }
-  
+
   if (pthread_cond_init(&callout_cnd, NULL)) {
     abort();
   }
-  
+
   callout_queue = NULL;
   work = false;
-  
+
   if (pthread_create(&callout_thread, /*&attr*/ NULL, &callout_thread_func,
     NULL))
   {
     abort();
   }
-  
+
   initialized = true;
 }
 
 //static void callout_queue_print(void) {
 //  struct callout *node;
-//  
+//
 //  pthread_mutex_lock(&callout_mtx);
 //  for (node = callout_queue; node; node = node->next) {
 //    printf("t:%llu -> ", abs_to_nanos(node->timeout));

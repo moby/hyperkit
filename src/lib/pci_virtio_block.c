@@ -106,7 +106,7 @@ struct virtio_blk_hdr {
 #define	VBH_OP_WRITE		1
 #define	VBH_OP_FLUSH		4
 #define	VBH_OP_FLUSH_OUT	5
-#define	VBH_OP_IDENT		8		
+#define	VBH_OP_IDENT		8
 #define	VBH_FLAG_BARRIER	0x80000000	/* OR'ed into vbh_type */
 	uint32_t vbh_type;
 	uint32_t vbh_ioprio;
@@ -266,7 +266,7 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	}
 	io->io_req.br_resid = iolen;
 
-	DPRINTF(("virtio-block: %s op, %zd bytes, %d segs\n\r", 
+	DPRINTF(("virtio-block: %s op, %zd bytes, %d segs\n\r",
 		 writeop ? "write" : "read/ident", iolen, i - 1));
 
 	switch (type) {
@@ -327,7 +327,7 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 	 */
 	snprintf(bident, sizeof(bident), "%d:%d", pi->pi_slot, pi->pi_func);
 	bctxt = blockif_open(opts, bident);
-	if (bctxt == NULL) {       	
+	if (bctxt == NULL) {
 		perror("Could not open backing file");
 		return (1);
 	}
@@ -361,7 +361,7 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 	 */
 	MD5Init(&mdctx);
 	MD5Update(&mdctx, opts, ((unsigned) strlen(opts)));
-	MD5Final(digest, &mdctx);	
+	MD5Final(digest, &mdctx);
 	snprintf(sc->vbsc_ident, VTBLK_BLK_ID_BYTES, "BHYVE-%02X%02X-%02X%02X-%02X%02X",
 	    digest[0], digest[1], digest[2], digest[3], digest[4], digest[5]);
 

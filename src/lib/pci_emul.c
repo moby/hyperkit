@@ -357,7 +357,7 @@ pci_emul_io_handler(int vcpu, int in, int port, int bytes, uint32_t *eax,
 		if ((pdi->pi_bar[i].type == PCIBAR_IO) &&
 		    (((uint64_t) port) >= pdi->pi_bar[i].addr) &&
 		    (((uint64_t) (port + bytes)) <=
-		    	(pdi->pi_bar[i].addr + pdi->pi_bar[i].size)))
+			(pdi->pi_bar[i].addr + pdi->pi_bar[i].size)))
 		{
 			offset = ((uint64_t) port) - pdi->pi_bar[i].addr;
 			if (in)
@@ -457,7 +457,7 @@ modify_bar_registration(struct pci_devinst *pi, int idx, int registration)
 			iop.handler = pci_emul_io_handler;
 			iop.arg = pi;
 			error = register_inout(&iop);
-		} else 
+		} else
 			error = unregister_inout(&iop);
 		break;
 	case PCIBAR_MEM32:
@@ -652,7 +652,7 @@ pci_emul_alloc_pbar(struct pci_devinst *pdi, int idx, uint64_t hostbase,
 		pdi->pi_bar[idx + 1].type = PCIBAR_MEMHI64;
 		pci_set_cfgdata32(pdi, PCIR_BAR(idx + 1), bar >> 32);
 	}
-	
+
 	register_bar(pdi, idx);
 
 	return (0);
@@ -827,7 +827,7 @@ pci_emul_add_msixcap(struct pci_devinst *pi, int msgnum, int barnum)
 
 	assert(msgnum >= 1 && msgnum <= MAX_MSIX_TABLE_ENTRIES);
 	assert(barnum >= 0 && barnum <= PCIR_MAX_BAR_0);
-	
+
 	tab_size = (uint32_t) (msgnum * MSIX_TABLE_ENTRY_SIZE);
 
 	/* Align table size to nearest 4K */
@@ -858,7 +858,7 @@ msixcap_cfgwrite(struct pci_devinst *pi, int capoff, int offset,
 {
 	uint16_t msgctrl, rwmask;
 	int off, table_bar;
-	
+
 	off = offset - capoff;
 	table_bar = pi->pi_msix.table_bar;
 	/* Message Control Register */
@@ -872,8 +872,8 @@ msixcap_cfgwrite(struct pci_devinst *pi, int capoff, int offset,
 		pi->pi_msix.enabled = val & PCIM_MSIXCTRL_MSIX_ENABLE;
 		pi->pi_msix.function_mask = val & PCIM_MSIXCTRL_FUNCTION_MASK;
 		pci_lintr_update(pi);
-	} 
-	
+	}
+
 	CFGWRITE(pi, offset, val, bytes);
 }
 
@@ -1080,7 +1080,7 @@ init_pci(void)
 	for (bus = 0; bus < MAXBUSES; bus++) {
 		if ((bi = pci_businfo[bus]) == NULL)
 			continue;
-		/* 
+		/*
 		 * Keep track of the i/o and memory resources allocated to
 		 * this bus.
 		 */
@@ -1359,11 +1359,11 @@ pci_bus_write_dsdt(int bus)
 		dsdt_line("Name (PPRT, Package ()");
 		dsdt_line("{");
 		pci_walk_lintr(bus, pci_pirq_prt_entry, NULL);
- 		dsdt_line("})");
+		dsdt_line("})");
 		dsdt_line("Name (APRT, Package ()");
 		dsdt_line("{");
 		pci_walk_lintr(bus, pci_apic_prt_entry, NULL);
- 		dsdt_line("})");
+		dsdt_line("})");
 		dsdt_line("Method (_PRT, 0, NotSerialized)");
 		dsdt_line("{");
 		dsdt_line("  If (PICM)");
@@ -1760,7 +1760,7 @@ pci_emul_cmdsts_write(struct pci_devinst *pi, int coff, uint32_t new, int bytes)
 	 * interrupt.
 	 */
 	pci_lintr_update(pi);
-}	
+}
 
 static void
 pci_cfgrw(int vcpu, int in, int bus, int slot, int func, int coff, int bytes,
@@ -2060,7 +2060,7 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		} else {
 			printf("diow: memw unknown size %d\n", size);
 		}
-		
+
 		/*
 		 * magic interrupt ??
 		 */
@@ -2087,7 +2087,7 @@ pci_emul_dior(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 			       offset, size);
 			return (0);
 		}
-	
+
 		if (size == 1) {
 			value = sc->ioregs[offset];
 		} else if (size == 2) {
@@ -2105,7 +2105,7 @@ pci_emul_dior(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 			       offset, size);
 			return (0);
 		}
-		
+
 		i = baridx - 1;		/* 'memregs' index */
 
 		if (size == 1) {
