@@ -258,7 +258,7 @@ struct vm_copyinfo {
 /*
  * Set up 'copyinfo[]' to copy to/from guest linear address space starting
  * at 'gla' and 'len' bytes long. The 'prot' should be set to PROT_READ for
- * a copyin or PROT_WRITE for a copyout. 
+ * a copyin or PROT_WRITE for a copyout.
  *
  * retval	is_fault	Intepretation
  *   0		   0		Success

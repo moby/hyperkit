@@ -123,7 +123,7 @@ SRC := \
 
 OBJ := $(SRC:src/%.c=build/%.o) $(OCAML_SRC:src/%.ml=build/%.o)
 DEP := $(OBJ:%.o=%.d)
-INC := -Iinclude
+INC := -Isrc/include
 
 CFLAGS += -DVERSION=\"$(GIT_VERSION)\" -DVERSION_SHA1=\"$(GIT_VERSION_SHA1)\"
 
@@ -139,11 +139,11 @@ all: $(TARGET) | build
 build:
 	@mkdir -p build
 
-include/xhyve/dtrace.h: src/lib/dtrace.d
+src/include/xhyve/dtrace.h: src/lib/dtrace.d
 	@echo gen $<
 	$(VERBOSE) $(DTRACE) -h -s $< -o $@
 
-$(SRC): include/xhyve/dtrace.h
+$(SRC): src/include/xhyve/dtrace.h
 
 build/%.o: src/%.c
 	@echo cc $<
@@ -169,7 +169,7 @@ $(TARGET): $(TARGET).sym
 
 clean:
 	@rm -rf build
-	@rm -f include/xhyve/dtrace.h
+	@rm -f src/include/xhyve/dtrace.h
 	@rm -f test/vmlinuz test/initrd.gz
 
 test/vmlinuz test/initrd.gz:
