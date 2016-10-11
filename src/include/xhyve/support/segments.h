@@ -168,7 +168,7 @@ struct user_segment_descriptor {
 #define SDT_SYSTGT 15 /* system 64 bit trap gate */
 
 // 	/* memory segment types */
-// #define	SDT_MEMRO	16	 memory read only 
+// #define	SDT_MEMRO	16	 memory read only
 // #define	SDT_MEMROA	17	/* memory read only accessed */
 #define SDT_MEMRW 18 /* memory read write */
 #define SDT_MEMRWA 19 /* memory read write accessed */

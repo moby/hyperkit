@@ -29,4 +29,3 @@
 #pragma once
 
 void rtc_init(int use_localtime);
-

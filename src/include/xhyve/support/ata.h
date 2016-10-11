@@ -287,7 +287,7 @@ struct ata_params {
  * ATA Device Register
  *
  * bit 7 Obsolete (was 1 in early ATA specs)
- * bit 6 Sets LBA/CHS mode. 1=LBA, 0=CHS 
+ * bit 6 Sets LBA/CHS mode. 1=LBA, 0=CHS
  * bit 5 Obsolete (was 1 in early ATA specs)
  * bit 4 1 = Slave Drive, 0 = Master Drive
  * bit 3-0 In LBA mode, 27-24 of address. In CHS mode, head number
@@ -540,7 +540,7 @@ struct atapi_sense {
     u_int8_t	specific;		/* sense key specific */
 #define	ATA_SENSE_SPEC_VALID	0x80
 #define	ATA_SENSE_SPEC_MASK	0x7f
-	
+
     u_int8_t	specific1;		/* sense key specific */
     u_int8_t	specific2;		/* sense key specific */
 } __packed;

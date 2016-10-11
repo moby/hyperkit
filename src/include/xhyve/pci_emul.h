@@ -86,7 +86,7 @@ struct msix_table_entry {
 	uint32_t vector_control;
 };
 
-/* 
+/*
  * In case the structure is modified to hold extra information, use a define
  * for the size that should be emulated.
  */
@@ -235,21 +235,21 @@ void pci_write_dsdt(void);
 uint64_t pci_ecfg_base(void);
 int pci_bus_configured(int bus);
 
-static __inline void 
+static __inline void
 pci_set_cfgdata8(struct pci_devinst *pi, int offset, uint8_t val)
 {
 	assert(offset <= PCI_REGMAX);
 	*(uint8_t *)(((uintptr_t) &pi->pi_cfgdata) + ((unsigned) offset)) = val;
 }
 
-static __inline void 
+static __inline void
 pci_set_cfgdata16(struct pci_devinst *pi, int offset, uint16_t val)
 {
 	assert(offset <= (PCI_REGMAX - 1) && (offset & 1) == 0);
 	*(uint16_t *)(((uintptr_t) &pi->pi_cfgdata) + ((unsigned) offset)) = val;
 }
 
-static __inline void 
+static __inline void
 pci_set_cfgdata32(struct pci_devinst *pi, int offset, uint32_t val)
 {
 	assert(offset <= (PCI_REGMAX - 3) && (offset & 3) == 0);

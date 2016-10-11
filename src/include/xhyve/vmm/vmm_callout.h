@@ -35,7 +35,7 @@ static inline sbintime_t bttosbt(const struct bintime bt) {
 
 static inline void bintime_mul(struct bintime *bt, unsigned int x) {
   uint64_t p1, p2;
-  
+
   p1 = (bt->frac & 0xffffffffull) * x;
   p2 = (bt->frac >> 32) * x + (p1 >> 32);
   bt->sec *= x;
@@ -76,7 +76,7 @@ void getmicrotime(struct timeval *tv);
 
 static inline sbintime_t sbinuptime(void) {
   struct bintime _bt;
-  
+
   binuptime(&_bt);
   return (bttosbt(_bt));
 }

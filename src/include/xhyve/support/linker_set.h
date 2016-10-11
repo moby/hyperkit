@@ -66,10 +66,10 @@
  * Initialize before referring to a given linker set.
  */
 #define SET_DECLARE(set, ptype) \
- 	extern ptype __weak *__CONCAT(__start_set_,set) \
- 		__asm("segment$start$__"#set); \
- 	extern ptype __weak *__CONCAT(__stop_set_,set) \
- 		__asm("segment$end$__"#set)
+	extern ptype __weak *__CONCAT(__start_set_,set) \
+		__asm("segment$start$__"#set); \
+	extern ptype __weak *__CONCAT(__stop_set_,set) \
+		__asm("segment$end$__"#set)
 
 #define SET_BEGIN(set) \
 	(&__CONCAT(__start_set_,set))
