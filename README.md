@@ -41,6 +41,8 @@ Notes:
   hyperkit so the build will find the ocaml environment.
 - An explicit older version of sexplib is currently required to build
   qcow format 0.2
+- Any previous pin of `mirage-block-unix` should be removed with the
+  commands: `opam update && opam pin remove mirage-block-unix`
 
 ## Tracing
 
