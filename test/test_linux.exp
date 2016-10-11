@@ -1,10 +1,10 @@
 #!/usr/bin/env expect
 
-set KERNEL "test/vmlinuz"
-set INITRD "test/initrd.gz"
+set KERNEL "./vmlinuz"
+set INITRD "./initrd.gz"
 set CMDLINE "earlyprintk=serial console=ttyS0"
 
-spawn ./build/com.docker.hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -f kexec,$KERNEL,$INITRD,$CMDLINE
+spawn ../build/com.docker.hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -f kexec,$KERNEL,$INITRD,$CMDLINE
 set pid [exp_pid]
 set timeout 20
 

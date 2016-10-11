@@ -176,4 +176,4 @@ test/vmlinuz test/initrd.gz:
 	@cd test; ./tinycore.sh
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
-	@./test_linux.exp
+	@(cd test && ./test_linux.exp)
