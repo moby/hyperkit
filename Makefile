@@ -63,7 +63,7 @@ XHYVE_SRC := \
 	src/smbiostbl.c \
 	src/task_switch.c \
 	src/uart_emul.c \
-	src/xhyve.c \
+	src/hyperkit.c \
 	src/virtio.c \
 	src/xmsr.c
 
@@ -110,7 +110,7 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
 	-lasmrun -lbigarray -lunix
 
-build/xhyve.o: CFLAGS += -I$(OCAML_WHERE)
+build/hyperkit.o: CFLAGS += -I$(OCAML_WHERE)
 endif
 
 SRC := \
