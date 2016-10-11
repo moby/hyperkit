@@ -32,15 +32,18 @@ using that to install the appropriate libraries:
     $ brew install opam
     $ opam init
     $ eval `opam config env`
-    $ opam pin add qcow-format git://github.com/mirage/ocaml-qcow#master
     $ opam install uri qcow-format
 
 Notes:
 
 - `opam config env` must be evaluated each time prior to building
   hyperkit so the build will find the ocaml environment.
-- Any previous pin of `mirage-block-unix` should be removed with the
-  commands: `opam update && opam pin remove mirage-block-unix`
+- Any previous pin of `mirage-block-unix` or `qcow-format`
+  should be removed with the commands:
+
+    $ opam update
+    $ opam pin remove mirage-block-unix
+    $ opam pin remove qcow-format
 
 ## Tracing
 
