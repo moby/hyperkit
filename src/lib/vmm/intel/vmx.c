@@ -417,7 +417,7 @@ exit_reason_to_str(int reason)
 
 // 	for (i = 0; i < 8; i++)
 // 		error += guest_msr_ro(vmx, MSR_APIC_TMR0 + i);
-	
+
 // 	for (i = 0; i < 8; i++)
 // 		error += guest_msr_ro(vmx, MSR_APIC_IRR0 + i);
 
@@ -542,12 +542,12 @@ vmx_init(void)
 	// cap_invpcid = 1;
 
 	/* FIXME */
-  	cr0_ones_mask = cr4_ones_mask = 0;
-  	cr0_zeros_mask = cr4_zeros_mask = 0;
+	cr0_ones_mask = cr4_ones_mask = 0;
+	cr0_zeros_mask = cr4_zeros_mask = 0;
 
-  	cr0_ones_mask |= (CR0_NE | CR0_ET);
-  	cr0_zeros_mask |= (CR0_NW | CR0_CD);
-  	cr4_ones_mask = 0x2000;
+	cr0_ones_mask |= (CR0_NE | CR0_ET);
+	cr0_zeros_mask |= (CR0_NW | CR0_CD);
+	cr4_ones_mask = 0x2000;
 
 	vmx_msr_init();
 
@@ -672,7 +672,7 @@ vmx_handle_cpuid(struct vm *vm, int vcpuid)
 {
 	uint32_t eax, ebx, ecx, edx;
 	int error;
-	
+
 	eax = (uint32_t) reg_read(vcpuid, HV_X86_RAX);
 	ebx = (uint32_t) reg_read(vcpuid, HV_X86_RBX);
 	ecx = (uint32_t) reg_read(vcpuid, HV_X86_RCX);
@@ -2391,7 +2391,7 @@ vmx_setreg(void *arg, int vcpu, int reg, uint64_t val)
 		if (shadow > 0) {
 			/*
 			 * Store the unmodified value in the shadow
-			 */			
+			 */
 			error = vmcs_setreg(vcpu, VMCS_IDENT(shadow), val);
 		}
 
@@ -2707,7 +2707,7 @@ vmx_vlapic_init(void *arg, int vcpuid)
 	struct vmx *vmx;
 	struct vlapic *vlapic;
 	struct vlapic_vtx *vlapic_vtx;
-	
+
 	vmx = arg;
 
 	vlapic = malloc(sizeof(struct vlapic_vtx));

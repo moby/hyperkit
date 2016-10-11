@@ -76,10 +76,10 @@ kexec_load_kernel(char *path, char *cmdline) {
 	if (!(f = fopen(path, "r"))) {
 		return -1;
 	}
-	
+
 	fseek(f, 0L, SEEK_END);
 	sz = (size_t) ftell(f);
-	
+
 	if (sz < (0x01f1 + sizeof(struct setup_header))) {
 		fclose(f);
 		return -1;
@@ -136,7 +136,7 @@ kexec_load_kernel(char *path, char *cmdline) {
 	if (((cmdline_len + 1)> zp->setup_header.cmdline_size) ||
 		((BASE_CMDLINE + (cmdline_len + 1)) > kernel_start))
 	{
-		return -1;   
+		return -1;
 	}
 
 	memcpy(((void *) (memory.base + BASE_CMDLINE)), cmdline, cmdline_len);
@@ -184,7 +184,7 @@ kexec_load_ramdisk(char *path) {
 	if (!(f = fopen(path, "r"))) {;
 		return -1;
 	}
-	
+
 	fseek(f, 0L, SEEK_END);
 	sz = (size_t) ftell(f);
 	fseek(f, 0, SEEK_SET);

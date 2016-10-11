@@ -91,7 +91,7 @@ mmio_rb_lookup(struct mmio_rb_tree *rbt, uint64_t addr,
 		*entry = res;
 		return (0);
 	}
-	
+
 	return (ENOENT);
 }
 
@@ -178,7 +178,7 @@ emulate_mem(int vcpu, uint64_t paddr, struct vie *vie,
 	if (entry == NULL) {
 		if (mmio_rb_lookup(&mmio_rb_root, paddr, &entry) == 0) {
 			/* Update the per-vCPU cache */
-			mmio_hint[vcpu] = entry;			
+			mmio_hint[vcpu] = entry;
 		} else if (mmio_rb_lookup(&mmio_rb_fallback, paddr, &entry)) {
 			pthread_rwlock_unlock(&mmio_rwlock);
 			return (ESRCH);
@@ -220,7 +220,7 @@ register_mem_int(struct mmio_rb_tree *rbt, struct mem_range *memp)
 	err = 0;
 
 	mrp = malloc(sizeof(struct mmio_rb_range));
-	
+
 	if (mrp != NULL) {
 		mrp->mr_param = *memp;
 		mrp->mr_base = memp->base;
@@ -251,23 +251,23 @@ register_mem_fallback(struct mem_range *memp)
 	return (register_mem_int(&mmio_rb_fallback, memp));
 }
 
-int 
+int
 unregister_mem(struct mem_range *memp)
 {
 	struct mem_range *mr;
 	struct mmio_rb_range *entry = NULL;
 	int err, i;
-	
+
 	pthread_rwlock_wrlock(&mmio_rwlock);
 	err = mmio_rb_lookup(&mmio_rb_root, memp->base, &entry);
 	if (err == 0) {
 		mr = &entry->mr_param;
 		assert(mr->name == memp->name);
-		assert(mr->base == memp->base && mr->size == memp->size); 
+		assert(mr->base == memp->base && mr->size == memp->size);
 		assert((mr->flags & MEM_F_IMMUTABLE) == 0);
 		RB_REMOVE(mmio_rb_tree, &mmio_rb_root, entry);
 
-		/* flush Per-vCPU cache */	
+		/* flush Per-vCPU cache */
 		for (i=0; i < VM_MAXCPU; i++) {
 			if (mmio_hint[i] == entry)
 				mmio_hint[i] = NULL;
@@ -277,7 +277,7 @@ unregister_mem(struct mem_range *memp)
 
 	if (entry)
 		free(entry);
-	
+
 	return (err);
 }
 

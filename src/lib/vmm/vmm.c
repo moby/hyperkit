@@ -189,7 +189,7 @@ vcpu_cleanup(struct vm *vm, int i, bool destroy)
 
 	VLAPIC_CLEANUP(vm->cookie, vcpu->vlapic);
 	if (destroy) {
-		vmm_stat_free(vcpu->stats);	
+		vmm_stat_free(vcpu->stats);
 	}
 }
 
@@ -200,7 +200,7 @@ vcpu_init(struct vm *vm, int vcpu_id, bool create)
 
 	KASSERT(vcpu_id >= 0 && vcpu_id < VM_MAXCPU,
 	    ("vcpu_init: invalid vcpu %d", vcpu_id));
-	  
+
 	vcpu = &vm->vcpu[vcpu_id];
 
 	if (create) {
@@ -266,7 +266,7 @@ vmm_init(void)
 	error = vmm_mem_init();
 	if (error)
 		return (error);
-	
+
 	ops = &vmm_ops_intel;
 
 	error = VMM_INIT();
@@ -516,7 +516,7 @@ vm_malloc(struct vm *vm, uint64_t gpa, size_t len)
 
 	if ((gpa & XHYVE_PAGE_MASK) || (len & XHYVE_PAGE_MASK) || len == 0)
 		return (EINVAL);
-	
+
 	available = allocated = 0;
 	g = gpa;
 	while (g < gpa + len) {
@@ -985,7 +985,7 @@ vm_handle_inst_emul(struct vm *vm, int vcpuid, bool *retu)
 		vme->inst_length = vie->num_processed;
 		vcpu->nextrip += vie->num_processed;
 	}
- 
+
 	/* return to userland unless this is an in-kernel emulated device */
 	if (gpa >= DEFAULT_APIC_BASE && gpa < DEFAULT_APIC_BASE + XHYVE_PAGE_SIZE) {
 		mread = lapic_mmio_read;
@@ -1958,7 +1958,7 @@ vm_copyin(UNUSED struct vm *vm, UNUSED int vcpuid, struct vm_copyinfo *copyinfo,
 {
 	char *dst;
 	int idx;
-	
+
 	dst = kaddr;
 	idx = 0;
 	while (len > 0) {

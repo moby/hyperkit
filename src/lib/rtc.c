@@ -64,7 +64,7 @@ rtc_time(int use_localtime)
 
 void
 rtc_init(int use_localtime)
-{	
+{
 	size_t himem;
 	size_t lomem;
 	int err;

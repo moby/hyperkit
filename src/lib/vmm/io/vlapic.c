@@ -137,7 +137,7 @@ void
 vlapic_id_write_handler(struct vlapic *vlapic)
 {
 	struct LAPIC *lapic;
-	
+
 	/*
 	 * We don't allow the ID register to be modified so reset it back to
 	 * its default value.
@@ -187,7 +187,7 @@ vlapic_get_ccr(struct vlapic *vlapic)
 	struct bintime bt_now, bt_rem;
 	struct LAPIC *lapic;
 	uint32_t ccr;
-	
+
 	ccr = 0;
 	lapic = vlapic->apic_page;
 
@@ -218,7 +218,7 @@ vlapic_dcr_write_handler(struct vlapic *vlapic)
 {
 	struct LAPIC *lapic;
 	int divisor;
-	
+
 	lapic = vlapic->apic_page;
 	VLAPIC_TIMER_LOCK(vlapic);
 
@@ -243,7 +243,7 @@ void
 vlapic_esr_write_handler(struct vlapic *vlapic)
 {
 	struct LAPIC *lapic;
-	
+
 	lapic = vlapic->apic_page;
 	lapic->esr = vlapic->esr_pending;
 	vlapic->esr_pending = 0;
@@ -372,9 +372,9 @@ vlapic_lvt_write_handler(struct vlapic *vlapic, uint32_t offset)
 	uint32_t *lvtptr, mask, val;
 	struct LAPIC *lapic;
 	int idx;
-	
+
 	lapic = vlapic->apic_page;
-	lvtptr = vlapic_get_lvtptr(vlapic, offset);	
+	lvtptr = vlapic_get_lvtptr(vlapic, offset);
 	val = *lvtptr;
 	idx = lvt_off_to_idx(offset);
 
@@ -594,7 +594,7 @@ static __inline int
 vlapic_periodic_timer(struct vlapic *vlapic)
 {
 	uint32_t lvt;
-	
+
 	lvt = vlapic_get_lvt(vlapic, APIC_OFFSET_TIMER_LVT);
 
 	return (vlapic_get_lvt_field(lvt, APIC_LVTT_TM_PERIODIC));
@@ -626,7 +626,7 @@ static void
 vlapic_fire_timer(struct vlapic *vlapic)
 {
 	uint32_t lvt;
-	
+
 	// The timer LVT always uses the fixed delivery mode.
 	lvt = vlapic_get_lvt(vlapic, APIC_OFFSET_TIMER_LVT);
 	if (vlapic_fire_lvt(vlapic, lvt | APIC_LVT_DM_FIXED)) {
@@ -805,7 +805,7 @@ vlapic_icrtmr_write_handler(struct vlapic *vlapic)
 /*
  * This function populates 'dmask' with the set of vcpus that match the
  * addressing specified by the (dest, phys, lowprio) tuple.
- * 
+ *
  * 'x2apic_dest' specifies whether 'dest' is interpreted as x2APIC (32-bit)
  * or xAPIC (8-bit) destination field.
  */
@@ -1103,7 +1103,7 @@ vlapic_pending_intr(struct vlapic *vlapic, int *vecptr)
 				if (vecptr != NULL)
 					*vecptr = vector;
 				return (1);
-			} else 
+			} else
 				break;
 		}
 	}
@@ -1123,7 +1123,7 @@ vlapic_intr_accepted(struct vlapic *vlapic, int vector)
 	}
 
 	/*
-	 * clear the ready bit for vector being accepted in irr 
+	 * clear the ready bit for vector being accepted in irr
 	 * and set the vector as in service in isr.
 	 */
 	idx = (vector / 32) * 4;
@@ -1215,7 +1215,7 @@ vlapic_read(struct vlapic *vlapic, int mmio_access, uint64_t offset,
 		*data = 0;
 		goto done;
 	}
-	
+
 	offset &= ~((uint64_t) 3);
 	switch(offset)
 	{
@@ -1285,12 +1285,12 @@ vlapic_read(struct vlapic *vlapic, int mmio_access, uint64_t offset,
 		case APIC_OFFSET_ESR:
 			*data = lapic->esr;
 			break;
-		case APIC_OFFSET_ICR_LOW: 
+		case APIC_OFFSET_ICR_LOW:
 			*data = lapic->icr_lo;
 			if (x2apic(vlapic))
 				*data |= (uint64_t)lapic->icr_hi << 32;
 			break;
-		case APIC_OFFSET_ICR_HI: 
+		case APIC_OFFSET_ICR_HI:
 			*data = lapic->icr_hi;
 			break;
 		case APIC_OFFSET_CMCI_LVT:
@@ -1300,7 +1300,7 @@ vlapic_read(struct vlapic *vlapic, int mmio_access, uint64_t offset,
 		case APIC_OFFSET_LINT0_LVT:
 		case APIC_OFFSET_LINT1_LVT:
 		case APIC_OFFSET_ERROR_LVT:
-			*data = vlapic_get_lvt(vlapic, ((uint32_t) offset));	
+			*data = vlapic_get_lvt(vlapic, ((uint32_t) offset));
 #ifdef INVARIANTS
 			reg = vlapic_get_lvtptr(vlapic, offset);
 			KASSERT(*data == *reg, ("inconsistent lvt value at "
@@ -1390,7 +1390,7 @@ vlapic_write(struct vlapic *vlapic, int mmio_access, uint64_t offset,
 			lapic->svr = (uint32_t) data;
 			vlapic_svr_write_handler(vlapic);
 			break;
-		case APIC_OFFSET_ICR_LOW: 
+		case APIC_OFFSET_ICR_LOW:
 			lapic->icr_lo = (uint32_t) data;
 			if (x2apic(vlapic))
 				lapic->icr_hi = data >> 32;
@@ -1470,7 +1470,7 @@ static void
 vlapic_reset(struct vlapic *vlapic)
 {
 	struct LAPIC *lapic;
-	
+
 	lapic = vlapic->apic_page;
 	bzero(lapic, sizeof(struct LAPIC));
 

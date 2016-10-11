@@ -721,7 +721,7 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 	sc->vsc_queues[VTNET_CTLQ].vq_qsize = VTNET_RINGSZ;
         sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
 #endif
- 
+
 	/*
 	 * Attempt to open the tap device and read the MAC address
 	 * if specified
@@ -756,7 +756,7 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 
 	/* Link is up if we managed to open tap device. */
 	sc->vsc_config.status = 1;
-	
+
 	/* use BAR 1 to map MSI-X table and PBA, if we're using MSI-X */
 	if (vi_intr_init(&sc->vsc_vs, 1, fbsdrun_virtio_msix()))
 		return (1);
@@ -769,12 +769,12 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 	sc->rx_merge = 1;
 	sc->rx_vhdrlen = sizeof(struct virtio_net_rxhdr);
 	sc->rx_in_progress = 0;
-	pthread_mutex_init(&sc->rx_mtx, NULL); 
+	pthread_mutex_init(&sc->rx_mtx, NULL);
 
-	/* 
+	/*
 	 * Initialize tx semaphore & spawn TX processing thread.
 	 * As of now, only one thread for TX desc processing is
-	 * spawned. 
+	 * spawned.
 	 */
 	sc->tx_in_progress = 0;
 	pthread_mutex_init(&sc->tx_mtx, NULL);

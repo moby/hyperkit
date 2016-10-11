@@ -243,7 +243,7 @@ ahci_generate_intr(struct pci_ahci_softc *sc)
 
 	DPRINTF("%s %x\n", __func__, sc->is);
 
-	if (sc->is && (sc->ghc & AHCI_GHC_IE)) {		
+	if (sc->is && (sc->ghc & AHCI_GHC_IE)) {
 		if (pci_msi_enabled(pi)) {
 			/*
 			 * Generate an MSI interrupt on every edge
@@ -1143,7 +1143,7 @@ be32dec(const void *pp)
 {
 	unsigned char const *p = (unsigned char const *)pp;
 
-	return (uint32_t) ((((uint64_t) p[0]) << 24) | 
+	return (uint32_t) ((((uint64_t) p[0]) << 24) |
 		(((uint64_t) p[1]) << 16) | (((uint64_t) p[2]) << 8) |
 			((uint64_t) p[3]));
 }
@@ -1894,7 +1894,7 @@ ata_ioreq_cb(struct blockif_req *br, int err)
 	if (!err && aior->more) {
 		if (dsm)
 			ahci_handle_dsm_trim(p, slot, cfis, aior->done);
-		else 
+		else
 			ahci_handle_rw(p, slot, cfis, aior->done);
 		goto out;
 	}
@@ -2307,10 +2307,10 @@ pci_ahci_init(struct pci_devinst *pi, char *opts, int atapi)
 	 */
 	snprintf(bident, sizeof(bident), "%d:%d", pi->pi_slot, pi->pi_func);
 	bctxt = blockif_open(opts, bident);
-	if (bctxt == NULL) {       	
+	if (bctxt == NULL) {
 		ret = 1;
 		goto open_fail;
-	}	
+	}
 	sc->port[0].bctx = bctxt;
 	sc->port[0].pr_sc = sc;
 
@@ -2320,7 +2320,7 @@ pci_ahci_init(struct pci_devinst *pi, char *opts, int atapi)
 	 */
 	MD5Init(&mdctx);
 	MD5Update(&mdctx, opts, ((unsigned int) strlen(opts)));
-	MD5Final(digest, &mdctx);	
+	MD5Final(digest, &mdctx);
 	snprintf(sc->port[0].ident, AHCI_PORT_IDENT, "BHYVE-%02X%02X-%02X%02X-%02X%02X",
 	    digest[0], digest[1], digest[2], digest[3], digest[4], digest[5]);
 

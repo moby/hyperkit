@@ -74,15 +74,15 @@ default_inout(UNUSED int vcpu, int in, UNUSED int port, int bytes,
 			break;
 		}
 	}
-	
+
 	return (0);
 }
 
-static void 
+static void
 register_default_iohandler(int start, int size)
 {
 	struct inout_port iop;
-	
+
 	VERIFY_IOPORT(start, size);
 
 	bzero(&iop, sizeof(iop));

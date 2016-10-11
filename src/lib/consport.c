@@ -56,7 +56,7 @@ ttyopen(void)
 	tcgetattr(STDIN_FILENO, &tio_orig);
 
 	cfmakeraw(&tio_new);
-	tcsetattr(STDIN_FILENO, TCSANOW, &tio_new);	
+	tcsetattr(STDIN_FILENO, TCSANOW, &tio_new);
 
 	atexit(ttyclose);
 }
@@ -125,7 +125,7 @@ console_handler(UNUSED int vcpu, int in, UNUSED int port, int bytes,
 		ttyopen();
 		opened = 1;
 	}
-	
+
 	if (in)
 		*eax = (uint32_t) ttyread();
 	else

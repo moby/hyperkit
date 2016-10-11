@@ -121,7 +121,7 @@ static struct segment_descriptor i386_gdt[] = {
 	  .sd_p = 0, .sd_hilimit = 0, .sd_def32 = 0, .sd_gran = 0},
 
 	{ .sd_lolimit = 0xffff, .sd_type = SDT_MEMER, /* CODE */
-	  .sd_p = 1, .sd_hilimit = 0xf, .sd_def32 = 1, .sd_gran = 1 }, 
+	  .sd_p = 1, .sd_hilimit = 0xf, .sd_def32 = 1, .sd_gran = 1 },
 
 	{ .sd_lolimit = 0xffff, .sd_type = SDT_MEMRW, /* DATA */
 	  .sd_p = 1, .sd_hilimit = 0xf, .sd_def32 = 1, .sd_gran = 1 },
@@ -165,7 +165,7 @@ fbsd_set_regs_i386(uint32_t eip, uint32_t gdt_base, uint32_t esp)
 
 	/* Place the TSS one page above the GDT. */
 	tss_base = gdt_base + 0x1000;
-	gdt[3].sd_lobase = tss_base;	
+	gdt[3].sd_lobase = tss_base;
 
 	rflags = 0x2;
 	error = xh_vm_set_register(BSP, VM_REG_GUEST_RFLAGS, rflags);
@@ -218,7 +218,7 @@ fbsd_set_regs_i386(uint32_t eip, uint32_t gdt_base, uint32_t esp)
 	if (error)
 		goto done;
 
-	
+
 	error = xh_vm_set_desc(BSP, VM_REG_GUEST_LDTR, 0, 0, DESC_UNUSABLE);
 	if (error)
 		goto done;
@@ -226,20 +226,20 @@ fbsd_set_regs_i386(uint32_t eip, uint32_t gdt_base, uint32_t esp)
 	gsel = GSEL(GUEST_CODE_SEL, SEL_KPL);
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_CS, gsel)) != 0)
 		goto done;
-	
+
 	gsel = GSEL(GUEST_DATA_SEL, SEL_KPL);
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_DS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_ES, gsel)) != 0)
 		goto done;
 
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_FS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_GS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_SS, gsel)) != 0)
 		goto done;
 
@@ -344,20 +344,20 @@ fbsd_set_regs(uint64_t rip, uint64_t cr3, uint64_t gdt_base, uint64_t rsp)
 	gsel = GSEL(GUEST_CODE_SEL, SEL_KPL);
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_CS, gsel)) != 0)
 		goto done;
-	
+
 	gsel = GSEL(GUEST_DATA_SEL, SEL_KPL);
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_DS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_ES, gsel)) != 0)
 		goto done;
 
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_FS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_GS, gsel)) != 0)
 		goto done;
-	
+
 	if ((error = xh_vm_set_register(BSP, VM_REG_GUEST_SS, gsel)) != 0)
 		goto done;
 
@@ -658,7 +658,7 @@ cb_setreg(UNUSED void *arg, int r, uint64_t v)
 {
 	int error;
 	enum vm_reg_name vmreg;
-	
+
 	vmreg = VM_REG_LAST;
 
 	switch (r) {
@@ -686,7 +686,7 @@ cb_setmsr(UNUSED void *arg, int r, uint64_t v)
 {
 	int error;
 	enum vm_reg_name vmreg;
-	
+
 	vmreg = VM_REG_LAST;
 
 	switch (r) {
@@ -713,7 +713,7 @@ cb_setcr(UNUSED void *arg, int r, uint64_t v)
 {
 	int error;
 	enum vm_reg_name vmreg;
-	
+
 	vmreg = VM_REG_LAST;
 
 	switch (r) {
@@ -923,7 +923,7 @@ disk_open(char *path)
 	if (fd > 0) {
 		disk_fd[ndisks] = fd;
 		ndisks++;
-	} else 
+	} else
 		err = errno;
 
 	return (err);
@@ -971,7 +971,7 @@ fbsd_load(void)
 	oldterm = term;
 	cfmakeraw(&term);
 	term.c_cflag |= CLOCAL;
-	
+
 	tcsetattr(consout_fd, TCSAFLUSH, &term);
 
 	h = dlopen(config.userboot, RTLD_LOCAL);

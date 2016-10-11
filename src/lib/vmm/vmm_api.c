@@ -296,10 +296,10 @@ xh_vm_get_desc(int vcpu, int reg, uint64_t *base, uint32_t *limit,
 		*base = sd.base;
 		*limit = sd.limit;
 		*access = sd.access;
-	} 
+	}
 	vcpu_freeze(vcpu, false);
 
-	return (error);	
+	return (error);
 }
 
 int
@@ -322,7 +322,7 @@ xh_vm_set_register(int vcpu, int reg, uint64_t val)
 	error = vm_set_register(vm, vcpu, reg, val);
 	vcpu_freeze(vcpu, false);
 
-	return (error);	
+	return (error);
 }
 
 int
@@ -544,7 +544,7 @@ xh_vm_set_capability(int vcpu, enum vm_cap_type cap, int val)
 	error = vm_set_capability(vm, vcpu, cap, val);
 	vcpu_freeze(vcpu, false);
 
-	return (error);	
+	return (error);
 }
 
 int
@@ -556,7 +556,7 @@ xh_vm_get_intinfo(int vcpu, uint64_t *i1, uint64_t *i2)
 	error = vm_get_intinfo(vm, vcpu, i1, i2);
 	vcpu_freeze(vcpu, false);
 
-	return (error);	
+	return (error);
 }
 
 int
@@ -568,7 +568,7 @@ xh_vm_set_intinfo(int vcpu, uint64_t exit_intinfo)
 	error = vm_exit_intinfo(vm, vcpu, exit_intinfo);
 	vcpu_freeze(vcpu, false);
 
-	return (error);	
+	return (error);
 }
 
 uint64_t *
