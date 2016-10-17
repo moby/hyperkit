@@ -9,68 +9,71 @@ endif
 
 include config.mk
 
-VMM_SRC := \
-	src/vmm/x86.c \
-	src/vmm/vmm.c \
-	src/vmm/vmm_host.c \
-	src/vmm/vmm_mem.c \
-	src/vmm/vmm_lapic.c \
-	src/vmm/vmm_instruction_emul.c \
-	src/vmm/vmm_ioport.c \
-	src/vmm/vmm_callout.c \
-	src/vmm/vmm_stat.c \
-	src/vmm/vmm_util.c \
-	src/vmm/vmm_api.c \
-	src/vmm/intel/vmx.c \
-	src/vmm/intel/vmx_msr.c \
-	src/vmm/intel/vmcs.c \
-	src/vmm/io/vatpic.c \
-	src/vmm/io/vatpit.c \
-	src/vmm/io/vhpet.c \
-	src/vmm/io/vioapic.c \
-	src/vmm/io/vlapic.c \
-	src/vmm/io/vpmtmr.c \
-	src/vmm/io/vrtc.c
+VMM_LIB_SRC := \
+	src/lib/vmm/intel/vmcs.c \
+	src/lib/vmm/intel/vmx.c \
+	src/lib/vmm/intel/vmx_msr.c \
+	\
+	src/lib/vmm/io/vatpic.c \
+	src/lib/vmm/io/vatpit.c \
+	src/lib/vmm/io/vhpet.c \
+	src/lib/vmm/io/vioapic.c \
+	src/lib/vmm/io/vlapic.c \
+	src/lib/vmm/io/vpmtmr.c \
+	src/lib/vmm/io/vrtc.c \
+	\
+	src/lib/vmm/vmm.c \
+	src/lib/vmm/vmm_api.c \
+	src/lib/vmm/vmm_callout.c \
+	src/lib/vmm/vmm_host.c \
+	src/lib/vmm/vmm_instruction_emul.c \
+	src/lib/vmm/vmm_ioport.c \
+	src/lib/vmm/vmm_lapic.c \
+	src/lib/vmm/vmm_mem.c \
+	src/lib/vmm/vmm_stat.c \
+	src/lib/vmm/vmm_util.c \
+	src/lib/vmm/x86.c
 
-XHYVE_SRC := \
-	src/acpitbl.c \
-	src/atkbdc.c \
-	src/block_if.c \
-	src/consport.c \
-	src/dbgport.c \
-	src/inout.c \
-	src/ioapic.c \
-	src/md5c.c \
-	src/mem.c \
-	src/mevent.c \
-	src/mptbl.c \
-	src/pci_ahci.c \
-	src/pci_emul.c \
-	src/pci_hostbridge.c \
-	src/pci_irq.c \
-	src/pci_lpc.c \
-	src/pci_uart.c \
-	src/pci_virtio_9p.c \
-	src/pci_virtio_block.c \
-	src/pci_virtio_net_tap.c \
-	src/pci_virtio_net_vmnet.c \
-	src/pci_virtio_net_vpnkit.c \
-	src/pci_virtio_rnd.c \
-	src/pci_virtio_sock.c \
-	src/pm.c \
-	src/post.c \
-	src/rtc.c \
-	src/smbiostbl.c \
-	src/task_switch.c \
-	src/uart_emul.c \
-	src/xhyve.c \
-	src/virtio.c \
-	src/xmsr.c
+HYPERKIT_LIB_SRC := \
+	src/lib/acpitbl.c \
+	src/lib/atkbdc.c \
+	src/lib/block_if.c \
+	src/lib/consport.c \
+	src/lib/dbgport.c \
+	src/lib/inout.c \
+	src/lib/ioapic.c \
+	src/lib/md5c.c \
+	src/lib/mem.c \
+	src/lib/mevent.c \
+	src/lib/mptbl.c \
+	src/lib/pci_ahci.c \
+	src/lib/pci_emul.c \
+	src/lib/pci_hostbridge.c \
+	src/lib/pci_irq.c \
+	src/lib/pci_lpc.c \
+	src/lib/pci_uart.c \
+	src/lib/pci_virtio_9p.c \
+	src/lib/pci_virtio_block.c \
+	src/lib/pci_virtio_net_tap.c \
+	src/lib/pci_virtio_net_vmnet.c \
+	src/lib/pci_virtio_net_vpnkit.c \
+	src/lib/pci_virtio_rnd.c \
+	src/lib/pci_virtio_sock.c \
+	src/lib/pm.c \
+	src/lib/post.c \
+	src/lib/rtc.c \
+	src/lib/smbiostbl.c \
+	src/lib/task_switch.c \
+	src/lib/uart_emul.c \
+	src/lib/virtio.c \
+	src/lib/xmsr.c
 
-FIRMWARE_SRC := \
-	src/firmware/bootrom.c \
-	src/firmware/kexec.c \
-	src/firmware/fbsd.c
+FIRMWARE_LIB_SRC := \
+	src/lib/firmware/bootrom.c \
+	src/lib/firmware/kexec.c \
+	src/lib/firmware/fbsd.c
+
+HYPERKIT_SRC := src/hyperkit.c
 
 HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; then echo YES ; else echo NO; fi)
 
@@ -90,10 +93,10 @@ CFLAGS += -DCONNECT_SOCKET_NAME=\"$(CONNECT_SOCKET_NAME)\"
 endif
 
 OCAML_SRC := \
-	src/mirage_block_ocaml.ml
+	src/lib/mirage_block_ocaml.ml
 
 OCAML_C_SRC := \
-	src/mirage_block_c.c
+	src/lib/mirage_block_c.c
 
 OCAML_WHERE := $(shell ocamlc -where)
 OCAML_PACKS := cstruct cstruct.lwt io-page io-page.unix uri mirage-block mirage-block-unix qcow unix threads lwt lwt.unix
@@ -110,18 +113,19 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
 	-lasmrun -lbigarray -lunix
 
-build/xhyve.o: CFLAGS += -I$(OCAML_WHERE)
+build/hyperkit.o: CFLAGS += -I$(OCAML_WHERE)
 endif
 
 SRC := \
-	$(VMM_SRC) \
-	$(XHYVE_SRC) \
-	$(FIRMWARE_SRC) \
-	$(OCAML_C_SRC)
+	$(VMM_LIB_SRC) \
+	$(HYPERKIT_LIB_SRC) \
+	$(FIRMWARE_LIB_SRC) \
+	$(OCAML_C_SRC) \
+	$(HYPERKIT_SRC)
 
 OBJ := $(SRC:src/%.c=build/%.o) $(OCAML_SRC:src/%.ml=build/%.o)
 DEP := $(OBJ:%.o=%.d)
-INC := -Iinclude
+INC := -Isrc/include
 
 CFLAGS += -DVERSION=\"$(GIT_VERSION)\" -DVERSION_SHA1=\"$(GIT_VERSION_SHA1)\"
 
@@ -137,11 +141,11 @@ all: $(TARGET) | build
 build:
 	@mkdir -p build
 
-include/xhyve/dtrace.h: src/dtrace.d
+src/include/xhyve/dtrace.h: src/lib/dtrace.d
 	@echo gen $<
 	$(VERBOSE) $(DTRACE) -h -s $< -o $@
 
-$(SRC): include/xhyve/dtrace.h
+$(SRC): src/include/xhyve/dtrace.h
 
 build/%.o: src/%.c
 	@echo cc $<
@@ -167,11 +171,11 @@ $(TARGET): $(TARGET).sym
 
 clean:
 	@rm -rf build
-	@rm -f include/xhyve/dtrace.h
+	@rm -f src/include/xhyve/dtrace.h
 	@rm -f test/vmlinuz test/initrd.gz
 
 test/vmlinuz test/initrd.gz:
 	@cd test; ./tinycore.sh
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
-	@./test_linux.exp
+	@(cd test && ./test_linux.exp)
