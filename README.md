@@ -12,6 +12,12 @@ HyperKit currently only supports Mac OS X using the [Hypervisor.framework](https
 * OS X 10.10.3 Yosemite or later
 * a 2010 or later Mac (i.e. a CPU that supports EPT)
 
+## Reporting Bugs
+
+If you are using a version of Hyperkit which is embedded into a higher level application (e.g. [Docker for Mac](https://github.com/docker/for-mac)) then please report any issues against that higher level application in the first instance. That way the relevant team can triage and determine if the issue lies in Hyperkit and assign as necessary.
+
+If you are using Hyperkit directly then please report issues against this repository.
+
 ## Usage
 
     $ com.docker.hyperkit -h
