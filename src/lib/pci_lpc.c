@@ -137,15 +137,15 @@ lpc_uart_io_handler(UNUSED int vcpu, int in, int port, int bytes, uint32_t *eax,
 		if (in)
 			*eax = uart_read(sc->uart_softc, offset);
 		else
-			uart_write(sc->uart_softc, offset, ((uint8_t) *eax));
+			uart_write(sc->uart_softc, offset, (uint8_t)*eax);
 		break;
 	case 2:
 		if (in) {
-			*eax = (uint32_t) uart_read(sc->uart_softc, offset);
-			*eax |= (uint32_t) (uart_read(sc->uart_softc, offset + 1) << 8);
+			*eax = (uint32_t)uart_read(sc->uart_softc, offset);
+			*eax |= (uint32_t)(uart_read(sc->uart_softc, offset + 1) << 8);
 		} else {
-			uart_write(sc->uart_softc, offset, ((uint8_t) *eax));
-			uart_write(sc->uart_softc, offset + 1, ((uint8_t) (*eax >> 8)));
+			uart_write(sc->uart_softc, offset, (uint8_t)*eax);
+			uart_write(sc->uart_softc, offset + 1, (uint8_t)(*eax >> 8));
 		}
 		break;
 	default:
@@ -277,7 +277,8 @@ pci_lpc_sysres_dsdt(void)
 		lsp = *lspp;
 		switch (lsp->type) {
 		case LPC_SYSRES_IO:
-			dsdt_fixed_ioport(((uint16_t) lsp->base), ((uint16_t) lsp->length));
+			dsdt_fixed_ioport((uint16_t)lsp->base,
+					  (uint16_t)lsp->length);
 			break;
 		case LPC_SYSRES_MEM:
 			dsdt_fixed_mem32(lsp->base, lsp->length);
@@ -309,8 +310,8 @@ pci_lpc_uart_dsdt(void)
 		dsdt_line("  Name (_CRS, ResourceTemplate ()");
 		dsdt_line("  {");
 		dsdt_indent(2);
-		dsdt_fixed_ioport(((uint16_t) sc->iobase), UART_IO_BAR_SIZE);
-		dsdt_fixed_irq(((uint8_t) sc->irq));
+		dsdt_fixed_ioport((uint16_t)sc->iobase, UART_IO_BAR_SIZE);
+		dsdt_fixed_irq((uint8_t) sc->irq);
 		dsdt_unindent(2);
 		dsdt_line("  })");
 		dsdt_line("}");
@@ -331,7 +332,7 @@ pci_lpc_cfgwrite(UNUSED int vcpu, struct pci_devinst *pi, int coff, int bytes,
 		if (coff >= 0x68 && coff <= 0x6b)
 			pirq_pin = coff - 0x68 + 5;
 		if (pirq_pin != 0) {
-			pirq_write(pirq_pin, ((uint8_t) val));
+			pirq_write(pirq_pin, (uint8_t)val);
 			pci_set_cfgdata8(pi, coff, pirq_read(pirq_pin));
 			return (0);
 		}

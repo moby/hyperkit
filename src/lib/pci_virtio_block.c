@@ -50,29 +50,29 @@
 #include <xhyve/virtio.h>
 #include <xhyve/block_if.h>
 
-#define VTBLK_RINGSZ 128
+#define VTBLK_RINGSZ    128
 
-#define VTBLK_S_OK 0
-#define VTBLK_S_IOERR 1
-#define	VTBLK_S_UNSUPP 2
+#define VTBLK_S_OK	0
+#define VTBLK_S_IOERR	1
+#define	VTBLK_S_UNSUPP	2
 
 #define	VTBLK_BLK_ID_BYTES 20 + 1
 
 /* Capability bits */
-#define	VTBLK_F_SEG_MAX (1 << 2) /* Maximum request segments */
-#define	VTBLK_F_BLK_SIZE (1 << 6) /* cfg block size valid */
-#define	VTBLK_F_FLUSH (1 << 9) /* Cache flush support */
-#define	VTBLK_F_TOPOLOGY (1 << 10) /* Optimal I/O alignment */
+#define	VTBLK_F_SEG_MAX		(1 << 2)	/* Maximum request segments */
+#define	VTBLK_F_BLK_SIZE	(1 << 6)	/* cfg block size valid */
+#define	VTBLK_F_FLUSH		(1 << 9)	/* Cache flush support */
+#define	VTBLK_F_TOPOLOGY	(1 << 10)	/* Optimal I/O alignment */
 
 /*
  * Host capabilities
  */
-#define VTBLK_S_HOSTCAPS \
-	(VTBLK_F_SEG_MAX  | \
-	 VTBLK_F_BLK_SIZE | \
-	 VTBLK_F_FLUSH    | \
-	 VTBLK_F_TOPOLOGY | \
-	 VIRTIO_RING_F_INDIRECT_DESC) /* indirect descriptors */
+#define VTBLK_S_HOSTCAPS      \
+  ( VTBLK_F_SEG_MAX  |						    \
+    VTBLK_F_BLK_SIZE |						    \
+    VTBLK_F_FLUSH    |						    \
+    VTBLK_F_TOPOLOGY |						    \
+    VIRTIO_RING_F_INDIRECT_DESC )	/* indirect descriptors */
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpacked"
@@ -80,22 +80,22 @@
  * Config space "registers"
  */
 struct vtblk_config {
-	uint64_t vbc_capacity;
-	uint32_t vbc_size_max;
-	uint32_t vbc_seg_max;
+	uint64_t	vbc_capacity;
+	uint32_t	vbc_size_max;
+	uint32_t	vbc_seg_max;
 	struct {
 		uint16_t cylinders;
 		uint8_t heads;
 		uint8_t sectors;
 	} vbc_geometry;
-	uint32_t vbc_blk_size;
+	uint32_t	vbc_blk_size;
 	struct {
 		uint8_t physical_block_exp;
 		uint8_t alignment_offset;
 		uint16_t min_io_size;
 		uint32_t opt_io_size;
 	} vbc_topology;
-	uint8_t vbc_writeback;
+	uint8_t		vbc_writeback;
 } __packed;
 
 /*
@@ -108,9 +108,9 @@ struct virtio_blk_hdr {
 #define	VBH_OP_FLUSH_OUT	5
 #define	VBH_OP_IDENT		8
 #define	VBH_FLAG_BARRIER	0x80000000	/* OR'ed into vbh_type */
-	uint32_t vbh_type;
-	uint32_t vbh_ioprio;
-	uint64_t vbh_sector;
+	uint32_t       	vbh_type;
+	uint32_t	vbh_ioprio;
+	uint64_t	vbh_sector;
 } __packed;
 
 #pragma clang diagnostic pop
@@ -124,10 +124,10 @@ static int pci_vtblk_debug;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 struct pci_vtblk_ioreq {
-	struct blockif_req io_req;
-	struct pci_vtblk_softc *io_sc;
-	uint8_t *io_status;
-	uint16_t io_idx;
+	struct blockif_req		io_req;
+	struct pci_vtblk_softc	       *io_sc;
+	uint8_t			       *io_status;
+	uint16_t			io_idx;
 };
 
 /*
@@ -151,15 +151,15 @@ static int pci_vtblk_cfgread(void *, int, int, uint32_t *);
 static int pci_vtblk_cfgwrite(void *, int, int, uint32_t);
 
 static struct virtio_consts vtblk_vi_consts = {
-	"vtblk", /* our name */
-	1, /* we support 1 virtqueue */
+	"vtblk",		/* our name */
+	1,			/* we support 1 virtqueue */
 	sizeof(struct vtblk_config), /* config reg size */
-	pci_vtblk_reset, /* reset */
-	pci_vtblk_notify, /* device-wide qnotify */
-	pci_vtblk_cfgread, /* read PCI config */
-	pci_vtblk_cfgwrite, /* write PCI config */
-	NULL, /* apply negotiated features */
-	VTBLK_S_HOSTCAPS, /* our capabilities */
+	pci_vtblk_reset,	/* reset */
+	pci_vtblk_notify,	/* device-wide qnotify */
+	pci_vtblk_cfgread,	/* read PCI config */
+	pci_vtblk_cfgwrite,	/* write PCI config */
+	NULL,			/* apply negotiated features */
+	VTBLK_S_HOSTCAPS,	/* our capabilities */
 };
 
 static void
@@ -238,9 +238,9 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	assert(iov[0].iov_len == sizeof(struct virtio_blk_hdr));
 	vbh = iov[0].iov_base;
 	memcpy(&io->io_req.br_iov, &iov[1],
-		sizeof(struct iovec) * (((size_t) n) - 2));
+	       sizeof(struct iovec) * ((size_t)n - 2));
 	io->io_req.br_iovcnt = n - 2;
-	io->io_req.br_offset = (off_t) (vbh->vbh_sector * DEV_BSIZE);
+	io->io_req.br_offset = (off_t)(vbh->vbh_sector * DEV_BSIZE);
 	io->io_status = iov[--n].iov_base;
 	assert(iov[n].iov_len == 1);
 	assert(flags[n] & VRING_DESC_F_WRITE);
@@ -343,7 +343,7 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 		io->io_req.br_callback = pci_vtblk_done;
 		io->io_req.br_param = io;
 		io->io_sc = sc;
-		io->io_idx = (uint16_t) i;
+		io->io_idx = (uint16_t)i;
 	}
 
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
@@ -360,24 +360,24 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 	 * md5 sum of the filename
 	 */
 	MD5Init(&mdctx);
-	MD5Update(&mdctx, opts, ((unsigned) strlen(opts)));
+	MD5Update(&mdctx, opts, (unsigned)strlen(opts));
 	MD5Final(digest, &mdctx);
 	snprintf(sc->vbsc_ident, VTBLK_BLK_ID_BYTES, "BHYVE-%02X%02X-%02X%02X-%02X%02X",
 	    digest[0], digest[1], digest[2], digest[3], digest[4], digest[5]);
 
 	/* setup virtio block config space */
 	sc->vbsc_cfg.vbc_capacity =
-		(uint64_t) (size / DEV_BSIZE); /* 512-byte units */
+		(uint64_t)(size / DEV_BSIZE); /* 512-byte units */
 	sc->vbsc_cfg.vbc_size_max = 0;	/* not negotiated */
 	sc->vbsc_cfg.vbc_seg_max = BLOCKIF_IOV_MAX;
 	sc->vbsc_cfg.vbc_geometry.cylinders = 0;	/* no geometry */
 	sc->vbsc_cfg.vbc_geometry.heads = 0;
 	sc->vbsc_cfg.vbc_geometry.sectors = 0;
-	sc->vbsc_cfg.vbc_blk_size = (uint32_t) sectsz;
+	sc->vbsc_cfg.vbc_blk_size = (uint32_t)sectsz;
 	sc->vbsc_cfg.vbc_topology.physical_block_exp =
-	    (uint8_t) ((sts > sectsz) ? (ffsll(sts / sectsz) - 1) : 0);
+	    (uint8_t)((sts > sectsz) ? (ffsll(sts / sectsz) - 1) : 0);
 	sc->vbsc_cfg.vbc_topology.alignment_offset =
-	    (uint8_t) ((sto != 0) ? ((sts - sto) / sectsz) : 0);
+	    (uint8_t)((sto != 0) ? ((sts - sto) / sectsz) : 0);
 	sc->vbsc_cfg.vbc_topology.min_io_size = 0;
 	sc->vbsc_cfg.vbc_topology.opt_io_size = 0;
 	sc->vbsc_cfg.vbc_writeback = 0;
