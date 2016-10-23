@@ -63,10 +63,10 @@ static int pci_vtrnd_debug;
  */
 struct pci_vtrnd_softc {
 	struct virtio_softc vrsc_vs;
-	struct vqueue_info vrsc_vq;
-	pthread_mutex_t vrsc_mtx;
-	uint64_t vrsc_cfg;
-	int vrsc_fd;
+	struct vqueue_info  vrsc_vq;
+	pthread_mutex_t     vrsc_mtx;
+	uint64_t            vrsc_cfg;
+	int                 vrsc_fd;
 };
 #pragma clang diagnostic pop
 
@@ -74,15 +74,15 @@ static void pci_vtrnd_reset(void *);
 static void pci_vtrnd_notify(void *, struct vqueue_info *);
 
 static struct virtio_consts vtrnd_vi_consts = {
-	"vtrnd", /* our name */
-	1, /* we support 1 virtqueue */
-	0, /* config reg size */
-	pci_vtrnd_reset, /* reset */
-	pci_vtrnd_notify, /* device-wide qnotify */
-	NULL, /* read virtio config */
-	NULL, /* write virtio config */
-	NULL, /* apply negotiated features */
-	0, /* our capabilities */
+	"vtrnd",		/* our name */
+	1,			/* we support 1 virtqueue */
+	0,			/* config reg size */
+	pci_vtrnd_reset,	/* reset */
+	pci_vtrnd_notify,	/* device-wide qnotify */
+	NULL,			/* read virtio config */
+	NULL,			/* write virtio config */
+	NULL,			/* apply negotiated features */
+	0,			/* our capabilities */
 };
 
 
@@ -126,7 +126,7 @@ pci_vtrnd_notify(void *vsc, struct vqueue_info *vq)
 		/*
 		 * Release this chain and handle more
 		 */
-		vq_relchain(vq, idx, ((uint32_t) len));
+		vq_relchain(vq, idx, (uint32_t)len);
 	}
 	vq_endchains(vq, 1);	/* Generate interrupt if appropriate. */
 }
