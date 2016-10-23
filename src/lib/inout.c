@@ -50,16 +50,16 @@ SET_DECLARE(inout_port_set, struct inout_port);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 static struct {
-	const char *name;
-	int flags;
-	inout_func_t handler;
-	void *arg;
+	const char	*name;
+	int		flags;
+	inout_func_t	handler;
+	void		*arg;
 } inout_handlers[MAX_IOPORTS];
 #pragma clang diagnostic pop
 
 static int
 default_inout(UNUSED int vcpu, int in, UNUSED int port, int bytes,
-	uint32_t *eax, UNUSED void *arg)
+	      uint32_t *eax, UNUSED void *arg)
 {
 	if (in) {
 		switch (bytes) {
@@ -89,7 +89,7 @@ register_default_iohandler(int start, int size)
 	iop.name = "default";
 	iop.port = start;
 	iop.size = size;
-	iop.flags = (int) (IOPORT_F_INOUT | IOPORT_F_DEFAULT);
+	iop.flags = (int)(IOPORT_F_INOUT | IOPORT_F_DEFAULT);
 	iop.handler = default_inout;
 
 	register_inout(&iop);
@@ -97,7 +97,7 @@ register_default_iohandler(int start, int size)
 
 static int
 update_register(int vcpuid, enum vm_reg_name reg,
-	uint64_t val, int size)
+		uint64_t val, int size)
 {
 	int error;
 	uint64_t origval;
@@ -186,7 +186,7 @@ emulate_inout(int vcpu, struct vm_exit *vmexit, int strict)
 			}
 
 			error = xh_vm_copy_setup(vcpu, &vis->paging, gla,
-			    ((size_t) bytes), prot, iov, nitems(iov), &fault);
+			    (size_t)bytes, prot, iov, nitems(iov), &fault);
 			if (error) {
 				retval = -1;  /* Unrecoverable error */
 				break;
@@ -203,20 +203,20 @@ emulate_inout(int vcpu, struct vm_exit *vmexit, int strict)
 
 			val = 0;
 			if (!in)
-				xh_vm_copyin(iov, &val, ((size_t) bytes));
+				xh_vm_copyin(iov, &val, (size_t)bytes);
 
 			retval = handler(vcpu, in, port, bytes, &val, arg);
 			if (retval != 0)
 				break;
 
 			if (in)
-				xh_vm_copyout(&val, iov, ((size_t) bytes));
+				xh_vm_copyout(&val, iov, (size_t)bytes);
 
 			/* Update index */
 			if (vis->rflags & PSL_D)
-				index -= ((uint64_t) bytes);
+				index -= (uint64_t)bytes;
 			else
-				index += ((uint64_t) bytes);
+				index += (uint64_t)bytes;
 
 			count--;
 			iterations--;
@@ -288,9 +288,9 @@ register_inout(struct inout_port *iop)
 	 * Verify that the new registration is not overwriting an already
 	 * allocated i/o range.
 	 */
-	if ((((unsigned) iop->flags) & IOPORT_F_DEFAULT) == 0) {
+	if (((unsigned)iop->flags & IOPORT_F_DEFAULT) == 0) {
 		for (i = iop->port; i < iop->port + iop->size; i++) {
-			if ((((unsigned) inout_handlers[i].flags) & IOPORT_F_DEFAULT) == 0)
+			if (((unsigned)inout_handlers[i].flags & IOPORT_F_DEFAULT) == 0)
 				return (-1);
 		}
 	}
