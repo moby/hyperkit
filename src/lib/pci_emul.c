@@ -44,30 +44,30 @@
 #include <xhyve/pci_irq.h>
 #include <xhyve/pci_lpc.h>
 
-#define CONF1_ADDR_PORT 0x0cf8
-#define CONF1_DATA_PORT0 0x0cfc
-#define CONF1_DATA_PORT1 0x0cfd
-#define CONF1_DATA_PORT2 0x0cfe
-#define CONF1_DATA_PORT3 0x0cff
+#define CONF1_ADDR_PORT    0x0cf8
+#define CONF1_DATA_PORT0   0x0cfc
+#define CONF1_DATA_PORT1   0x0cfd
+#define CONF1_DATA_PORT2   0x0cfe
+#define CONF1_DATA_PORT3   0x0cff
 
-#define CONF1_ENABLE 0x80000000ul
+#define CONF1_ENABLE	   0x80000000ul
 
-#define	MAXBUSES (PCI_BUSMAX + 1)
-#define MAXSLOTS (PCI_SLOTMAX + 1)
-#define	MAXFUNCS (PCI_FUNCMAX + 1)
+#define	MAXBUSES	(PCI_BUSMAX + 1)
+#define MAXSLOTS	(PCI_SLOTMAX + 1)
+#define	MAXFUNCS	(PCI_FUNCMAX + 1)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 struct funcinfo {
-	char *fi_name;
-	char *fi_param;
+	char	*fi_name;
+	char	*fi_param;
 	struct pci_devinst *fi_devi;
 };
 
 struct intxinfo {
-	int ii_count;
-	int ii_pirq_pin;
-	int ii_ioapic_irq;
+	int	ii_count;
+	int	ii_pirq_pin;
+	int	ii_ioapic_irq;
 };
 
 struct slotinfo {
@@ -76,9 +76,9 @@ struct slotinfo {
 };
 
 struct businfo {
-	uint16_t iobase, iolimit; /* I/O window */
-	uint32_t membase32, memlimit32; /* mmio window below 4GB */
-	uint64_t membase64, memlimit64; /* mmio window above 4GB */
+	uint16_t iobase, iolimit;		/* I/O window */
+	uint32_t membase32, memlimit32;		/* mmio window below 4GB */
+	uint64_t membase64, memlimit64;		/* mmio window above 4GB */
 	struct slotinfo slotinfo[MAXSLOTS];
 };
 #pragma clang diagnostic pop
@@ -114,9 +114,9 @@ CFGWRITE(struct pci_devinst *pi, int coff, uint32_t val, int bytes)
 {
 
 	if (bytes == 1)
-		pci_set_cfgdata8(pi, coff, ((uint8_t) val));
+		pci_set_cfgdata8(pi, coff, (uint8_t)val);
 	else if (bytes == 2)
-		pci_set_cfgdata16(pi, coff, ((uint16_t) val));
+		pci_set_cfgdata16(pi, coff, (uint16_t)val);
 	else
 		pci_set_cfgdata32(pi, coff, val);
 }
@@ -237,7 +237,7 @@ pci_valid_pba_offset(struct pci_devinst *pi, uint64_t offset)
 	if (offset < pi->pi_msix.pba_offset)
 		return (0);
 
-	if (offset >= pi->pi_msix.pba_offset + ((unsigned) pi->pi_msix.pba_size)) {
+	if (offset >= pi->pi_msix.pba_offset + (unsigned)pi->pi_msix.pba_size) {
 		return (0);
 	}
 
@@ -259,7 +259,7 @@ pci_emul_msix_twrite(struct pci_devinst *pi, uint64_t offset, int size,
 	/*
 	 * Return if table index is beyond what device supports
 	 */
-	tab_index = (int) (offset / MSIX_TABLE_ENTRY_SIZE);
+	tab_index = (int)(offset / MSIX_TABLE_ENTRY_SIZE);
 	if (tab_index >= pi->pi_msix.table_count)
 		return (-1);
 
@@ -273,9 +273,9 @@ pci_emul_msix_twrite(struct pci_devinst *pi, uint64_t offset, int size,
 	dest += msix_entry_offset;
 
 	if (size == 4)
-		*((uint32_t *)((void *) dest)) = (uint32_t) value;
+		*((uint32_t *)(void *)dest) = (uint32_t)value;
 	else
-		*((uint64_t *)((void *) dest)) = value;
+		*((uint64_t *)(void *)dest) = value;
 
 	return (0);
 }
@@ -286,11 +286,11 @@ pci_emul_msix_tread(struct pci_devinst *pi, uint64_t offset, int size)
 	char *dest;
 	int msix_entry_offset;
 	int tab_index;
-	uint64_t retval = ~((uint64_t) 0);
+	uint64_t retval = ~((uint64_t)0);
 
 	/*
 	 * The PCI standard only allows 4 and 8 byte accesses to the MSI-X
-	 * table but we also allow 1 byte access to accomodate reads from
+	 * table but we also allow 1 byte access to accommodate reads from
 	 * ddb.
 	 */
 	if (size != 1 && size != 4 && size != 8)
@@ -311,11 +311,11 @@ pci_emul_msix_tread(struct pci_devinst *pi, uint64_t offset, int size)
 		dest += msix_entry_offset;
 
 		if (size == 1)
-			retval = *((uint8_t *)((void *) dest));
+			retval = *((uint8_t *)(void *)dest);
 		else if (size == 4)
-			retval = *((uint32_t *)((void *) dest));
+			retval = *((uint32_t *)(void *)dest);
 		else
-			retval = *((uint64_t *)((void *) dest));
+			retval = *((uint64_t *)(void *)dest);
 	} else if (pci_valid_pba_offset(pi, offset)) {
 		/* return 0 for PBA access */
 		retval = 0;
@@ -354,14 +354,14 @@ pci_emul_io_handler(int vcpu, int in, int port, int bytes, uint32_t *eax,
 	int i;
 
 	for (i = 0; i <= PCI_BARMAX; i++) {
-		if ((pdi->pi_bar[i].type == PCIBAR_IO) &&
-		    (((uint64_t) port) >= pdi->pi_bar[i].addr) &&
-		    (((uint64_t) (port + bytes)) <=
-			(pdi->pi_bar[i].addr + pdi->pi_bar[i].size)))
+		if (pdi->pi_bar[i].type == PCIBAR_IO &&
+		    (uint64_t)port >= pdi->pi_bar[i].addr &&
+		    (uint64_t)(port + bytes) <=
+		        pdi->pi_bar[i].addr + pdi->pi_bar[i].size)
 		{
-			offset = ((uint64_t) port) - pdi->pi_bar[i].addr;
+			offset = (uint64_t)port - pdi->pi_bar[i].addr;
 			if (in)
-				*eax = (uint32_t) (*pe->pe_barread)(vcpu, pdi, i, offset,
+				*eax = (uint32_t)(*pe->pe_barread)(vcpu, pdi, i, offset,
 					bytes);
 			else
 				(*pe->pe_barwrite)(vcpu, pdi, i, offset, bytes, *eax);
@@ -381,11 +381,11 @@ pci_emul_mem_handler(int vcpu, int dir, uint64_t addr,
 	int bidx = (int) arg2;
 
 	assert(bidx <= PCI_BARMAX);
-	assert((pdi->pi_bar[bidx].type == PCIBAR_MEM32) ||
-		(pdi->pi_bar[bidx].type == PCIBAR_MEM64));
-	assert((addr >= pdi->pi_bar[bidx].addr) &&
-		((addr + ((uint64_t) size)) <=
-			(pdi->pi_bar[bidx].addr + pdi->pi_bar[bidx].size)));
+	assert(pdi->pi_bar[bidx].type == PCIBAR_MEM32 ||
+	       pdi->pi_bar[bidx].type == PCIBAR_MEM64);
+	assert(addr >= pdi->pi_bar[bidx].addr &&
+	       (addr + (uint64_t)size) <=
+			(pdi->pi_bar[bidx].addr + pdi->pi_bar[bidx].size));
 
 	offset = addr - pdi->pi_bar[bidx].addr;
 
@@ -450,7 +450,7 @@ modify_bar_registration(struct pci_devinst *pi, int idx, int registration)
 	case PCIBAR_IO:
 		bzero(&iop, sizeof(struct inout_port));
 		iop.name = pi->pi_name;
-		iop.port = (int) pi->pi_bar[idx].addr;
+		iop.port = (int)pi->pi_bar[idx].addr;
 		iop.size = (int)pi->pi_bar[idx].size;
 		if (registration) {
 			iop.flags = IOPORT_F_INOUT;
@@ -572,7 +572,7 @@ pci_emul_alloc_pbar(struct pci_devinst *pdi, int idx, uint64_t hostbase,
 	limit = 0;
 
 	if ((size & (size - 1)) != 0)
-		size = 1UL << flsl((long) size); /* round up to a power of 2 */
+		size = 1UL << flsll((long long)size); /* round up to a power of 2 */
 
 	/* Enforce minimum BAR sizes required by the PCI standard */
 	if (type == PCIBAR_IO) {
@@ -645,7 +645,7 @@ pci_emul_alloc_pbar(struct pci_devinst *pdi, int idx, uint64_t hostbase,
 
 	/* Initialize the BAR register in config space */
 	bar = (addr & mask) | lobits;
-	pci_set_cfgdata32(pdi, PCIR_BAR(idx), ((uint32_t) bar));
+	pci_set_cfgdata32(pdi, PCIR_BAR(idx), (uint32_t)bar);
 
 	if (type == PCIBAR_MEM64) {
 		assert(idx + 1 <= PCI_BARMAX);
@@ -681,10 +681,10 @@ pci_emul_add_capability(struct pci_devinst *pi, u_char *capdata, int caplen)
 
 	/* Set the previous capability pointer */
 	if ((sts & PCIM_STATUS_CAPPRESENT) == 0) {
-		pci_set_cfgdata8(pi, PCIR_CAP_PTR, ((uint8_t) capoff));
+		pci_set_cfgdata8(pi, PCIR_CAP_PTR, (uint8_t)capoff);
 		pci_set_cfgdata16(pi, PCIR_STATUS, sts|PCIM_STATUS_CAPPRESENT);
 	} else
-		pci_set_cfgdata8(pi, pi->pi_prevcap + 1, ((uint8_t) capoff));
+		pci_set_cfgdata8(pi, pi->pi_prevcap + 1, (uint8_t)capoff);
 
 	/* Copy the capability */
 	for (i = 0; i < caplen; i++)
@@ -722,9 +722,9 @@ pci_emul_init(struct pci_devemu *pde, int bus, int slot,
 
 	pdi = calloc(1, sizeof(struct pci_devinst));
 
-	pdi->pi_bus = (uint8_t) bus;
-	pdi->pi_slot = (uint8_t) slot;
-	pdi->pi_func = (uint8_t) func;
+	pdi->pi_bus = (uint8_t)bus;
+	pdi->pi_slot = (uint8_t)slot;
+	pdi->pi_func = (uint8_t)func;
 	pthread_mutex_init(&pdi->pi_lintr.lock, NULL);
 	pdi->pi_lintr.pin = 0;
 	pdi->pi_lintr.state = IDLE;
@@ -762,8 +762,8 @@ pci_populate_msicap(struct msicap *msicap, int msgnum, int nextptr)
 
 	bzero(msicap, sizeof(struct msicap));
 	msicap->capid = PCIY_MSI;
-	msicap->nextptr = (uint8_t) nextptr;
-	msicap->msgctrl = (uint16_t) (PCIM_MSICTRL_64BIT | (mmc << 1));
+	msicap->nextptr = (uint8_t)nextptr;
+	msicap->msgctrl = (uint16_t)(PCIM_MSICTRL_64BIT | (mmc << 1));
 }
 
 int
@@ -792,7 +792,7 @@ pci_populate_msixcap(struct msixcap *msixcap, int msgnum, int barnum,
 	 * zero except for the Table Size.
 	 * Note: Table size N is encoded as N-1
 	 */
-	msixcap->msgctrl = (uint16_t) (msgnum - 1);
+	msixcap->msgctrl = (uint16_t)msgnum - 1;
 
 	/*
 	 * MSI-X BAR setup:
@@ -812,7 +812,7 @@ pci_msix_table_init(struct pci_devinst *pi, int table_entries)
 	assert(table_entries <= MAX_MSIX_TABLE_ENTRIES);
 
 	table_size = table_entries * MSIX_TABLE_ENTRY_SIZE;
-	pi->pi_msix.table = calloc(1, ((size_t) table_size));
+	pi->pi_msix.table = calloc(1, (size_t)table_size);
 
 	/* set mask bit of vector control register */
 	for (i = 0; i < table_entries; i++)
@@ -828,7 +828,7 @@ pci_emul_add_msixcap(struct pci_devinst *pi, int msgnum, int barnum)
 	assert(msgnum >= 1 && msgnum <= MAX_MSIX_TABLE_ENTRIES);
 	assert(barnum >= 0 && barnum <= PCIR_MAX_BAR_0);
 
-	tab_size = (uint32_t) (msgnum * MSIX_TABLE_ENTRY_SIZE);
+	tab_size = (uint32_t)msgnum * MSIX_TABLE_ENTRY_SIZE;
 
 	/* Align table size to nearest 4K */
 	tab_size = roundup2(tab_size, 4096u);
@@ -846,7 +846,7 @@ pci_emul_add_msixcap(struct pci_devinst *pi, int msgnum, int barnum)
 
 	/* allocate memory for MSI-X Table and PBA */
 	pci_emul_alloc_bar(pi, barnum, PCIBAR_MEM32,
-		(tab_size + ((uint32_t) pi->pi_msix.pba_size)));
+			   tab_size + (uint32_t)pi->pi_msix.pba_size);
 
 	return (pci_emul_add_capability(pi, (u_char *)&msixcap,
 					sizeof(msixcap)));
@@ -1084,9 +1084,9 @@ init_pci(void)
 		 * Keep track of the i/o and memory resources allocated to
 		 * this bus.
 		 */
-		bi->iobase = (uint16_t) pci_emul_iobase;
-		bi->membase32 = (uint32_t) pci_emul_membase32;
-		bi->membase64 = (uint32_t) pci_emul_membase64;
+		bi->iobase = (uint16_t)pci_emul_iobase;
+		bi->membase32 = (uint32_t)pci_emul_membase32;
+		bi->membase64 = (uint32_t)pci_emul_membase64;
 
 		for (slot = 0; slot < MAXSLOTS; slot++) {
 			si = &bi->slotinfo[slot];
@@ -1108,17 +1108,17 @@ init_pci(void)
 		 * reprogram the BARs.
 		 */
 		pci_emul_iobase += BUSIO_ROUNDUP;
-		pci_emul_iobase = roundup2(pci_emul_iobase, ((uint32_t) BUSIO_ROUNDUP));
-		bi->iolimit = (uint16_t) pci_emul_iobase;
+		pci_emul_iobase = roundup2(pci_emul_iobase, (uint32_t)BUSIO_ROUNDUP);
+		bi->iolimit = (uint16_t)pci_emul_iobase;
 
 		pci_emul_membase32 += BUSMEM_ROUNDUP;
 		pci_emul_membase32 = roundup2(pci_emul_membase32,
-			((uint64_t) BUSMEM_ROUNDUP));
-		bi->memlimit32 = (uint32_t) pci_emul_membase32;
+		    (uint64_t)BUSMEM_ROUNDUP);
+		bi->memlimit32 = (uint32_t)pci_emul_membase32;
 
 		pci_emul_membase64 += BUSMEM_ROUNDUP;
 		pci_emul_membase64 = roundup2(pci_emul_membase64,
-			((uint64_t) BUSMEM_ROUNDUP));
+		    (uint64_t)BUSMEM_ROUNDUP);
 		bi->memlimit64 = pci_emul_membase64;
 	}
 
@@ -1480,8 +1480,8 @@ pci_generate_msi(struct pci_devinst *pi, int index)
 {
 
 	if (pci_msi_enabled(pi) && index < pci_msi_maxmsgnum(pi)) {
-		xh_vm_lapic_msi(pi->pi_msi.addr, pi->pi_msi.msg_data +
-			((uint64_t) index));
+		xh_vm_lapic_msi(pi->pi_msi.addr,
+				pi->pi_msi.msg_data + (uint64_t)index);
 	}
 }
 
@@ -1520,8 +1520,8 @@ pci_lintr_request(struct pci_devinst *pi)
 	}
 
 	si->si_intpins[bestpin].ii_count++;
-	pi->pi_lintr.pin = (int8_t) (bestpin + 1);
-	pci_set_cfgdata8(pi, PCIR_INTPIN, ((uint8_t) (bestpin + 1)));
+	pi->pi_lintr.pin = (int8_t)bestpin + 1;
+	pci_set_cfgdata8(pi, PCIR_INTPIN, (uint8_t)bestpin + 1);
 }
 
 static void
@@ -1555,7 +1555,7 @@ pci_lintr_route(struct pci_devinst *pi)
 
 	pi->pi_lintr.ioapic_irq = ii->ii_ioapic_irq;
 	pi->pi_lintr.pirq_pin = ii->ii_pirq_pin;
-	pci_set_cfgdata8(pi, PCIR_INTLINE, ((uint8_t) pirq_irq(ii->ii_pirq_pin)));
+	pci_set_cfgdata8(pi, PCIR_INTLINE, (uint8_t)pirq_irq(ii->ii_pirq_pin));
 }
 
 void
@@ -1683,13 +1683,13 @@ pci_emul_hdrtype_fixup(int bus, int slot, int off, int bytes, uint32_t *rv)
 		switch (bytes) {
 		case 1:
 		case 2:
-			*rv &= ~((uint32_t) PCIM_MFDEV);
+			*rv &= ~((uint32_t)PCIM_MFDEV);
 			if (mfdev) {
 				*rv |= PCIM_MFDEV;
 			}
 			break;
 		case 4:
-			*rv &= ~((uint32_t) (PCIM_MFDEV << 16));
+			*rv &= ~((uint32_t)PCIM_MFDEV << 16);
 			if (mfdev) {
 				*rv |= (PCIM_MFDEV << 16);
 			}
@@ -1888,7 +1888,7 @@ pci_cfgrw(int vcpu, int in, int bus, int slot, int func, int coff, int bytes,
 				}
 				break;
 			}
-			pci_set_cfgdata32(pi, coff, ((uint32_t) bar));
+			pci_set_cfgdata32(pi, coff, (uint32_t)bar);
 
 		} else if (pci_emul_iscap(pi, coff)) {
 			pci_emul_capwrite(pi, coff, bytes, *eax);
@@ -1915,7 +1915,7 @@ pci_emul_cfgaddr(UNUSED int vcpu, int in, UNUSED int port, int bytes,
 	}
 
 	if (in) {
-		x = (uint32_t) ((cfgbus << 16) | (cfgslot << 11) | (cfgfunc << 8) |
+		x = (uint32_t)((cfgbus << 16) | (cfgslot << 11) | (cfgfunc << 8) |
 			cfgoff);
 
 		if (cfgenable)
@@ -1964,8 +1964,8 @@ INOUT_PORT(pci_cfgdata, CONF1_DATA_PORT3, IOPORT_F_INOUT, pci_emul_cfgdata);
 /*
  * Define a dummy test device
  */
-#define DIOSZ 8
-#define DMEMSZ 4096
+#define DIOSZ	8
+#define DMEMSZ	4096
 struct pci_emul_dsoftc {
 	uint8_t   ioregs[DIOSZ];
 	uint8_t	  memregs[2][DMEMSZ];
@@ -2010,7 +2010,7 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 	struct pci_emul_dsoftc *sc = pi->pi_arg;
 
 	if (baridx == 0) {
-		if (offset + ((uint64_t) size) > DIOSZ) {
+		if (offset + (uint64_t)size > DIOSZ) {
 			printf("diow: iow too large, offset %llu size %d\n",
 			       offset, size);
 			return;
@@ -2019,9 +2019,9 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		if (size == 1) {
 			sc->ioregs[offset] = value & 0xff;
 		} else if (size == 2) {
-			*(uint16_t *)((void *) &sc->ioregs[offset]) = value & 0xffff;
+			*(uint16_t *)(void *)&sc->ioregs[offset] = value & 0xffff;
 		} else if (size == 4) {
-			*(uint32_t *)((void *) &sc->ioregs[offset]) = (uint32_t) value;
+			*(uint32_t *)(void *)&sc->ioregs[offset] = (uint32_t)value;
 		} else {
 			printf("diow: iow unknown size %d\n", size);
 		}
@@ -2030,8 +2030,8 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		 * Special magic value to generate an interrupt
 		 */
 		if (offset == 4 && size == 4 && pci_msi_enabled(pi))
-			pci_generate_msi(pi, ((int) (value %
-				((uint64_t) pci_msi_maxmsgnum(pi)))));
+			pci_generate_msi(pi, (int)(value %
+				(uint64_t)pci_msi_maxmsgnum(pi)));
 
 		if (value == 0xabcdef) {
 			for (i = 0; i < pci_msi_maxmsgnum(pi); i++)
@@ -2040,7 +2040,7 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 	}
 
 	if (baridx == 1 || baridx == 2) {
-		if (offset + ((uint16_t) size) > DMEMSZ) {
+		if (offset + (uint16_t)size > DMEMSZ) {
 			printf("diow: memw too large, offset %llu size %d\n",
 			       offset, size);
 			return;
@@ -2049,14 +2049,14 @@ pci_emul_diow(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		i = baridx - 1;		/* 'memregs' index */
 
 		if (size == 1) {
-			sc->memregs[i][offset] = (uint8_t) value;
+			sc->memregs[i][offset] = (uint8_t)value;
 
 		} else if (size == 2) {
-			*(uint16_t *)((void *) &sc->memregs[i][offset]) = (uint16_t) value;
+			*(uint16_t *)(void *)&sc->memregs[i][offset] = (uint16_t) value;
 		} else if (size == 4) {
-			*(uint32_t *)((void *) &sc->memregs[i][offset]) = (uint32_t) value;
+			*(uint32_t *)(void *)&sc->memregs[i][offset] = (uint32_t)value;
 		} else if (size == 8) {
-			*(uint64_t *)((void *) &sc->memregs[i][offset]) = value;
+			*(uint64_t *)(void *)&sc->memregs[i][offset] = value;
 		} else {
 			printf("diow: memw unknown size %d\n", size);
 		}
@@ -2082,7 +2082,7 @@ pci_emul_dior(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 	value = 0;
 
 	if (baridx == 0) {
-		if (offset + ((uint64_t) size) > DIOSZ) {
+		if (offset + (uint64_t)size > DIOSZ) {
 			printf("dior: ior too large, offset %llu size %d\n",
 			       offset, size);
 			return (0);
@@ -2091,9 +2091,9 @@ pci_emul_dior(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		if (size == 1) {
 			value = sc->ioregs[offset];
 		} else if (size == 2) {
-			value = *(uint16_t *)((void *) &sc->ioregs[offset]);
+			value = *(uint16_t *)(void *)&sc->ioregs[offset];
 		} else if (size == 4) {
-			value = *(uint32_t *)((void *) &sc->ioregs[offset]);
+			value = *(uint32_t *)(void *)&sc->ioregs[offset];
 		} else {
 			printf("dior: ior unknown size %d\n", size);
 		}
@@ -2111,11 +2111,11 @@ pci_emul_dior(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		if (size == 1) {
 			value = sc->memregs[i][offset];
 		} else if (size == 2) {
-			value = *(uint16_t *) ((void *) &sc->memregs[i][offset]);
+			value = *(uint16_t *)(void *)&sc->memregs[i][offset];
 		} else if (size == 4) {
-			value = *(uint32_t *) ((void *) &sc->memregs[i][offset]);
+			value = *(uint32_t *)(void *)&sc->memregs[i][offset];
 		} else if (size == 8) {
-			value = (uint32_t) *(uint64_t *) ((void *) &sc->memregs[i][offset]);
+			value = (uint32_t) *(uint64_t *)(void *)&sc->memregs[i][offset];
 		} else {
 			printf("dior: ior unknown size %d\n", size);
 		}
