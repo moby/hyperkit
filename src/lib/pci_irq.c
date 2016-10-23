@@ -59,9 +59,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 static struct pirq {
-	uint8_t reg;
-	int use_count;
-	int active_count;
+	uint8_t	reg;
+	int	use_count;
+	int	active_count;
 	pthread_mutex_t lock;
 } pirqs[8];
 #pragma clang diagnostic pop
@@ -77,6 +77,7 @@ static int pirq_cold = 1;
 static bool
 pirq_valid_irq(int reg)
 {
+
 	if (reg & PIRQ_DIS)
 		return (false);
 	return (IRQ_PERMITTED(reg & PIRQ_IRQ));
@@ -85,7 +86,7 @@ pirq_valid_irq(int reg)
 uint8_t
 pirq_read(int pin)
 {
-	assert((pin > 0) && (((unsigned) pin) <= nitems(pirqs)));
+	assert(pin > 0 && (unsigned)pin <= nitems(pirqs));
 	return (pirqs[pin - 1].reg);
 }
 
@@ -94,7 +95,7 @@ pirq_write(int pin, uint8_t val)
 {
 	struct pirq *pirq;
 
-	assert((pin > 0) && (((unsigned) pin) <= nitems(pirqs)));
+	assert(pin > 0 && (unsigned)pin <= nitems(pirqs));
 	pirq = &pirqs[pin - 1];
 	pthread_mutex_lock(&pirq->lock);
 	if (pirq->reg != (val & (PIRQ_DIS | PIRQ_IRQ))) {
@@ -110,7 +111,8 @@ pirq_write(int pin, uint8_t val)
 void
 pci_irq_reserve(int irq)
 {
-	assert((irq >= 0) && (((unsigned) irq) < nitems(irq_counts)));
+
+	assert(irq >= 0 && (unsigned)irq < nitems(irq_counts));
 	assert(pirq_cold);
 	assert(irq_counts[irq] == 0 || irq_counts[irq] == IRQ_DISABLED);
 	irq_counts[irq] = IRQ_DISABLED;
@@ -119,7 +121,8 @@ pci_irq_reserve(int irq)
 void
 pci_irq_use(int irq)
 {
-	assert((irq >= 0) && (((unsigned) irq) < nitems(irq_counts)));
+
+	assert(irq >= 0 && (unsigned)irq < nitems(irq_counts));
 	assert(pirq_cold);
 	assert(irq_counts[irq] != IRQ_DISABLED);
 	irq_counts[irq]++;
@@ -150,7 +153,7 @@ pci_irq_assert(struct pci_devinst *pi)
 	struct pirq *pirq;
 
 	if (pi->pi_lintr.pirq_pin > 0) {
-		assert(((unsigned) pi->pi_lintr.pirq_pin) <= nitems(pirqs));
+		assert((unsigned)pi->pi_lintr.pirq_pin <= nitems(pirqs));
 		pirq = &pirqs[pi->pi_lintr.pirq_pin - 1];
 		pthread_mutex_lock(&pirq->lock);
 		pirq->active_count++;
@@ -170,7 +173,7 @@ pci_irq_deassert(struct pci_devinst *pi)
 	struct pirq *pirq;
 
 	if (pi->pi_lintr.pirq_pin > 0) {
-		assert(((unsigned) pi->pi_lintr.pirq_pin) <= nitems(pirqs));
+		assert((unsigned)pi->pi_lintr.pirq_pin <= nitems(pirqs));
 		pirq = &pirqs[pi->pi_lintr.pirq_pin - 1];
 		pthread_mutex_lock(&pirq->lock);
 		pirq->active_count--;
@@ -195,7 +198,7 @@ pirq_alloc_pin(void)
 	/* First, find the least-used PIRQ pin. */
 	best_pin = 0;
 	best_count = pirqs[0].use_count;
-	for (pin = 1; ((unsigned) pin) < nitems(pirqs); pin++) {
+	for (pin = 1; (unsigned)pin < nitems(pirqs); pin++) {
 		if (pirqs[pin].use_count < best_count) {
 			best_pin = pin;
 			best_count = pirqs[pin].use_count;
@@ -207,7 +210,7 @@ pirq_alloc_pin(void)
 	if (pirqs[best_pin].reg == PIRQ_DIS) {
 		best_irq = -1;
 		best_count = 0;
-		for (irq = 0; ((unsigned) irq) < nitems(irq_counts); irq++) {
+		for (irq = 0; (unsigned)irq < nitems(irq_counts); irq++) {
 			if (irq_counts[irq] == IRQ_DISABLED)
 				continue;
 			if (best_irq == -1 || irq_counts[irq] < best_count) {
@@ -217,7 +220,7 @@ pirq_alloc_pin(void)
 		}
 		assert(best_irq >= 0);
 		irq_counts[best_irq]++;
-		pirqs[best_pin].reg = (uint8_t) best_irq;
+		pirqs[best_pin].reg = (uint8_t)best_irq;
 		xh_vm_isa_set_irq_trigger(best_irq, LEVEL_TRIGGER);
 	}
 
@@ -227,7 +230,7 @@ pirq_alloc_pin(void)
 int
 pirq_irq(int pin)
 {
-	assert((pin > 0) && (((unsigned) pin) <= nitems(pirqs)));
+	assert(pin > 0 && (unsigned)pin <= nitems(pirqs));
 	return (pirqs[pin - 1].reg & PIRQ_IRQ);
 }
 
@@ -240,7 +243,7 @@ pirq_dsdt(void)
 	int irq, pin;
 
 	irq_prs = NULL;
-	for (irq = 0; ((unsigned) irq) < nitems(irq_counts); irq++) {
+	for (irq = 0; (unsigned)irq < nitems(irq_counts); irq++) {
 		if (!IRQ_PERMITTED(irq))
 			continue;
 		if (irq_prs == NULL)
@@ -279,7 +282,7 @@ pirq_dsdt(void)
 	dsdt_line("  Return (0x01)");
 	dsdt_line("}");
 
-	for (pin = 0; ((unsigned) pin) < nitems(pirqs); pin++) {
+	for (pin = 0; (unsigned)pin < nitems(pirqs); pin++) {
 		dsdt_line("");
 		dsdt_line("Device (LNK%c)", 'A' + pin);
 		dsdt_line("{");
