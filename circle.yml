@@ -7,9 +7,9 @@ machine:
     version: "7.3"
 test:
   override:
-    - brew install opam
+    - brew install opam libev
     - opam init --yes
-    - opam install --yes uri qcow-format ocamlfind
+    - opam install --yes uri qcow-format ocamlfind conf-libev
     - make clean
     - eval `opam config env` && make all
     - make test

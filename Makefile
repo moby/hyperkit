@@ -80,6 +80,9 @@ HAVE_OCAML_QCOW := $(shell if ocamlfind query qcow uri >/dev/null 2>/dev/null ; 
 ifeq ($(HAVE_OCAML_QCOW),YES)
 CFLAGS += -DHAVE_OCAML=1 -DHAVE_OCAML_QCOW=1 -DHAVE_OCAML=1
 
+LIBEV_FILE=/usr/local/lib/libev.a
+LIBEV=$(shell if test -e $(LIBEV_FILE) ; then echo $(LIBEV_FILE) ; fi )
+
 # prefix vsock file names if PRI_ADDR_PREFIX
 # is defined. (not applied to aliases)
 ifneq ($(PRI_ADDR_PREFIX),)
@@ -111,6 +114,7 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query lwt.unix)/lwt.a \
 	$(shell ocamlfind query threads)/libthreadsnat.a \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
+        $(LIBEV) \
 	-lasmrun -lbigarray -lunix
 
 build/hyperkit.o: CFLAGS += -I$(OCAML_WHERE)
