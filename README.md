@@ -32,13 +32,13 @@ The resulting binary will be in `build/com.docker.hyperkit`
 
 To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
 environment is required with the qcow-format module available. A
-suitable environment can be setup by installing `opam` via `brew` and
-using that to install the appropriate libraries:
+suitable environment can be setup by installing `opam` and `libev`
+via `brew` and using `opam` to install the appropriate libraries:
 
-    $ brew install opam
+    $ brew install opam libev
     $ opam init
     $ eval `opam config env`
-    $ opam install uri qcow-format
+    $ opam install uri qcow-format conf-libev
 
 Notes:
 
