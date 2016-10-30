@@ -1,5 +1,5 @@
 // Package httpstoppable provides ListenAndServe like http.ListenAndServe,
-// but with ability to stop it gracefully.
+// but with ability to stop it.
 package httpstoppable
 
 import (
