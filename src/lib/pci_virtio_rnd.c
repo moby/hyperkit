@@ -56,8 +56,6 @@ static int pci_vtrnd_debug;
 #define DPRINTF(params) if (pci_vtrnd_debug) printf params
 #define WPRINTF(params) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Per-device softc
  */
@@ -68,7 +66,6 @@ struct pci_vtrnd_softc {
 	uint64_t            vrsc_cfg;
 	int                 vrsc_fd;
 };
-#pragma clang diagnostic pop
 
 static void pci_vtrnd_reset(void *);
 static void pci_vtrnd_notify(void *, struct vqueue_info *);

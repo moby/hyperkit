@@ -56,8 +56,6 @@
 #define MAXSLOTS	(PCI_SLOTMAX + 1)
 #define	MAXFUNCS	(PCI_FUNCMAX + 1)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct funcinfo {
 	char	*fi_name;
 	char	*fi_param;
@@ -81,7 +79,6 @@ struct businfo {
 	uint64_t membase64, memlimit64;		/* mmio window above 4GB */
 	struct slotinfo slotinfo[MAXSLOTS];
 };
-#pragma clang diagnostic pop
 
 static struct businfo *pci_businfo[MAXBUSES];
 

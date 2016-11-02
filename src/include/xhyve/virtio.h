@@ -325,9 +325,6 @@ struct vqueue_info;
 #define	VIRTIO_EVENT_IDX	0x02	/* use the event-index values */
 #define	VIRTIO_BROKED		0x08	/* ??? */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-
 struct virtio_softc {
 	struct virtio_consts *vs_vc; /* constants (see below) */
 	int vs_flags; /* VIRTIO_* flags from above */
@@ -419,8 +416,6 @@ struct vqueue_info {
 	/* the "used" ring */
 	volatile struct vring_used *vq_used;
 };
-
-#pragma clang diagnostic pop
 
 /* as noted above, these are sort of backwards, name-wise */
 #define VQ_AVAIL_EVENT_IDX(vq) \

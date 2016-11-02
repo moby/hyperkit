@@ -121,8 +121,6 @@ struct virtio_blk_hdr {
 static int pci_vtblk_debug;
 #define DPRINTF(params) if (pci_vtblk_debug) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct pci_vtblk_ioreq {
 	struct blockif_req		io_req;
 	struct pci_vtblk_softc	       *io_sc;
@@ -142,8 +140,6 @@ struct pci_vtblk_softc {
 	char vbsc_ident[VTBLK_BLK_ID_BYTES];
 	struct pci_vtblk_ioreq vbsc_ios[VTBLK_RINGSZ];
 };
-
-#pragma clang diagnostic pop
 
 static void pci_vtblk_reset(void *);
 static void pci_vtblk_notify(void *, struct vqueue_info *);

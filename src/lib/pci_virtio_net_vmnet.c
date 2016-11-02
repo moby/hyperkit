@@ -146,8 +146,6 @@ struct virtio_net_rxhdr {
 static int pci_vtnet_debug;
 #define DPRINTF(params) if (pci_vtnet_debug) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Per-device softc
  */
@@ -199,8 +197,6 @@ struct vmnet_state {
 	unsigned int mtu;
 	unsigned int max_packet_size;
 };
-
-#pragma clang diagnostic pop
 
 static void pci_vtnet_tap_callback(struct pci_vtnet_softc *sc);
 

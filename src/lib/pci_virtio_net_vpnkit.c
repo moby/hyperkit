@@ -180,8 +180,6 @@ struct virtio_net_rxhdr {
 static int pci_vtnet_debug;
 #define DPRINTF(params) if (pci_vtnet_debug) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Per-device softc
  */
@@ -231,8 +229,6 @@ struct vpnkit_state {
 	int fd;
 	struct vif_info vif;
 };
-
-#pragma clang diagnostic pop
 
 static int really_read(int fd, uint8_t *buffer, size_t total)
 {

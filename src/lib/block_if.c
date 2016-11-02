@@ -78,8 +78,6 @@ enum blockstat {
 	BST_DONE
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct blockif_elem {
 	TAILQ_ENTRY(blockif_elem) be_link;
 	struct blockif_req  *be_req;
@@ -127,7 +125,6 @@ struct blockif_sig_elem {
 
 static struct blockif_sig_elem *blockif_bse_head;
 
-#pragma clang diagnostic pop
 
 static ssize_t
 preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset)

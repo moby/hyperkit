@@ -29,9 +29,6 @@
 
 #pragma once
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-
 /*
  * This file defines data structures for different types of trees:
  * splay trees and red-black trees.
@@ -747,5 +744,3 @@ name##_RB_MINMAX(struct name *head, int val)				\
 	for ((x) = RB_MAX(name, head);					\
 	     (x) != NULL;						\
 	     (x) = name##_RB_PREV(x))
-
-#pragma clang diagnostic pop

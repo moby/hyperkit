@@ -34,8 +34,6 @@
 typedef int (*mem_func_t)(int vcpu, int dir, uint64_t addr, int size,
 	uint64_t *val, void *arg1, long arg2);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct mem_range {
 	const char *name;
 	int flags;
@@ -45,7 +43,6 @@ struct mem_range {
 	uint64_t base;
 	uint64_t size;
 };
-#pragma clang diagnostic pop
 
 #define MEM_F_READ 0x1
 #define MEM_F_WRITE 0x2

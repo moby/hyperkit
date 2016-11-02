@@ -44,8 +44,6 @@
 #define	REDIR_ENTRIES	24
 #define	RTBL_RO_BITS	((uint64_t)(IOART_REM_IRR | IOART_DELIVS))
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vioapic {
 	struct vm *vm;
 	pthread_mutex_t lock;
@@ -56,7 +54,6 @@ struct vioapic {
 		int acnt; /* sum of pin asserts (+1) and deasserts (-1) */
 	} rtbl[REDIR_ENTRIES];
 };
-#pragma clang diagnostic pop
 
 #define VIOAPIC_LOCK_INIT(v) xpthread_mutex_init(&(v)->lock);
 #define VIOAPIC_LOCK(v) xpthread_mutex_lock(&(v)->lock)

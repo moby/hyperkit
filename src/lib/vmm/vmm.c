@@ -59,8 +59,6 @@
 
 struct vlapic;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Initialization:
  * (a) allocated when vcpu is created
@@ -133,7 +131,6 @@ struct vm {
 	pthread_mutex_t hv_pause_mtx;
 	pthread_cond_t hv_pause_cnd;
 };
-#pragma clang diagnostic pop
 
 static int vmm_initialized;
 

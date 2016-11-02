@@ -39,8 +39,6 @@ struct vm_exit;
 typedef int (*inout_func_t)(int vcpu, int in, int port,
 	int bytes, uint32_t *eax, void *arg);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct inout_port {
 	const char *name;
 	int port;
@@ -49,7 +47,6 @@ struct inout_port {
 	inout_func_t handler;
 	void *arg;
 };
-#pragma clang diagnostic pop
 
 #define IOPORT_F_IN 0x1
 #define IOPORT_F_OUT 0x2

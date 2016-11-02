@@ -116,8 +116,6 @@ static FILE *dbg;
 #endif
 #define WPRINTF(format, ...) printf(format, __VA_ARGS__)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 
 struct ahci_ioreq {
 	struct blockif_req io_req;
@@ -209,8 +207,6 @@ struct pci_ahci_softc {
 	uint32_t lintr;
 	struct ahci_port port[MAX_PORTS];
 };
-
-#pragma clang diagnostic pop
 
 static void ahci_handle_port(struct ahci_port *p);
 

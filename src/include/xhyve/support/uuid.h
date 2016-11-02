@@ -35,8 +35,6 @@
 
 #define	_UUID_NODE_LEN 6
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct uuid {
 	uint32_t time_low;
 	uint16_t time_mid;
@@ -45,7 +43,6 @@ struct uuid {
 	uint8_t clock_seq_low;
 	uint8_t node[_UUID_NODE_LEN];
 };
-#pragma clang diagnostic pop
 
 typedef struct uuid uuid_internal_t;
 

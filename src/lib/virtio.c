@@ -466,8 +466,6 @@ vq_endchains(struct vqueue_info *vq, int used_all_avail)
 		vq_interrupt(vs, vq);
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /* Note: these are in sorted order to make for a fast search */
 static struct config_reg {
 	uint16_t	cr_offset;	/* register offset */
@@ -486,7 +484,6 @@ static struct config_reg {
 	{ VTCFG_R_CFGVEC,	2, 0, "CFGVEC" },
 	{ VTCFG_R_QVEC,		2, 0, "QVEC" },
 };
-#pragma clang diagnostic pop
 
 static inline struct config_reg *
 vi_find_cr(int offset) {

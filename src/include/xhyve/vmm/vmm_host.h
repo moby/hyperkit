@@ -30,14 +30,11 @@
 
 #include <stdint.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct xsave_limits {
 	int		xsave_enabled;
 	uint64_t	xcr0_allowed;
 	uint32_t	xsave_max_size;
 };
-#pragma clang diagnostic pop
 
 void vmm_host_state_init(void);
 

@@ -48,14 +48,11 @@ enum lpc_sysres_type {
 	LPC_SYSRES_MEM
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct lpc_sysres {
 	enum lpc_sysres_type type;
 	uint32_t base;
 	uint32_t length;
 };
-#pragma clang diagnostic pop
 
 #define	LPC_SYSRES(type, base, length) \
 	static struct lpc_sysres __CONCAT(__lpc_sysres, base) = {\

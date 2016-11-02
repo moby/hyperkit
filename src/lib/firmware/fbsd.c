@@ -427,8 +427,6 @@ cb_poll(UNUSED void *arg)
  * Host filesystem i/o callbacks
  */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct cb_file {
 	int cf_isdir;
 	size_t cf_size;
@@ -438,7 +436,6 @@ struct cb_file {
 		DIR *dir;
 	} cf_u;
 };
-#pragma clang diagnostic pop
 
 static int
 cb_open(UNUSED void *arg, const char *filename, void **hp)

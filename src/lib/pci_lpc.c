@@ -58,8 +58,6 @@ static struct pci_devinst *lpc_bridge;
 
 #define	LPC_UART_NUM	2
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct lpc_uart_softc {
 	struct uart_softc *uart_softc;
 	const char *opts;
@@ -68,7 +66,6 @@ static struct lpc_uart_softc {
 	int	irq;
 	int	enabled;
 } lpc_uart_softc[LPC_UART_NUM];
-#pragma clang diagnostic pop
 
 static const char *lpc_uart_names[LPC_UART_NUM] = { "COM1", "COM2" };
 

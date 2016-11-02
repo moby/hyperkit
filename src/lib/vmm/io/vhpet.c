@@ -55,8 +55,6 @@
 #define	VHPET_NUM_TIMERS	8
 CTASSERT(VHPET_NUM_TIMERS >= 3 && VHPET_NUM_TIMERS <= 32);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vhpet_callout_arg {
 	struct vhpet *vhpet;
 	int timer_num;
@@ -80,7 +78,6 @@ struct vhpet {
 		struct vhpet_callout_arg arg;
 	} timer[VHPET_NUM_TIMERS];
 };
-#pragma clang diagnostic pop
 
 #define	VHPET_LOCK(vhp) pthread_mutex_lock(&((vhp)->mtx))
 #define	VHPET_UNLOCK(vhp) pthread_mutex_unlock(&((vhp)->mtx))

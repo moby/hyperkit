@@ -79,8 +79,6 @@ struct rtcdev {
 CTASSERT(sizeof(struct rtcdev) == 128);
 CTASSERT(offsetof(struct rtcdev, century) == RTC_CENTURY);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vrtc {
 	struct vm *vm;
 	pthread_mutex_t mtx;
@@ -101,7 +99,6 @@ struct clocktime {
 	int	dow; /* day of week (0 - 6; 0 = Sunday) */
 	long nsec; /* nano seconds */
 };
-#pragma clang diagnostic pop
 
 #define	VRTC_LOCK(vrtc) pthread_mutex_lock(&((vrtc)->mtx))
 #define	VRTC_UNLOCK(vrtc) pthread_mutex_unlock(&((vrtc)->mtx))

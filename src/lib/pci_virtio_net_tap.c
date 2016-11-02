@@ -127,8 +127,6 @@ static int pci_vtnet_debug;
 #define DPRINTF(params) if (pci_vtnet_debug) printf params
 #define WPRINTF(params) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Per-device softc
  */
@@ -157,7 +155,6 @@ struct pci_vtnet_softc {
 	pthread_cond_t	tx_cond;
 	int		tx_in_progress;
 };
-#pragma clang diagnostic pop
 
 static void pci_vtnet_reset(void *);
 /* static void pci_vtnet_notify(void *, struct vqueue_info *); */

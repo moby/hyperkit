@@ -40,6 +40,7 @@ CFLAGS_WARN := \
   \
   -Wno-dollar-in-identifier-extension \
   -Wno-gnu-statement-expression \
+  -Wno-padded \
   -Wno-reserved-id-macro \
   -Wno-unknown-warning-option \
   -Wno-unused-macros

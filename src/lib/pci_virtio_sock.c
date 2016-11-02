@@ -132,9 +132,6 @@ static int pci_vtsock_debug = 0;
 /* Protocol logging */
 #define PPRINTF(params) do { if (0) { printf params;  fflush(stdout); } } while(0)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-
 /* XXX need to use rx and tx more consistently */
 
 struct vsock_addr {
@@ -340,7 +337,6 @@ struct pci_vtsock_softc {
 //#define REPLY_RING_FULL(sc) ((sc->reply_prod + 1) % VTSOCK_REPLYRINGSZ == sc->reply_cons)
 };
 
-#pragma clang diagnostic pop
 
 /* Protocol stuff */
 

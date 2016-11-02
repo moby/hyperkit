@@ -149,8 +149,6 @@ struct vlapic_ops {
 	void (*enable_x2apic_mode)(struct vlapic *vlapic);
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vlapic {
 	struct vm *vm;
 	int vcpuid;
@@ -183,7 +181,6 @@ struct vlapic {
 	uint32_t svr_last;
 	uint32_t lvt_last[VLAPIC_MAXLVT_INDEX + 1];
 };
-#pragma clang diagnostic pop
 
 void vlapic_init(struct vlapic *vlapic);
 void vlapic_cleanup(struct vlapic *vlapic);

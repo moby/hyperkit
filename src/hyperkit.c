@@ -121,13 +121,10 @@ static struct bhyvestats {
 	uint64_t cpu_switch_direct;
 } stats;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct mt_vmm_info {
 	pthread_t mt_thr;
 	int mt_vcpu;
 } mt_vmm_info[VM_MAXCPU];
-#pragma clang diagnostic pop
 
 static uint64_t (*fw_func)(void);
 

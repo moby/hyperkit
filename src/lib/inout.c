@@ -47,15 +47,12 @@ SET_DECLARE(inout_port_set, struct inout_port);
 #define	VERIFY_IOPORT(port, size) \
 	assert((port) >= 0 && (size) > 0 && ((port) + (size)) <= MAX_IOPORTS)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct {
 	const char	*name;
 	int		flags;
 	inout_func_t	handler;
 	void		*arg;
 } inout_handlers[MAX_IOPORTS];
-#pragma clang diagnostic pop
 
 static int
 default_inout(UNUSED int vcpu, int in, UNUSED int port, int bytes,

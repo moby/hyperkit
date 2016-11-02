@@ -56,15 +56,12 @@
 /* IRQ count to disable an IRQ. */
 #define	IRQ_DISABLED	0xff
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct pirq {
 	uint8_t	reg;
 	int	use_count;
 	int	active_count;
 	pthread_mutex_t lock;
 } pirqs[8];
-#pragma clang diagnostic pop
 
 static u_char irq_counts[16];
 static int pirq_cold = 1;

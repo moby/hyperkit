@@ -47,8 +47,6 @@ enum irqstate {
 	IRQSTATE_PULSE
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct atpic {
 	bool ready;
 	int icw_num;
@@ -73,7 +71,6 @@ struct vatpic {
 	struct atpic atpic[2];
 	uint8_t elc[2];
 };
-#pragma clang diagnostic pop
 
 #define	VATPIC_CTR0(vatpic, fmt)					\
 	VM_CTR0((vatpic)->vm, fmt)
