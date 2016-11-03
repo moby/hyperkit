@@ -80,8 +80,6 @@
 	(VIRTIO_RING_F_INDIRECT_DESC) /* indirect descriptors */
 #endif
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 /*
  * Config space "registers"
  */
@@ -121,8 +119,6 @@ struct virtio_sock_hdr {
 	uint32_t buf_alloc;
 	uint32_t fwd_cnt;
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * Debug printf

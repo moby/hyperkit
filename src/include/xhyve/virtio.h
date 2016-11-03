@@ -127,9 +127,6 @@
 #define VRING_DESC_F_WRITE	(1 << 1)
 #define VRING_DESC_F_INDIRECT	(1 << 2)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
-
 struct virtio_desc { /* AKA vring_desc */
 	uint64_t vd_addr; /* guest physical address */
 	uint32_t vd_len; /* length of scatter/gather seg */
@@ -158,8 +155,6 @@ struct vring_used {
 	struct virtio_used vu_ring[]; /* size N */
 /*	uint16_t vu_avail_event; -- after N ring entries */
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * The address of any given virtual queue is determined by a single

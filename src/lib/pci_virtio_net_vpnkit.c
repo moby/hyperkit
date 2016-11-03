@@ -86,8 +86,6 @@
 /*
  * wire protocol
  */
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 struct msg_init {
 	uint8_t magic[5]; /* VMN3T */
 	uint32_t version;
@@ -109,7 +107,6 @@ struct vif_info {
 	uint16_t max_packet_size;
 	uint8_t mac[6];
 } __packed;
-#pragma clang diagnostic pop
 
 
 /*
@@ -138,9 +135,6 @@ struct vif_info {
 #define VTNET_S_HOSTCAPS \
 	(VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
 	VIRTIO_F_NOTIFY_ON_EMPTY)
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 
 /*
  * PCI config-space "registers"
@@ -171,8 +165,6 @@ struct virtio_net_rxhdr {
 	uint16_t	vrh_csum_offset;
 	uint16_t	vrh_bufs;
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * Debug printf

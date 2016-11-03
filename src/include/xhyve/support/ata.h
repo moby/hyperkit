@@ -30,9 +30,6 @@
 
 #include <xhyve/support/misc.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
-
 /* ATA/ATAPI device parameters */
 struct ata_params {
 /*000*/ u_int16_t       config;         /* configuration info */
@@ -638,5 +635,3 @@ struct ata_ioc_raid_status {
 #define IOCATARAIDSTATUS        _IOWR('a', 202, struct ata_ioc_raid_status)
 #define IOCATARAIDADDSPARE      _IOW('a', 203, struct ata_ioc_raid_config)
 #define IOCATARAIDREBUILD       _IOW('a', 204, int)
-
-#pragma clang diagnostic pop

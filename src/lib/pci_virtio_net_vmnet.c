@@ -105,9 +105,6 @@
 	(VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
 	VIRTIO_F_NOTIFY_ON_EMPTY)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
-
 /*
  * PCI config-space "registers"
  */
@@ -137,8 +134,6 @@ struct virtio_net_rxhdr {
 	uint16_t	vrh_csum_offset;
 	uint16_t	vrh_bufs;
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * Debug printf

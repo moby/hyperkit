@@ -74,8 +74,6 @@
     VTBLK_F_TOPOLOGY |						    \
     VIRTIO_RING_F_INDIRECT_DESC )	/* indirect descriptors */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 /*
  * Config space "registers"
  */
@@ -112,8 +110,6 @@ struct virtio_blk_hdr {
 	uint32_t	vbh_ioprio;
 	uint64_t	vbh_sector;
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * Debug printf

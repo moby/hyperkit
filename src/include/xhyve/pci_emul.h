@@ -138,8 +138,6 @@ struct pci_devinst {
 	struct pcibar pi_bar[PCI_BARMAX + 1];
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 struct msicap {
 	uint8_t capid;
 	uint8_t nextptr;
@@ -190,7 +188,6 @@ struct pciecap {
 	uint16_t slot_control2;
 	uint16_t slot_status2;
 } __packed;
-#pragma clang diagnostic pop
 
 typedef void (*pci_lintr_cb)(int b, int s, int pin, int pirq_pin,
 	int ioapic_irq, void *arg);
