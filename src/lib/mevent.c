@@ -58,8 +58,6 @@ static int mevent_timid = 43;
 static int mevent_pipefd[2];
 static pthread_mutex_t mevent_lmutex = PTHREAD_MUTEX_INITIALIZER;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct mevent {
 	void (*me_func)(int, enum ev_type, void *);
 #define me_msecs me_fd
@@ -72,7 +70,6 @@ struct mevent {
 	int me_closefd;
 	LIST_ENTRY(mevent) me_list;
 };
-#pragma clang diagnostic pop
 
 static LIST_HEAD(listhead, mevent) global_head, change_head;
 

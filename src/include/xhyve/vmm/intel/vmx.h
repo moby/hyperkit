@@ -40,14 +40,11 @@ struct vmxcap {
 	uint32_t proc_ctls2;
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vmxstate {
 	uint64_t nextrip;	/* next instruction to be executed by guest */
 	int	lastcpu;	/* host cpu that this 'vcpu' last ran on */
 	uint16_t vpid;
 };
-#pragma clang diagnostic pop
 
 struct apic_page {
 	uint32_t reg[XHYVE_PAGE_SIZE / 4];

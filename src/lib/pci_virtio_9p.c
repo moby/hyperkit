@@ -35,8 +35,6 @@ struct virtio_9p_config {
 /*
  * Per-device softc
  */
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct pci_vt9p_out {
 	struct iovec wiov[MAXDESC];
 	struct vqueue_info *vq;
@@ -59,7 +57,6 @@ struct pci_vt9p_softc {
 	int port;
 	char *path;
 };
-#pragma clang diagnostic pop
 
 static void pci_vt9p_reset(void *);
 static void pci_vt9p_notify(void *, struct vqueue_info *);

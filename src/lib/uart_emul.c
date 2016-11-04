@@ -69,8 +69,6 @@
 static bool uart_stdio;		/* stdio in use for i/o */
 static struct termios tio_stdio_orig;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct {
 	int	baseaddr;
 	int	irq;
@@ -129,7 +127,6 @@ struct uart_softc {
 	uart_intr_func_t intr_assert;
 	uart_intr_func_t intr_deassert;
 };
-#pragma clang diagnostic pop
 
 static void uart_drain(int fd, enum ev_type ev, void *arg);
 

@@ -59,8 +59,6 @@
  * For long-mode apps, %cs only has the conforming bit in sd_type, the sd_dpl,
  * sd_p, sd_l and sd_def32 which must be zero).  %ds only has sd_p.
  */
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 struct segment_descriptor {
 	unsigned sd_lolimit:16;		/* segment extent (lsb) */
 	unsigned sd_lobase:24;		/* segment base address (lsb) */
@@ -73,7 +71,6 @@ struct segment_descriptor {
 	unsigned sd_gran:1;		/* limit granularity (byte/page units)*/
 	unsigned sd_hibase:8;		/* segment base address  (msb) */
 } __packed;
-#pragma clang diagnostic pop
 
 struct user_segment_descriptor {
 	uint64_t sd_lolimit:16; /* segment extent (lsb) */

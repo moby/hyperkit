@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 struct setup_header {
 	uint8_t setup_sects; /* The size of the setup in sectors */
 	uint16_t root_flags; /* If set, the root is mounted readonly */
@@ -83,7 +81,6 @@ struct zero_page {
 	uint8_t eddbuf[492];
 	uint8_t _7[276];
 } __attribute__((packed));
-#pragma clang diagnostic pop
 
 void kexec_init(char *kernel_path, char *initrd_path, char *cmdline);
 uint64_t kexec(void);

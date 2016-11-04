@@ -32,14 +32,19 @@ CFLAGS_OPT := \
   -flto \
   -fstrict-aliasing
 
+# enable everything and then selectively disable some warnings
 CFLAGS_WARN := \
   -Weverything \
   -Werror \
-  -Wno-unknown-warning-option \
-  -Wno-reserved-id-macro \
+  -pedantic \
+  \
   -Wno-dollar-in-identifier-extension \
   -Wno-gnu-statement-expression \
-  -pedantic
+  -Wno-packed \
+  -Wno-padded \
+  -Wno-reserved-id-macro \
+  -Wno-unknown-warning-option \
+  -Wno-unused-macros
 
 CFLAGS_DIAG := \
   -fmessage-length=152 \

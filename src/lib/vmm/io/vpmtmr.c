@@ -42,14 +42,11 @@
 
 #define PMTMR_FREQ	3579545  /* 3.579545MHz */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vpmtmr {
 	sbintime_t	freq_sbt;
 	sbintime_t	baseuptime;
 	uint32_t	baseval;
 };
-#pragma clang diagnostic pop
 
 struct vpmtmr *
 vpmtmr_init(UNUSED struct vm *vm)

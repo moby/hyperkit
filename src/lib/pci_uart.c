@@ -66,7 +66,7 @@ pci_uart_write(UNUSED int vcpu, struct pci_devinst *pi, int baridx, uint64_t off
 	assert(baridx == 0);
 	assert(size == 1);
 
-	uart_write(pi->pi_arg, ((int) offset), ((uint8_t) value));
+	uart_write(pi->pi_arg, (int)offset, (uint8_t)value);
 }
 
 static uint64_t
@@ -78,7 +78,7 @@ pci_uart_read(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 	assert(baridx == 0);
 	assert(size == 1);
 
-	val = uart_read(pi->pi_arg, ((int) offset));
+	val = uart_read(pi->pi_arg, (int)offset);
 	return (val);
 }
 

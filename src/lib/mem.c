@@ -43,15 +43,12 @@
 #include <xhyve/vmm/vmm_api.h>
 #include <xhyve/mem.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct mmio_rb_range {
 	RB_ENTRY(mmio_rb_range) mr_link; /* RB tree links */
 	struct mem_range mr_param;
 	uint64_t mr_base;
 	uint64_t mr_end;
 };
-#pragma clang diagnostic pop
 
 struct mmio_rb_tree;
 RB_PROTOTYPE(mmio_rb_tree, mmio_rb_range, mr_link, mmio_rb_range_compare);

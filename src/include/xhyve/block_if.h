@@ -40,8 +40,6 @@
 
 #define BLOCKIF_IOV_MAX (128-2) /* not practical to be IOV_MAX */
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct blockif_req {
 	struct iovec br_iov[BLOCKIF_IOV_MAX];
 	int br_iovcnt;
@@ -50,7 +48,6 @@ struct blockif_req {
 	void (*br_callback)(struct blockif_req *req, int err);
 	void *br_param;
 };
-#pragma clang diagnostic pop
 
 struct blockif_ctxt;
 struct blockif_ctxt *blockif_open(const char *optstr, const char *ident);

@@ -482,8 +482,6 @@ xh_vm_inject_nmi(int vcpu)
 	return (vm_inject_nmi(vm, vcpu));
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 static struct {
 	const char *name;
 	int type;
@@ -493,7 +491,6 @@ static struct {
 	{ "pause_exit", VM_CAP_PAUSE_EXIT },
 	{ NULL, 0 }
 };
-#pragma clang diagnostic pop
 
 int
 xh_vm_capability_name2type(const char *capname)

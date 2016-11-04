@@ -59,33 +59,31 @@
 /*
  * Host capabilities.  Note that we only offer a few of these.
  */
-// #define VIRTIO_NET_F_CSUM (1 << 0) /* host handles partial cksum */
-// #define VIRTIO_NET_F_GUEST_CSUM (1 << 1) /* guest handles partial cksum */
-#define VIRTIO_NET_F_MAC (1 << 5) /* host supplies MAC */
-// #define VIRTIO_NET_F_GSO_DEPREC (1 << 6) /* deprecated: host handles GSO */
-// #define VIRTIO_NET_F_GUEST_TSO4 (1 << 7) /* guest can rcv TSOv4 */
-// #define VIRTIO_NET_F_GUEST_TSO6 (1 << 8) /* guest can rcv TSOv6 */
-// #define VIRTIO_NET_F_GUEST_ECN (1 << 9) /* guest can rcv TSO with ECN */
-// #define VIRTIO_NET_F_GUEST_UFO (1 << 10) /* guest can rcv UFO */
-// #define VIRTIO_NET_F_HOST_TSO4 (1 << 11) /* host can rcv TSOv4 */
-// #define VIRTIO_NET_F_HOST_TSO6 (1 << 12) /* host can rcv TSOv6 */
-// #define VIRTIO_NET_F_HOST_ECN (1 << 13) /* host can rcv TSO with ECN */
-// #define VIRTIO_NET_F_HOST_UFO (1 << 14) /* host can rcv UFO */
-#define VIRTIO_NET_F_MRG_RXBUF (1 << 15) /* host can merge RX buffers */
-#define VIRTIO_NET_F_STATUS (1 << 16) /* config status field available */
-// #define VIRTIO_NET_F_CTRL_VQ (1 << 17) /* control channel available */
-// #define VIRTIO_NET_F_CTRL_RX (1 << 18) /* control channel RX mode support */
-// #define VIRTIO_NET_F_CTRL_VLAN (1 << 19) /* control channel VLAN filtering */
-// #define VIRTIO_NET_F_GUEST_ANNOUNCE (1 << 21) /* guest can send gratuit. pkts */
+#define	VIRTIO_NET_F_CSUM	(1 <<  0) /* host handles partial cksum */
+#define	VIRTIO_NET_F_GUEST_CSUM	(1 <<  1) /* guest handles partial cksum */
+#define	VIRTIO_NET_F_MAC	(1 <<  5) /* host supplies MAC */
+#define	VIRTIO_NET_F_GSO_DEPREC	(1 <<  6) /* deprecated: host handles GSO */
+#define	VIRTIO_NET_F_GUEST_TSO4	(1 <<  7) /* guest can rcv TSOv4 */
+#define	VIRTIO_NET_F_GUEST_TSO6	(1 <<  8) /* guest can rcv TSOv6 */
+#define	VIRTIO_NET_F_GUEST_ECN	(1 <<  9) /* guest can rcv TSO with ECN */
+#define	VIRTIO_NET_F_GUEST_UFO	(1 << 10) /* guest can rcv UFO */
+#define	VIRTIO_NET_F_HOST_TSO4	(1 << 11) /* host can rcv TSOv4 */
+#define	VIRTIO_NET_F_HOST_TSO6	(1 << 12) /* host can rcv TSOv6 */
+#define	VIRTIO_NET_F_HOST_ECN	(1 << 13) /* host can rcv TSO with ECN */
+#define	VIRTIO_NET_F_HOST_UFO	(1 << 14) /* host can rcv UFO */
+#define	VIRTIO_NET_F_MRG_RXBUF	(1 << 15) /* host can merge RX buffers */
+#define	VIRTIO_NET_F_STATUS	(1 << 16) /* config status field available */
+#define	VIRTIO_NET_F_CTRL_VQ	(1 << 17) /* control channel available */
+#define	VIRTIO_NET_F_CTRL_RX	(1 << 18) /* control channel RX mode support */
+#define	VIRTIO_NET_F_CTRL_VLAN	(1 << 19) /* control channel VLAN filtering */
+#define	VIRTIO_NET_F_GUEST_ANNOUNCE \
+				(1 << 21) /* guest can send gratuitous pkts */
 
 #define VTNET_S_HOSTCAPS \
 	(VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
 	VIRTIO_F_NOTIFY_ON_EMPTY)
 
 #define ETHER_IS_MULTICAST(addr) (*(addr) & 0x01) /* is address mcast/bcast? */
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpacked"
 
 /*
  * PCI config-space "registers"
@@ -98,25 +96,24 @@ struct virtio_net_config {
 /*
  * Queue definitions.
  */
-#define VTNET_RXQ 0
-#define VTNET_TXQ 1
-// #define VTNET_CTLQ 2 /* NB: not yet supported */
-#define VTNET_MAXQ 3
+#define VTNET_RXQ	0
+#define VTNET_TXQ	1
+#define VTNET_CTLQ	2	/* NB: not yet supported */
+
+#define VTNET_MAXQ	3
 
 /*
  * Fixed network header size
  */
 struct virtio_net_rxhdr {
-	uint8_t vrh_flags;
-	uint8_t vrh_gso_type;
-	uint16_t vrh_hdr_len;
-	uint16_t vrh_gso_size;
-	uint16_t vrh_csum_start;
-	uint16_t vrh_csum_offset;
-	uint16_t vrh_bufs;
+	uint8_t		vrh_flags;
+	uint8_t		vrh_gso_type;
+	uint16_t	vrh_hdr_len;
+	uint16_t	vrh_gso_size;
+	uint16_t	vrh_csum_start;
+	uint16_t	vrh_csum_offset;
+	uint16_t	vrh_bufs;
 } __packed;
-
-#pragma clang diagnostic pop
 
 /*
  * Debug printf
@@ -125,8 +122,6 @@ static int pci_vtnet_debug;
 #define DPRINTF(params) if (pci_vtnet_debug) printf params
 #define WPRINTF(params) printf params
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 /*
  * Per-device softc
  */
@@ -134,22 +129,27 @@ struct pci_vtnet_softc {
 	struct virtio_softc vsc_vs;
 	struct vqueue_info vsc_queues[VTNET_MAXQ - 1];
 	pthread_mutex_t vsc_mtx;
-	struct mevent *vsc_mevp;
-	int vsc_tapfd;
-	int vsc_rx_ready;
-	volatile int resetting;/* set and checked outside lock */
-	uint64_t vsc_features; /* negotiated features */
+	struct mevent	*vsc_mevp;
+
+	int		vsc_tapfd;
+
+	int		vsc_rx_ready;
+	volatile int	resetting;	/* set and checked outside lock */
+
+	uint64_t	vsc_features;	/* negotiated features */
+
 	struct virtio_net_config vsc_config;
-	pthread_mutex_t rx_mtx;
-	int rx_in_progress;
-	int rx_vhdrlen;
-	int rx_merge; /* merged rx bufs in use */
-	pthread_t tx_tid;
-	pthread_mutex_t tx_mtx;
-	pthread_cond_t tx_cond;
-	int tx_in_progress;
+
+	pthread_mutex_t	rx_mtx;
+	int		rx_in_progress;
+	int		rx_vhdrlen;
+	int		rx_merge;	/* merged rx bufs in use */
+
+	pthread_t 	tx_tid;
+	pthread_mutex_t	tx_mtx;
+	pthread_cond_t	tx_cond;
+	int		tx_in_progress;
 };
-#pragma clang diagnostic pop
 
 static void pci_vtnet_reset(void *);
 /* static void pci_vtnet_notify(void *, struct vqueue_info *); */
@@ -246,7 +246,7 @@ pci_vtnet_tap_tx(struct pci_vtnet_softc *sc, struct iovec *iov, int iovcnt,
 	 */
 	if (len < 60) {
 		iov[iovcnt].iov_base = pad;
-		iov[iovcnt].iov_len = (size_t) (60 - len);
+		iov[iovcnt].iov_len = (size_t)(60 - len);
 		iovcnt++;
 	}
 	(void) writev(sc->vsc_tapfd, iov, iovcnt);
@@ -267,16 +267,16 @@ rx_iov_trim(struct iovec *iov, int *niov, int tlen)
 	struct iovec *riov;
 
 	/* XXX short-cut: assume first segment is >= tlen */
-	assert(iov[0].iov_len >= ((size_t) tlen));
+	assert(iov[0].iov_len >= (size_t)tlen);
 
-	iov[0].iov_len -= ((size_t) tlen);
+	iov[0].iov_len -= (size_t)tlen;
 	if (iov[0].iov_len == 0) {
 		assert(*niov > 1);
 		*niov -= 1;
 		riov = &iov[1];
 	} else {
 		iov[0].iov_base = (void *)((uintptr_t)iov[0].iov_base +
-			((size_t) tlen));
+			(size_t)tlen);
 		riov = &iov[0];
 	}
 
@@ -365,7 +365,7 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 		/*
 		 * Release this chain and handle more chains.
 		 */
-		vq_relchain(vq, idx, ((uint32_t) (len + sc->rx_vhdrlen)));
+		vq_relchain(vq, idx, (uint32_t)(len + sc->rx_vhdrlen));
 	} while (vq_has_descs(vq));
 
 	/* Interrupt if needed, including for NOTIFY_ON_EMPTY. */
@@ -449,7 +449,7 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 	n = vq_getchain(vq, &idx, iov, VTNET_MAXSEGS, NULL);
 	assert(n >= 1 && n <= VTNET_MAXSEGS);
 	plen = 0;
-	tlen = (int) iov[0].iov_len;
+	tlen = (int)iov[0].iov_len;
 	for (i = 1; i < n; i++) {
 		plen += iov[i].iov_len;
 		tlen += iov[i].iov_len;
@@ -459,7 +459,7 @@ pci_vtnet_proctx(struct pci_vtnet_softc *sc, struct vqueue_info *vq)
 	pci_vtnet_tap_tx(sc, &iov[1], n - 1, plen);
 
 	/* chain is processed, release it and set tlen */
-	vq_relchain(vq, idx, ((uint32_t) tlen));
+	vq_relchain(vq, idx, (uint32_t)tlen);
 }
 
 static void
@@ -672,7 +672,7 @@ pci_vtnet_init(struct pci_devinst *pi, char *opts)
 		    pi->pi_func, vmname);
 
 		MD5Init(&mdctx);
-		MD5Update(&mdctx, nstr, ((unsigned int) strlen(nstr)));
+		MD5Update(&mdctx, nstr, (unsigned int)strlen(nstr));
 		MD5Final(digest, &mdctx);
 
 		sc->vsc_config.mac[0] = 0x00;

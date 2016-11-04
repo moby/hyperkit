@@ -60,8 +60,6 @@
 #define	PIT_8254_FREQ		1193182
 #define	TIMER_DIV(freq, hz)	(((freq) + (hz) / 2) / (hz))
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vatpit_callout_arg {
 	struct vatpit *vatpit;
 	int channel_num;
@@ -89,7 +87,6 @@ struct vatpit {
 	sbintime_t freq_sbt;
 	struct channel channel[3];
 };
-#pragma clang diagnostic pop
 
 static void pit_timer_start_cntr0(struct vatpit *vatpit);
 

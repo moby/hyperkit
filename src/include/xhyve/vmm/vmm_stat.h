@@ -48,8 +48,6 @@ struct vmm_stat_type;
 typedef void (*vmm_stat_func_t)(struct vm *vm, int vcpu,
     struct vmm_stat_type *stat);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
 struct vmm_stat_type {
 	int	index;			/* position in the stats buffer */
 	int	nelems;			/* standalone or array */
@@ -57,7 +55,6 @@ struct vmm_stat_type {
 	vmm_stat_func_t func;
 	enum vmm_stat_scope scope;
 };
-#pragma clang diagnostic pop
 
 void	vmm_stat_register(void *arg);
 
