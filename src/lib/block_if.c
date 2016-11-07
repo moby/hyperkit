@@ -535,7 +535,7 @@ blockif_open(const char *optstr, const char *ident)
 	struct blockif_ctxt *bc;
 	struct stat sbuf;
 	// struct diocgattr_arg arg;
-	off_t size, psectsz, psectoff;
+	off_t size, psectsz, psectoff, blocks;
 	int extra, fd, i, sectsz;
 	int nocache, sync, ro, candelete, geom, ssopt, pssopt;
 	mirage_block_handle mbh;
@@ -653,8 +653,17 @@ blockif_open(const char *optstr, const char *ident)
 		if (ioctl(fd, DIOCGPROVIDERNAME, name) == 0)
 			geom = 1;
 #else
-		perror("xhyve: raw device support unimplemented");
-		goto err;
+		blocks = 0;
+		if (ioctl(fd, DKIOCGETBLOCKCOUNT, &blocks) < 0 ||
+			ioctl(fd, DKIOCGETBLOCKSIZE, &sectsz)) {
+			perror("Could not fetch dev blk/sector size");
+			goto err;
+		}
+
+		assert(blocks != 0);
+		assert(sectsz != 0);
+
+		size = blocks * sectsz;
 #endif
 	} else
 		psectsz = sbuf.st_blksize;
@@ -667,7 +676,6 @@ blockif_open(const char *optstr, const char *ident)
 			goto err;
 		}
 
-#ifdef __FreeBSD__
 		/*
 		 * Some backend drivers (e.g. cd0, ada0) require that the I/O
 		 * size be a multiple of the device's sector size.
@@ -683,7 +691,6 @@ blockif_open(const char *optstr, const char *ident)
 				goto err;
 			}
 		}
-#endif
 
 		sectsz = ssopt;
 		psectsz = pssopt;
