@@ -112,3 +112,4 @@ int xh_vm_restart_instruction(int vcpu);
 int xh_vm_emulate_instruction(int vcpu, uint64_t gpa, struct vie *vie,
 	struct vm_guest_paging *paging, mem_region_read_t memread,
 	mem_region_write_t memwrite, void *memarg);
+void xh_vm_vcpu_dump(int vcpu);

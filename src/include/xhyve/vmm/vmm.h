@@ -64,6 +64,7 @@ typedef int (*vmm_init_func_t)(void);
 typedef int (*vmm_cleanup_func_t)(void);
 typedef void *(*vmi_vm_init_func_t)(struct vm *vm);
 typedef int (*vmi_vcpu_init_func_t)(void *vmi, int vcpu);
+typedef void (*vmi_vcpu_dump_func_t)(void *vmi, int vcpu);
 typedef int (*vmi_run_func_t)(void *vmi, int vcpu, register_t rip,
 	void *rendezvous_cookie, void *suspend_cookie);
 typedef void (*vmi_vm_cleanup_func_t)(void *vmi);
@@ -87,6 +88,7 @@ struct vmm_ops {
 	vmm_cleanup_func_t cleanup;
 	vmi_vm_init_func_t vm_init; /* vm-specific initialization */
 	vmi_vcpu_init_func_t vcpu_init;
+	vmi_vcpu_dump_func_t vcpu_dump;
 	vmi_run_func_t vmrun;
 	vmi_vm_cleanup_func_t vm_cleanup;
 	vmi_vcpu_cleanup_func_t vcpu_cleanup;
@@ -145,6 +147,7 @@ int vm_activate_cpu(struct vm *vm, int vcpu);
 struct vm_exit *vm_exitinfo(struct vm *vm, int vcpuid);
 void vm_exit_suspended(struct vm *vm, int vcpuid, uint64_t rip);
 void vm_exit_rendezvous(struct vm *vm, int vcpuid, uint64_t rip);
+void vm_vcpu_dump(struct vm *vm, int vcpuid);
 
 /*
  * Rendezvous all vcpus specified in 'dest' and execute 'func(arg)'.
