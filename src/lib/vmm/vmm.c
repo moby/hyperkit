@@ -146,6 +146,8 @@ static struct vmm_ops *ops;
 	(*ops->vcpu_init)(vmi, vcpu)
 #define	VMRUN(vmi, vcpu, rip, rptr, sptr) \
 	(*ops->vmrun)(vmi, vcpu, rip, rptr, sptr)
+#define VCPU_DUMP(vmi, vcpu) \
+	(*ops->vcpu_dump)(vmi, vcpu)
 #define	VM_CLEANUP(vmi) \
 	(*ops->vm_cleanup)(vmi)
 #define	VCPU_CLEANUP(vmi, vcpu) \
@@ -1119,6 +1121,12 @@ vm_exit_rendezvous(struct vm *vm, int vcpuid, uint64_t rip)
 	vmexit->inst_length = 0;
 	vmexit->exitcode = VM_EXITCODE_RENDEZVOUS;
 	vmm_stat_incr(vm, vcpuid, VMEXIT_RENDEZVOUS, 1);
+}
+
+void
+vm_vcpu_dump(struct vm *vm, int vcpuid)
+{
+	VCPU_DUMP(vm->cookie, vcpuid);
 }
 
 void pittest(struct vm *thevm);

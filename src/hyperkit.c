@@ -633,6 +633,7 @@ vcpu_loop(int vcpu, uint64_t startrip)
 		case VMEXIT_CONTINUE:
 			break;
 		case VMEXIT_ABORT:
+			xh_vm_vcpu_dump(vcpu);
 			abort();
 		default:
 			exit(1);

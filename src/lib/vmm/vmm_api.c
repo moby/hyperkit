@@ -831,3 +831,9 @@ xh_vm_emulate_instruction(int vcpu, uint64_t gpa, struct vie *vie,
 
 	return (error);
 }
+
+void
+xh_vm_vcpu_dump(int vcpu)
+{
+	vm_vcpu_dump(vm, vcpu);
+}

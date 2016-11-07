@@ -2230,6 +2230,12 @@ vmx_vm_cleanup(void *arg)
 }
 
 static void
+vmx_vcpu_dump(void *arg UNUSED, int vcpu)
+{
+	hvdump(vcpu);
+}
+
+static void
 vmx_vcpu_cleanup(void *arg, int vcpuid) {
 	if (arg || vcpuid) xhyve_abort("vmx_vcpu_cleanup\n");
 }
@@ -2746,6 +2752,7 @@ struct vmm_ops vmm_ops_intel = {
 	vmx_cleanup,
 	vmx_vm_init,
 	vmx_vcpu_init,
+	vmx_vcpu_dump,
 	vmx_run,
 	vmx_vm_cleanup,
 	vmx_vcpu_cleanup,
