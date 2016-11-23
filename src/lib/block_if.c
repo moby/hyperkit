@@ -207,6 +207,40 @@ block_pwritev(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt,
 	return (ret);
 }
 
+static int
+block_delete(struct blockif_ctxt *bc, off_t offset, off_t len)
+{
+	int ret = -1;
+#ifdef __FreeBSD__
+	off_t arg[2] = { offset, len };
+#endif
+	if (HYPERKIT_BLOCK_DELETE_ENABLED())
+		HYPERKIT_BLOCK_DELETE(offset, len);
+
+	if (!bc->bc_candelete)
+		errno = EOPNOTSUPP;
+	else if (bc->bc_rdonly)
+		errno = EROFS;
+	if (bc->bc_fd >= 0) {
+		if (bc->bc_ischr) {
+#ifdef __FreeBSD__
+			ret = ioctl(bc->bc_fd, DIOCGDELETE, arg);
+#else
+			errno = EOPNOTSUPP;
+#endif
+		} else
+			errno = EOPNOTSUPP;
+#ifdef HAVE_OCAML_QCOW
+	} else if (bc->bc_mbh >= 0) {
+		/* Not currently implemented */
+		errno = EOPNOTSUPP;
+#endif
+	} else
+		abort();
+
+	HYPERKIT_BLOCK_DELETE_DONE(offset, ret);
+	return ret;
+}
 
 static int
 block_flush(struct blockif_ctxt *bc)
@@ -330,7 +364,6 @@ static void
 blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 {
 	struct blockif_req *br;
-	// off_t arg[2];
 	ssize_t clen, len, off, boff, voff;
 	int i, err;
 
@@ -427,23 +460,11 @@ blockif_proc(struct blockif_ctxt *bc, struct blockif_elem *be, uint8_t *buf)
 		err = block_flush(bc);
 		break;
 	case BOP_DELETE:
-#ifdef __FreeBSD__
-		if (!bc->bc_candelete)
-			err = EOPNOTSUPP;
-		else if (bc->bc_rdonly)
-			err = EROFS;
-		else if (bc->bc_ischr) {
-			arg[0] = br->br_offset;
-			arg[1] = br->br_resid;
-			if (ioctl(bc->bc_fd, DIOCGDELETE, arg))
-				err = errno;
-			else
-				br->br_resid = 0;
-		} else
-			err = EOPNOTSUPP;
-#else
-		err = EOPNOTSUPP;
-#endif
+		if (block_delete(bc, br->br_offset, br->br_resid) < 0) {
+			err = errno;
+			break;
+		}
+		br->br_resid = 0;
 		break;
 	}
 

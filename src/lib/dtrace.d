@@ -9,4 +9,6 @@ provider hyperkit {
 	probe block__preadv__done(off_t, ssize_t);
 	probe block__pwritev(off_t, size_t);
 	probe block__pwritev__done(off_t, ssize_t);
+	probe block__delete(off_t, off_t);
+	probe block__delete__done(off_t, off_t);
 };
