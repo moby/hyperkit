@@ -232,8 +232,7 @@ block_delete(struct blockif_ctxt *bc, off_t offset, off_t len)
 			errno = EOPNOTSUPP;
 #ifdef HAVE_OCAML_QCOW
 	} else if (bc->bc_mbh >= 0) {
-		/* Not currently implemented */
-		errno = EOPNOTSUPP;
+		ret = mirage_block_delete(bc->bc_mbh, offset, len);
 #endif
 	} else
 		abort();

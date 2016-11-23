@@ -217,6 +217,32 @@ mirage_block_pwritev(mirage_block_handle h, const struct iovec *iov, int iovcnt,
 }
 
 static void
+ocaml_mirage_block_delete(int handle, off_t offset, ssize_t len, int *err) {
+	CAMLparam0();
+	CAMLlocal4(ocaml_handle, result, ocaml_offset, ocaml_len);
+	ocaml_handle = Val_int(handle);
+	ocaml_offset = caml_copy_int64(offset);
+	ocaml_len = caml_copy_int64(len);
+	OCAML_NAMED_FUNCTION("mirage_block_delete")
+	result = caml_callback3_exn(*fn, ocaml_handle, ocaml_offset, ocaml_len);
+	*err = 0;
+	if (Is_exception_result(result)){
+		errno = EINVAL;
+		*err = 1;
+	}
+	CAMLreturn0;
+}
+
+int
+mirage_block_delete(mirage_block_handle handle, off_t offset, ssize_t len) {
+	int err = 1;
+	caml_acquire_runtime_system();
+	ocaml_mirage_block_delete(handle, offset, len, &err);
+	caml_release_runtime_system();
+	return err;
+}
+
+static void
 ocaml_mirage_block_flush(int handle, int *err) {
 	CAMLparam0();
 	CAMLlocal2(ocaml_handle, result);

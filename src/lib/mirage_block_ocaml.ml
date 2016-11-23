@@ -62,6 +62,7 @@ module Protocol = struct
       | Disconnect of int
       | Read of int * int * (Cstruct.t list)
       | Write of int * int * (Cstruct.t list)
+      | Delete of int * int64 * int64
       | Flush of int
   end
 
@@ -72,6 +73,7 @@ module Protocol = struct
       | Disconnect
       | Read of int
       | Write of int
+      | Delete
       | Flush
     type t = [ `Ok of ok | `Error of B.error ]
   end
@@ -187,6 +189,14 @@ module C = struct
         Printf.fprintf stderr "protocol error: unexpected response to write\n%!";
         exit 1
 
+  let mirage_block_delete (h: int) (ofs: int64) (len: int64) : unit =
+    match ok_exn (Protocol.rpc (Protocol.Request.Delete(h, ofs, len))) with
+      | Protocol.Response.Delete ->
+        ()
+      | _ ->
+        Printf.fprintf stderr "protocol error: unexpected response to delete\n%!";
+        exit 1
+
   let mirage_block_flush h =
     match ok_exn (Protocol.rpc (Protocol.Request.Flush h)) with
       | Protocol.Response.Flush ->
@@ -209,6 +219,7 @@ module C = struct
     Callback.register "mirage_block_close" mirage_block_close;
     Callback.register "mirage_block_preadv" mirage_block_preadv;
     Callback.register "mirage_block_pwritev" mirage_block_pwritev;
+    Callback.register "mirage_block_delete" mirage_block_delete;
     Callback.register "mirage_block_flush" mirage_block_flush;
 end
 
@@ -302,6 +313,21 @@ let process_one t =
       >>= fun () ->
       let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
       return (Response.Write len)
+    | Request.Delete (h, offset, len) ->
+      let t = Handle.find_or_quit h in
+      (* Offset and len need to be translated into sectors *)
+      let sector_size = Int64.of_int t.Handle.info.B.sector_size in
+      if Int64.rem offset sector_size <> 0L then begin
+        Printf.fprintf stderr "Delete offset not at sector boundary\n%!";
+        exit 1
+      end;
+      if Int64.rem len sector_size <> 0L then begin
+        Printf.fprintf stderr "Delete len not a multiple of sectors\n%!";
+        exit 1
+      end;
+      let offset = Int64.div offset sector_size in
+      let len = Int64.div len sector_size in
+      failwith "Mirage BLOCK delete not implemented"
     | Request.Flush h ->
       let t = Handle.find_or_quit h in
       Block.flush t.Handle.base

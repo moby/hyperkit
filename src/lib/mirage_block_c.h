@@ -55,6 +55,10 @@ extern ssize_t
 mirage_block_pwritev(mirage_block_handle h,
 	const struct iovec *iov, int iovcnt, off_t offset);
 
+/* TRIM/DELETE/DISCARD the range of sectors */
+extern int
+mirage_block_delete(mirage_block_handle h, off_t offset, ssize_t len);
+
 /* Flush any outstanding I/O */
 extern
 int mirage_block_flush(mirage_block_handle h);
