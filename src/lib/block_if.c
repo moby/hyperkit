@@ -555,6 +555,7 @@ blockif_open(const char *optstr, const char *ident)
 	char *nopt, *xopts, *cp;
 	struct blockif_ctxt *bc;
 	struct stat sbuf;
+	struct mirage_block_stat msbuf;
 	// struct diocgattr_arg arg;
 	off_t size, psectsz, psectoff, blocks;
 	int extra, fd, i, sectsz;
@@ -611,6 +612,8 @@ blockif_open(const char *optstr, const char *ident)
 	if (sync)
 		extra |= O_SYNC;
 
+	candelete = 0;
+
 	if (use_mirage) {
 #ifdef HAVE_OCAML_QCOW
 		mirage_block_register_thread();
@@ -619,11 +622,11 @@ blockif_open(const char *optstr, const char *ident)
 			perror("Could not open mirage-block device");
 			goto err;
 		}
-
-		if (mirage_block_stat(mbh, &sbuf) < 0) {
+		if (mirage_block_stat(mbh, &sbuf, &msbuf) < 0) {
 			perror("Could not stat backing file");
 			goto err;
 		}
+		candelete = msbuf.candelete;
 #else
 		abort();
 #endif
@@ -655,7 +658,7 @@ blockif_open(const char *optstr, const char *ident)
 	size = sbuf.st_size;
 	sectsz = DEV_BSIZE;
 	psectsz = psectoff = 0;
-	candelete = geom = 0;
+	geom = 0;
 	if (S_ISCHR(sbuf.st_mode)) {
 #ifdef __FreeBSD__
 		if (ioctl(fd, DIOCGMEDIASIZE, &size) < 0 ||

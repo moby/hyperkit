@@ -77,7 +77,7 @@ mirage_block_open(const char *config) {
 }
 
 static void
-ocaml_mirage_block_stat(mirage_block_handle h, struct stat *out, int *err) {
+ocaml_mirage_block_stat(mirage_block_handle h, struct stat *stat, struct mirage_block_stat *mbs, int *err) {
 	CAMLparam0();
 	CAMLlocal2(ocaml_handle, result);
 	ocaml_handle = Val_int(h);
@@ -86,32 +86,34 @@ ocaml_mirage_block_stat(mirage_block_handle h, struct stat *out, int *err) {
 	int read_write = Int_val(Field(result, 0)) != 0;
 	unsigned int sector_size = (unsigned int)Int_val(Field(result, 1));
 	uint64_t size_sectors = (uint64_t)Int64_val(Field(result, 2));
+	int candelete = Bool_val(Field(result, 3));
 	if (Is_exception_result(result)){
 		*err = 1;
 	} else {
 		*err = 0;
-		bzero(out, sizeof(struct stat));
-		out->st_dev = 0;
-		out->st_ino = 0;
-		out->st_mode = S_IFREG | S_IROTH | S_IRGRP | S_IRUSR | (read_write?(S_IWOTH | S_IWGRP | S_IWUSR): 0);
-		out->st_nlink = 1;
-		out->st_uid = 0;
-		out->st_gid = 0;
-		out->st_rdev = 0;
-		out->st_size = (off_t)(sector_size * size_sectors);
-		out->st_blocks = (blkcnt_t)size_sectors;
-		out->st_blksize = (blksize_t)sector_size;
-		out->st_flags = 0;
-		out->st_gen = 0;
+		bzero(stat, sizeof(struct stat));
+		stat->st_dev = 0;
+		stat->st_ino = 0;
+		stat->st_mode = S_IFREG | S_IROTH | S_IRGRP | S_IRUSR | (read_write?(S_IWOTH | S_IWGRP | S_IWUSR): 0);
+		stat->st_nlink = 1;
+		stat->st_uid = 0;
+		stat->st_gid = 0;
+		stat->st_rdev = 0;
+		stat->st_size = (off_t)(sector_size * size_sectors);
+		stat->st_blocks = (blkcnt_t)size_sectors;
+		stat->st_blksize = (blksize_t)sector_size;
+		stat->st_flags = 0;
+		stat->st_gen = 0;
+		mbs->candelete = candelete;
 	}
 	CAMLreturn0;
 }
 
 int
-mirage_block_stat(mirage_block_handle h, struct stat *buf) {
+mirage_block_stat(mirage_block_handle h, struct stat *stat, struct mirage_block_stat *mbs) {
 	int err = 1;
 	caml_acquire_runtime_system();
-	ocaml_mirage_block_stat(h, buf, &err);
+	ocaml_mirage_block_stat(h, stat, mbs, &err);
 	caml_release_runtime_system();
 	if (err){
 		errno = EINVAL;

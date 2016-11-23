@@ -68,7 +68,7 @@ module Protocol = struct
   module Response = struct
     type ok =
       | Connect of int
-      | Get_info of bool * int * int64
+      | Get_info of bool * int * int64 * bool
       | Disconnect
       | Read of int
       | Write of int
@@ -160,11 +160,11 @@ module C = struct
         Printf.fprintf stderr "mirage_block_open %s: %s\n%!" config m;
         exit 1
 
-  let mirage_block_stat (h: int) : (bool * int * int64) =
+  let mirage_block_stat (h: int) : (bool * int * int64 * bool) =
     Printf.fprintf stdout "mirage_block_stat\n%!";
     match ok_exn (Protocol.rpc (Protocol.Request.Get_info h)) with
-      | Protocol.Response.Get_info (read_write, sector_size, size_sectors) ->
-        read_write, sector_size, size_sectors
+      | Protocol.Response.Get_info (read_write, sector_size, size_sectors, candelete) ->
+        read_write, sector_size, size_sectors, candelete
       | _ ->
         Printf.fprintf stderr "protocol error: unexpected response to stat\n%!";
         exit 1
@@ -270,7 +270,8 @@ let process_one t =
       let open Lwt in
       B.get_info t.Handle.block
       >>= fun info ->
-      return (`Ok (Response.Get_info (info.B.read_write, info.B.sector_size, info.B.size_sectors)))
+      let candelete = false in
+      return (`Ok (Response.Get_info (info.B.read_write, info.B.sector_size, info.B.size_sectors, candelete)))
     | Request.Disconnect h ->
       let t = Handle.find_or_quit h in
       let open Lwt in

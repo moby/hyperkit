@@ -35,9 +35,13 @@ typedef int mirage_block_handle;
 extern mirage_block_handle
 mirage_block_open(const char *config);
 
+struct mirage_block_stat {
+	int candelete;      /* 1 if the device supports TRIM/DELETE/DISCARD */
+};
+
 /* Query a mirage block device. */
 extern int
-mirage_block_stat(mirage_block_handle h, struct stat *buf);
+mirage_block_stat(mirage_block_handle h, struct stat *stat, struct mirage_block_stat *buf);
 
 /* Read data from a mirage block device. Note the offset must be sector-aligned
    and the memory buffers must also be sector-aligned. */
