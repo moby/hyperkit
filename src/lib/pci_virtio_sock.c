@@ -1612,9 +1612,13 @@ static void pci_vtsock_notify_tx(void *vsc, struct vqueue_info *vq)
 
 /*
  * Returns:
- *  -1 == no descriptors available
+ *  -1 == no descriptors available, nothing sent, s->credit_update_required untouched
  *   0 == nothing done (sock has shutdown, peer has no buffers, nothing on Unix socket)
  *  >0 == number of bytes read
+ *
+ * If return is >= 0 then will have sent something to the other end
+ * (an OP_CREDIT_UPDATE if no other traffic was generated) and thus
+ * s->credit_update_required will be false on exit if return is >= 0.
  */
 static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 				  struct vqueue_info *vq,
@@ -1636,10 +1640,6 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		return -1;
 	}
 
-	peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
-	DPRINTF(("RX:\tpeer free = %"PRIx32"\n", peer_free));
-	if (!peer_free) return 0; /* No space */
-
 	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, flags);
 	DPRINTF(("RX: virtio-vsock: got %d elem rx chain\n", iovec_len));
 	dprint_chain(iov, iovec_len, "RX");
@@ -1660,6 +1660,10 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	hdr->buf_alloc = s->buf_alloc;
 	hdr->fwd_cnt = s->fwd_cnt;
 
+	peer_free = s->peer_buf_alloc - (s->rx_cnt - s->peer_fwd_cnt);
+	DPRINTF(("RX:\tpeer free = %"PRIx32"\n", peer_free));
+	if (!peer_free) goto credit_update; /* No space */
+
 	pushed = iovec_push(&iov, &iovec_len, hdr, sizeof(*hdr));
 	assert(pushed == sizeof(*hdr));
 
@@ -1669,8 +1673,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	if (len == -1) {
 		if (errno == EAGAIN) { /* Nothing to read/would block */
 			DPRINTF(("RX: readv fd=%d EAGAIN\n", s->fd));
-			vq_retchain(vq);
-			return 0;
+			goto credit_update;
 		}
 		PPRINTF(("RX: readv fd=%d failed with %d %s\n",
 			 s->fd, errno, strerror(errno)));
@@ -1678,6 +1681,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		hdr->flags = 0;
 		hdr->len = 0;
 		dprint_header(hdr, 0, "RX");
+		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
 		close_sock(sc, s, "RX");
 		return 0;
@@ -1690,6 +1694,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		hdr->flags = s->local_shutdown;
 		hdr->len = 0;
 		dprint_header(hdr, 0, "RX");
+		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
 		return 0;
 	}
@@ -1698,10 +1703,23 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	s->rx_cnt += len;
 
 	dprint_header(hdr, 0, "RX");
-
+	s->credit_update_required = false;
 	vq_relchain(vq, idx, sizeof(*hdr) + (uint32_t)len);
 
 	return len;
+
+credit_update:
+	if (s->credit_update_required) {
+		hdr->op = VIRTIO_VSOCK_OP_CREDIT_UPDATE;
+		hdr->flags = 0;
+		hdr->len = 0;
+		dprint_header(hdr, 0, "RX");
+		s->credit_update_required = false;
+		vq_relchain(vq, idx, sizeof(*hdr));
+	} else {
+		vq_retchain(vq);
+	}
+	return 0;
 }
 
 /* True if there is more to do */
@@ -2021,8 +2039,15 @@ rx_done:
 					} else {
 						did_some_work = true;
 					}
-					/* We sent either an OP_RW or an OP_SHUTDOWN in proc_rx */
-					s->credit_update_required = false;
+					/*
+					 * If proc_rx returned >= 0
+					 * then it is guaranteed to
+					 * have sent something and
+					 * thus a credit update is no
+					 * longer required. We have
+					 * handled the < 0 case above.
+					 */
+					assert(s->credit_update_required == false);
 				} else if (s->credit_update_required) {
 					if (send_credit_update(vq, s)) {
 						s->credit_update_required = false;
