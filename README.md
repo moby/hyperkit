@@ -46,10 +46,12 @@ Notes:
   hyperkit so the build will find the ocaml environment.
 - Any previous pin of `mirage-block-unix` or `qcow-format`
   should be removed with the commands:
-
-    $ opam update
-    $ opam pin remove mirage-block-unix
-    $ opam pin remove qcow-format
+  
+  ```sh
+  $ opam update
+  $ opam pin remove mirage-block-unix
+  $ opam pin remove qcow-format
+  ```
 
 ## Tracing
 
@@ -57,7 +59,7 @@ HyperKit defines a number of static DTrace probes to simplify investigation of
 performance problems. To list the probes supported by your version of HyperKit,
 type the following command while HyperKit VM is running:
 
- $ sudo dtrace -l -P 'hyperkit$target' -p $(pgrep hyperkit)
+     $ sudo dtrace -l -P 'hyperkit$target' -p $(pgrep hyperkit)
 
 Refer to scripts in dtrace/ directory for examples of possible usage and
 available probes.
