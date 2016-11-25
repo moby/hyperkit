@@ -623,6 +623,19 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	return s;
 }
 
+/* Caller must hold sc->list_rwlock AND s->lock. This function will
+ * free s and release s->lock but not sc->list_rwlock
+ */
+static void free_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s)
+{
+	LIST_REMOVE(s, list);
+	s->state = SOCK_FREE;
+
+	LIST_INSERT_HEAD(&sc->free_list, s, list);
+
+	put_sock(s);
+}
+
 static int set_socket_options(struct pci_vtsock_sock *s)
 {
 	int rc, buf_alloc = (int)s->buf_alloc;
@@ -739,11 +752,11 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 	return s;
 
 err:
-	/* s is static, no need to free(), but do set state back to free */
 	if (fd >= 0) close(fd);
 	if (s) {
-		s->state = SOCK_FREE;
-		put_sock(s);
+		pthread_rwlock_wrlock(&sc->list_rwlock);
+		free_sock(sc, s);
+		pthread_rwlock_unlock(&sc->list_rwlock);
 	}
 	return NULL;
 }
@@ -1426,8 +1439,9 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 	return;
 err:
 	if (sock) {
-		sock->state = SOCK_FREE;
-		put_sock(sock);
+		pthread_rwlock_wrlock(&sc->list_rwlock);
+		free_sock(sc, sock);
+		pthread_rwlock_unlock(&sc->list_rwlock);
 	}
 	close(fd);
 }
@@ -1907,13 +1921,7 @@ rx_done:
 
 			LIST_FOREACH(s, &closing_queue, rx_queue) {
 				get_sock(s);
-
-				LIST_REMOVE(s, list);
-				s->state = SOCK_FREE;
-
-				LIST_INSERT_HEAD(&sc->free_list, s, list);
-
-				put_sock(s);
+				free_sock(sc, s);
 			}
 
 			pthread_rwlock_unlock(&sc->list_rwlock);
