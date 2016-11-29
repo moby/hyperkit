@@ -675,6 +675,10 @@ static int set_socket_options(struct pci_vtsock_sock *s)
 	return 0;
 }
 
+
+/* On success the socket returned will be locked, the caller is
+ * responsible for calling put_sock() on it.
+ */
 static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 					    struct vsock_addr local_addr,
 					    struct vsock_addr peer_addr,
@@ -746,8 +750,6 @@ static struct pci_vtsock_sock *connect_sock(struct pci_vtsock_softc *sc,
 	PPRINTF(("TX: SOCK connected (%d) "PRIaddr" <=> "PRIaddr"\n",
 		 s->fd, FMTADDR(s->local_addr), FMTADDR(s->peer_addr)));
 	s->state = SOCK_CONNECTED;
-
-	put_sock(s);
 
 	return s;
 
