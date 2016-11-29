@@ -1594,7 +1594,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 		if (buffering) {
 			LIST_FOREACH(s, &queue, tx_queue) {
 				get_sock(s);
-				if (s->state != SOCK_CONNECTED) {
+				if (s->state != SOCK_CONNECTED && s->state != SOCK_CLOSING_TX) {
 					put_sock(s);
 					continue;
 				}
