@@ -46,12 +46,13 @@ if (fn == NULL) { \
 	acquiring the runtime lock. */
 
 static void
-ocaml_mirage_block_open(const char *config, int *out, int *err) {
+ocaml_mirage_block_open(const char *config, const char *options, int *out, int *err) {
 	CAMLparam0();
-	CAMLlocal2(ocaml_config, handle);
+	CAMLlocal3(ocaml_config, ocaml_options, handle);
 	ocaml_config = caml_copy_string(config);
+	ocaml_options = caml_copy_string(options);
 	OCAML_NAMED_FUNCTION("mirage_block_open")
-	handle = caml_callback_exn(*fn, ocaml_config);
+	handle = caml_callback2_exn(*fn, ocaml_config, ocaml_options);
 	if (Is_exception_result(handle)){
 		*err = 1;
 	} else {
@@ -62,11 +63,11 @@ ocaml_mirage_block_open(const char *config, int *out, int *err) {
 }
 
 mirage_block_handle
-mirage_block_open(const char *config) {
+mirage_block_open(const char *config, const char *options) {
 	int result;
 	int err = 1;
 	caml_acquire_runtime_system();
-	ocaml_mirage_block_open(config, &result, &err);
+	ocaml_mirage_block_open(config, options, &result, &err);
 	caml_release_runtime_system();
 	if (err){
 		errno = EINVAL;

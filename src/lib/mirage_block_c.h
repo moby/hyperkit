@@ -33,7 +33,7 @@ typedef int mirage_block_handle;
 
 /* Open a mirage block device with the given string configuration. */
 extern mirage_block_handle
-mirage_block_open(const char *config);
+mirage_block_open(const char *config, const char *options);
 
 struct mirage_block_stat {
 	int candelete;      /* 1 if the device supports TRIM/DELETE/DISCARD */
