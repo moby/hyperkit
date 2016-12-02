@@ -288,7 +288,8 @@ let process_one t =
       let open Lwt in
       Qcow.get_info t.Handle.block
       >>= fun info ->
-      let candelete = false in
+      let config = Qcow.to_config t.Handle.block in
+      let candelete = config.Qcow.Config.discard in
       return (`Ok (Response.Get_info (info.Qcow.read_write, info.Qcow.sector_size, info.Qcow.size_sectors, candelete)))
     | Request.Disconnect h ->
       let t = Handle.find_or_quit h in
@@ -332,9 +333,11 @@ let process_one t =
         Printf.fprintf stderr "Delete len not a multiple of sectors\n%!";
         exit 1
       end;
-      let offset = Int64.div offset sector_size in
-      let len = Int64.div len sector_size in
-      failwith "Mirage BLOCK delete not implemented"
+      let sector = Int64.div offset sector_size in
+      let n = Int64.div len sector_size in
+      Qcow.discard t.Handle.block ~sector ~n ()
+      >>= fun () ->
+      return (Response.Delete)
     | Request.Flush h ->
       let t = Handle.find_or_quit h in
       Block.flush t.Handle.base
