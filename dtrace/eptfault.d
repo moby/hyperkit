@@ -62,11 +62,8 @@ hyperkit$target:::vmx-ept-fault
 }
 
 hyperkit$target:::vmx-ept-fault
-/(arg1 & 0xfff00000) != 0xfee00000/
 {
-        // OTHER FAULTS
-
-        @other_faults[arg1, arg0] = count();
+        @all_faults[arg1, arg0] = count();
 }
 
 dtrace:::END
@@ -75,9 +72,9 @@ dtrace:::END
         printf("%18s %-4s %10s\n", "ADDRESS", "vCPU", "COUNT");
         #else
         printf("%18s %-4s %10s\n", "ADDRESS", "vCPU", "RATE (1/s)");
-        normalize(@other_faults, (timestamp - start) / 1000000000);
+        normalize(@all_faults, (timestamp - start) / 1000000000);
         #endif
-        printa("%18x %-4d %@10d\n", @other_faults);
+        printa("%18x %-4d %@10d\n", @all_faults);
 
         #ifdef TOTAL
         printf("%18s %-4s %10s\n", "LAPIC REGISTER", "vCPU", "COUNT");
