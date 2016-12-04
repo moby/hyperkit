@@ -11,6 +11,8 @@ string reasons[int];
 
 dtrace:::BEGIN
 {
+        start = timestamp;
+
         reasons[0]  = "EXCEPTION";
         reasons[1]  = "EXT_INTR";
         reasons[2]  = "TRIPLE_FAULT";
@@ -76,6 +78,11 @@ hyperkit$target:::vmx-exit
 
 dtrace:::END
 {
+        #ifdef TOTAL
         printf("%16s %-4s %8s\n", "REASON", "vCPU", "COUNT");
+        #else
+        printf("%16s %-4s %8s\n", "REASON", "vCPU", "RATE (1/s)");
+        normalize(@num, (timestamp - start) / 1000000000);
+        #endif
         printa("%16s %-4d %@8d\n", @num);
 }
