@@ -46,12 +46,13 @@ if (fn == NULL) { \
 	acquiring the runtime lock. */
 
 static void
-ocaml_mirage_block_open(const char *config, int *out, int *err) {
+ocaml_mirage_block_open(const char *config, const char *options, int *out, int *err) {
 	CAMLparam0();
-	CAMLlocal2(ocaml_config, handle);
+	CAMLlocal3(ocaml_config, ocaml_options, handle);
 	ocaml_config = caml_copy_string(config);
+	ocaml_options = caml_copy_string(options);
 	OCAML_NAMED_FUNCTION("mirage_block_open")
-	handle = caml_callback_exn(*fn, ocaml_config);
+	handle = caml_callback2_exn(*fn, ocaml_config, ocaml_options);
 	if (Is_exception_result(handle)){
 		*err = 1;
 	} else {
@@ -62,11 +63,11 @@ ocaml_mirage_block_open(const char *config, int *out, int *err) {
 }
 
 mirage_block_handle
-mirage_block_open(const char *config) {
+mirage_block_open(const char *config, const char *options) {
 	int result;
 	int err = 1;
 	caml_acquire_runtime_system();
-	ocaml_mirage_block_open(config, &result, &err);
+	ocaml_mirage_block_open(config, options, &result, &err);
 	caml_release_runtime_system();
 	if (err){
 		errno = EINVAL;
@@ -77,7 +78,7 @@ mirage_block_open(const char *config) {
 }
 
 static void
-ocaml_mirage_block_stat(mirage_block_handle h, struct stat *out, int *err) {
+ocaml_mirage_block_stat(mirage_block_handle h, struct stat *stat, struct mirage_block_stat *mbs, int *err) {
 	CAMLparam0();
 	CAMLlocal2(ocaml_handle, result);
 	ocaml_handle = Val_int(h);
@@ -86,32 +87,34 @@ ocaml_mirage_block_stat(mirage_block_handle h, struct stat *out, int *err) {
 	int read_write = Int_val(Field(result, 0)) != 0;
 	unsigned int sector_size = (unsigned int)Int_val(Field(result, 1));
 	uint64_t size_sectors = (uint64_t)Int64_val(Field(result, 2));
+	int candelete = Bool_val(Field(result, 3));
 	if (Is_exception_result(result)){
 		*err = 1;
 	} else {
 		*err = 0;
-		bzero(out, sizeof(struct stat));
-		out->st_dev = 0;
-		out->st_ino = 0;
-		out->st_mode = S_IFREG | S_IROTH | S_IRGRP | S_IRUSR | (read_write?(S_IWOTH | S_IWGRP | S_IWUSR): 0);
-		out->st_nlink = 1;
-		out->st_uid = 0;
-		out->st_gid = 0;
-		out->st_rdev = 0;
-		out->st_size = (off_t)(sector_size * size_sectors);
-		out->st_blocks = (blkcnt_t)size_sectors;
-		out->st_blksize = (blksize_t)sector_size;
-		out->st_flags = 0;
-		out->st_gen = 0;
+		bzero(stat, sizeof(struct stat));
+		stat->st_dev = 0;
+		stat->st_ino = 0;
+		stat->st_mode = S_IFREG | S_IROTH | S_IRGRP | S_IRUSR | (read_write?(S_IWOTH | S_IWGRP | S_IWUSR): 0);
+		stat->st_nlink = 1;
+		stat->st_uid = 0;
+		stat->st_gid = 0;
+		stat->st_rdev = 0;
+		stat->st_size = (off_t)(sector_size * size_sectors);
+		stat->st_blocks = (blkcnt_t)size_sectors;
+		stat->st_blksize = (blksize_t)sector_size;
+		stat->st_flags = 0;
+		stat->st_gen = 0;
+		mbs->candelete = candelete;
 	}
 	CAMLreturn0;
 }
 
 int
-mirage_block_stat(mirage_block_handle h, struct stat *buf) {
+mirage_block_stat(mirage_block_handle h, struct stat *stat, struct mirage_block_stat *mbs) {
 	int err = 1;
 	caml_acquire_runtime_system();
-	ocaml_mirage_block_stat(h, buf, &err);
+	ocaml_mirage_block_stat(h, stat, mbs, &err);
 	caml_release_runtime_system();
 	if (err){
 		errno = EINVAL;
@@ -212,6 +215,32 @@ mirage_block_pwritev(mirage_block_handle h, const struct iovec *iov, int iovcnt,
 		return (-1);
 	}
 	return len;
+}
+
+static void
+ocaml_mirage_block_delete(int handle, off_t offset, ssize_t len, int *err) {
+	CAMLparam0();
+	CAMLlocal4(ocaml_handle, result, ocaml_offset, ocaml_len);
+	ocaml_handle = Val_int(handle);
+	ocaml_offset = caml_copy_int64(offset);
+	ocaml_len = caml_copy_int64(len);
+	OCAML_NAMED_FUNCTION("mirage_block_delete")
+	result = caml_callback3_exn(*fn, ocaml_handle, ocaml_offset, ocaml_len);
+	*err = 0;
+	if (Is_exception_result(result)){
+		errno = EINVAL;
+		*err = 1;
+	}
+	CAMLreturn0;
+}
+
+int
+mirage_block_delete(mirage_block_handle handle, off_t offset, ssize_t len) {
+	int err = 1;
+	caml_acquire_runtime_system();
+	ocaml_mirage_block_delete(handle, offset, len, &err);
+	caml_release_runtime_system();
+	return err;
 }
 
 static void

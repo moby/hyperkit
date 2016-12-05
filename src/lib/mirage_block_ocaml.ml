@@ -1,5 +1,5 @@
 (* TODO: parameterise this over block implementations *)
-module B = Qcow.Make(Block)
+module Qcow = Qcow.Make(Block)
 
 module Mutex = struct
   include Mutex
@@ -57,23 +57,25 @@ end
 module Protocol = struct
   module Request = struct
     type t =
-      | Connect of Block.Config.t
+      | Connect of (Block.Config.t * Qcow.Config.t)
       | Get_info of int
       | Disconnect of int
       | Read of int * int * (Cstruct.t list)
       | Write of int * int * (Cstruct.t list)
+      | Delete of int * int64 * int64
       | Flush of int
   end
 
   module Response = struct
     type ok =
       | Connect of int
-      | Get_info of bool * int * int64
+      | Get_info of bool * int * int64 * bool
       | Disconnect
       | Read of int
       | Write of int
+      | Delete
       | Flush
-    type t = [ `Ok of ok | `Error of B.error ]
+    type t = [ `Ok of ok | `Error of Qcow.error ]
   end
 
   (* An in-flight request *)
@@ -144,27 +146,34 @@ module C = struct
       raise (Mirage_block.Error.Error x)
     | `Ok x -> x
 
-  let mirage_block_open config : int =
-    Printf.fprintf stdout "mirage_block_open: %s\n%!" config;
-    match Block.Config.of_string config with
-      | `Ok config' ->
-        begin match ok_exn (Protocol.rpc (Protocol.Request.Connect config')) with
-          | Protocol.Response.Connect t ->
-            Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" config t;
-            t
-          | _ ->
-            Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
+  let mirage_block_open block_config qcow_config : int =
+    let description = Printf.sprintf "block_config = %s and qcow_config = %s" block_config qcow_config in
+    Printf.fprintf stdout "mirage_block_open: %s\n%!" description;
+    match Block.Config.of_string block_config with
+      | `Ok block_config' ->
+        begin match Qcow.Config.of_string qcow_config with
+          | `Ok qcow_config' ->
+            begin match ok_exn (Protocol.rpc (Protocol.Request.Connect (block_config', qcow_config'))) with
+              | Protocol.Response.Connect t ->
+                Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" description t;
+                t
+              | _ ->
+                Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
+                exit 1
+            end
+          | `Error (`Msg m) ->
+            Printf.fprintf stderr "mirage_block_option %s: %s\n%!" description m;
             exit 1
         end
       | `Error (`Msg m) ->
-        Printf.fprintf stderr "mirage_block_open %s: %s\n%!" config m;
+        Printf.fprintf stderr "mirage_block_open %s: %s\n%!" description m;
         exit 1
 
-  let mirage_block_stat (h: int) : (bool * int * int64) =
+  let mirage_block_stat (h: int) : (bool * int * int64 * bool) =
     Printf.fprintf stdout "mirage_block_stat\n%!";
     match ok_exn (Protocol.rpc (Protocol.Request.Get_info h)) with
-      | Protocol.Response.Get_info (read_write, sector_size, size_sectors) ->
-        read_write, sector_size, size_sectors
+      | Protocol.Response.Get_info (read_write, sector_size, size_sectors, candelete) ->
+        read_write, sector_size, size_sectors, candelete
       | _ ->
         Printf.fprintf stderr "protocol error: unexpected response to stat\n%!";
         exit 1
@@ -185,6 +194,14 @@ module C = struct
         len
       | _ ->
         Printf.fprintf stderr "protocol error: unexpected response to write\n%!";
+        exit 1
+
+  let mirage_block_delete (h: int) (ofs: int64) (len: int64) : unit =
+    match ok_exn (Protocol.rpc (Protocol.Request.Delete(h, ofs, len))) with
+      | Protocol.Response.Delete ->
+        ()
+      | _ ->
+        Printf.fprintf stderr "protocol error: unexpected response to delete\n%!";
         exit 1
 
   let mirage_block_flush h =
@@ -209,6 +226,7 @@ module C = struct
     Callback.register "mirage_block_close" mirage_block_close;
     Callback.register "mirage_block_preadv" mirage_block_preadv;
     Callback.register "mirage_block_pwritev" mirage_block_pwritev;
+    Callback.register "mirage_block_delete" mirage_block_delete;
     Callback.register "mirage_block_flush" mirage_block_flush;
 end
 
@@ -218,8 +236,8 @@ module Handle = struct
 
   type t = {
     base: Block.t;
-    block: B.t;
-    info: B.info;
+    block: Qcow.t;
+    info: Qcow.info;
   }
 
   let table = Hashtbl.create 7
@@ -253,13 +271,13 @@ let process_one t =
   let open Mirage_block.Error.Monad in
   let open Mirage_block.Error.Monad.Infix in
   let result_t = match t.request with
-    | Request.Connect config ->
-      Block.of_config config
+    | Request.Connect (block_config, qcow_config) ->
+      Block.of_config block_config
       >>= fun base ->
-      B.connect base
+      Qcow.connect ~config:qcow_config base
       >>= fun block ->
       ( let open Lwt in
-        B.get_info block
+        Qcow.get_info block
         >>= fun info ->
         return (`Ok info) )
       >>= fun info ->
@@ -268,39 +286,58 @@ let process_one t =
     | Request.Get_info h ->
       let t = Handle.find_or_quit h in
       let open Lwt in
-      B.get_info t.Handle.block
+      Qcow.get_info t.Handle.block
       >>= fun info ->
-      return (`Ok (Response.Get_info (info.B.read_write, info.B.sector_size, info.B.size_sectors)))
+      let config = Qcow.to_config t.Handle.block in
+      let candelete = config.Qcow.Config.discard in
+      return (`Ok (Response.Get_info (info.Qcow.read_write, info.Qcow.sector_size, info.Qcow.size_sectors, candelete)))
     | Request.Disconnect h ->
       let t = Handle.find_or_quit h in
       let open Lwt in
-      B.disconnect t.Handle.block
+      Qcow.disconnect t.Handle.block
       >>= fun () ->
       return (`Ok Response.Disconnect)
     | Request.Read (h, offset, bufs) ->
       let t = Handle.find_or_quit h in
       (* Offset needs to be translated into sectors *)
-      if offset mod t.Handle.info.B.sector_size <> 0 then begin
+      if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
         Printf.fprintf stderr "Read offset not at sector boundary\n%!";
         exit 1
       end;
-      let sector = Int64.of_int (offset / t.Handle.info.B.sector_size) in
-      B.read t.Handle.block sector bufs
+      let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
+      Qcow.read t.Handle.block sector bufs
       >>= fun () ->
       let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
       return (Response.Read len)
     | Request.Write (h, offset, bufs) ->
       let t = Handle.find_or_quit h in
       (* Offset needs to be translated into sectors *)
-      if offset mod t.Handle.info.B.sector_size <> 0 then begin
+      if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
         Printf.fprintf stderr "Write offset not at sector boundary\n%!";
         exit 1
       end;
-      let sector = Int64.of_int (offset / t.Handle.info.B.sector_size) in
-      B.write t.Handle.block sector bufs
+      let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
+      Qcow.write t.Handle.block sector bufs
       >>= fun () ->
       let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
       return (Response.Write len)
+    | Request.Delete (h, offset, len) ->
+      let t = Handle.find_or_quit h in
+      (* Offset and len need to be translated into sectors *)
+      let sector_size = Int64.of_int t.Handle.info.Qcow.sector_size in
+      if Int64.rem offset sector_size <> 0L then begin
+        Printf.fprintf stderr "Delete offset not at sector boundary\n%!";
+        exit 1
+      end;
+      if Int64.rem len sector_size <> 0L then begin
+        Printf.fprintf stderr "Delete len not a multiple of sectors\n%!";
+        exit 1
+      end;
+      let sector = Int64.div offset sector_size in
+      let n = Int64.div len sector_size in
+      Qcow.discard t.Handle.block ~sector ~n ()
+      >>= fun () ->
+      return (Response.Delete)
     | Request.Flush h ->
       let t = Handle.find_or_quit h in
       Block.flush t.Handle.base

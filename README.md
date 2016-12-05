@@ -31,26 +31,26 @@ If you are using Hyperkit directly then please report issues against this reposi
 The resulting binary will be in `build/com.docker.hyperkit`
 
 To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
-environment is required with the qcow-format module available. A
+environment is required with the qcow module available. A
 suitable environment can be setup by installing `opam` and `libev`
 via `brew` and using `opam` to install the appropriate libraries:
 
     $ brew install opam libev
     $ opam init
     $ eval `opam config env`
-    $ opam install uri qcow-format conf-libev
+    $ opam install uri qcow conf-libev
 
 Notes:
 
 - `opam config env` must be evaluated each time prior to building
   hyperkit so the build will find the ocaml environment.
-- Any previous pin of `mirage-block-unix` or `qcow-format`
+- Any previous pin of `mirage-block-unix` or `qcow`
   should be removed with the commands:
   
   ```sh
   $ opam update
   $ opam pin remove mirage-block-unix
-  $ opam pin remove qcow-format
+  $ opam pin remove qcow
   ```
 
 ## Tracing
