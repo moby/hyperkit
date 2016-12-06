@@ -1100,8 +1100,8 @@ static int handle_write(struct pci_vtsock_softc *sc,
 	}
 
 	DPRINTF(("TX: wrote %zd/%"PRId32" bytes\n", num, len));
+	sock->fwd_cnt += num;
 	if (num == len) {
-		sock->fwd_cnt += num;
 		return 1;
 	} else { /* Buffer the rest */
 		size_t pulled = iovec_pull(&iov, &iov_len, NULL, (size_t)num);
