@@ -283,79 +283,90 @@ let process_one t =
   let open Protocol in
   let open Mirage_block.Error.Monad in
   let open Mirage_block.Error.Monad.Infix in
-  let result_t = match t.request with
-    | Request.Connect (block_config, qcow_config) ->
-      Block.of_config block_config
-      >>= fun base ->
-      Qcow.connect ?config:qcow_config base
-      >>= fun block ->
-      ( let open Lwt in
-        Qcow.get_info block
-        >>= fun info ->
-        return (`Ok info) )
-      >>= fun info ->
-      let h = Handle.register { Handle.block; base; info } in
-      return (Response.Connect h)
-    | Request.Get_info h ->
-      let t = Handle.find_or_quit h in
-      let open Lwt in
-      Qcow.get_info t.Handle.block
-      >>= fun info ->
-      let config = Qcow.to_config t.Handle.block in
-      let candelete = config.Qcow.Config.discard in
-      return (`Ok (Response.Get_info (info.Qcow.read_write, info.Qcow.sector_size, info.Qcow.size_sectors, candelete)))
-    | Request.Disconnect h ->
-      let t = Handle.find_or_quit h in
-      let open Lwt in
-      Qcow.disconnect t.Handle.block
-      >>= fun () ->
-      return (`Ok Response.Disconnect)
-    | Request.Read (h, offset, bufs) ->
-      let t = Handle.find_or_quit h in
-      (* Offset needs to be translated into sectors *)
-      if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
-        Printf.fprintf stderr "Read offset not at sector boundary\n%!";
-        exit 1
-      end;
-      let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
-      Qcow.read t.Handle.block sector bufs
-      >>= fun () ->
-      let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
-      return (Response.Read len)
-    | Request.Write (h, offset, bufs) ->
-      let t = Handle.find_or_quit h in
-      (* Offset needs to be translated into sectors *)
-      if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
-        Printf.fprintf stderr "Write offset not at sector boundary\n%!";
-        exit 1
-      end;
-      let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
-      Qcow.write t.Handle.block sector bufs
-      >>= fun () ->
-      let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
-      return (Response.Write len)
-    | Request.Delete (h, offset, len) ->
-      let t = Handle.find_or_quit h in
-      (* Offset and len need to be translated into sectors *)
-      let sector_size = Int64.of_int t.Handle.info.Qcow.sector_size in
-      if Int64.rem offset sector_size <> 0L then begin
-        Printf.fprintf stderr "Delete offset not at sector boundary\n%!";
-        exit 1
-      end;
-      if Int64.rem len sector_size <> 0L then begin
-        Printf.fprintf stderr "Delete len not a multiple of sectors\n%!";
-        exit 1
-      end;
-      let sector = Int64.div offset sector_size in
-      let n = Int64.div len sector_size in
-      Qcow.discard t.Handle.block ~sector ~n ()
-      >>= fun () ->
-      return (Response.Delete)
-    | Request.Flush h ->
-      let t = Handle.find_or_quit h in
-      Block.flush t.Handle.base
-      >>= fun () ->
-      return Response.Flush in
+  let result_t =
+    Lwt.catch
+      (fun () ->
+        match t.request with
+          | Request.Connect (block_config, qcow_config) ->
+            Block.of_config block_config
+            >>= fun base ->
+            Qcow.connect ?config:qcow_config base
+            >>= fun block ->
+            ( let open Lwt in
+              Qcow.get_info block
+              >>= fun info ->
+              return (`Ok info) )
+            >>= fun info ->
+            let h = Handle.register { Handle.block; base; info } in
+            return (Response.Connect h)
+          | Request.Get_info h ->
+            let t = Handle.find_or_quit h in
+            let open Lwt in
+            Qcow.get_info t.Handle.block
+            >>= fun info ->
+            let config = Qcow.to_config t.Handle.block in
+            let candelete = config.Qcow.Config.discard in
+            return (`Ok (Response.Get_info (info.Qcow.read_write, info.Qcow.sector_size, info.Qcow.size_sectors, candelete)))
+          | Request.Disconnect h ->
+            let t = Handle.find_or_quit h in
+            let open Lwt in
+            Qcow.disconnect t.Handle.block
+            >>= fun () ->
+            return (`Ok Response.Disconnect)
+          | Request.Read (h, offset, bufs) ->
+            let t = Handle.find_or_quit h in
+            (* Offset needs to be translated into sectors *)
+            if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
+              Printf.fprintf stderr "Read offset not at sector boundary\n%!";
+              exit 1
+            end;
+            let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
+            Qcow.read t.Handle.block sector bufs
+            >>= fun () ->
+            let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
+            return (Response.Read len)
+          | Request.Write (h, offset, bufs) ->
+            let t = Handle.find_or_quit h in
+            (* Offset needs to be translated into sectors *)
+            if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
+              Printf.fprintf stderr "Write offset not at sector boundary\n%!";
+              exit 1
+            end;
+            let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
+            Qcow.write t.Handle.block sector bufs
+            >>= fun () ->
+            let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
+            return (Response.Write len)
+          | Request.Delete (h, offset, len) ->
+            let t = Handle.find_or_quit h in
+            (* Offset and len need to be translated into sectors *)
+            let sector_size = Int64.of_int t.Handle.info.Qcow.sector_size in
+            if Int64.rem offset sector_size <> 0L then begin
+              Printf.fprintf stderr "Delete offset not at sector boundary\n%!";
+              exit 1
+            end;
+            if Int64.rem len sector_size <> 0L then begin
+              Printf.fprintf stderr "Delete len not a multiple of sectors\n%!";
+              exit 1
+            end;
+            let sector = Int64.div offset sector_size in
+            let n = Int64.div len sector_size in
+            Qcow.discard t.Handle.block ~sector ~n ()
+            >>= fun () ->
+            return Response.Delete
+          | Request.Flush h ->
+            let t = Handle.find_or_quit h in
+            Block.flush t.Handle.base
+            >>= fun () ->
+            return Response.Flush
+      )
+      (fun e ->
+        (* If the thread fails unexpectedly then convert this into an Error return
+           to guarantee we return an error code to the block interface instead of
+           dropping the request on the floor. *)
+        Log.err (fun f -> f "Mirage block device raised exception: %s" (Printexc.to_string e));
+        Lwt.return (`Error (`Unknown (Printexc.to_string e)))
+      ) in
   let open Lwt in
   result_t >>= fun result ->
   Ivar.fill t.ivar result;
