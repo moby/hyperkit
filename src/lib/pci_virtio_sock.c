@@ -130,6 +130,11 @@ static int pci_vtsock_debug = 0;
 
 /* XXX need to use rx and tx more consistently */
 
+struct vtsock_config_hdr {
+	uint32_t len;
+	uint32_t version;
+};
+
 struct vsock_addr {
 	uint64_t cid;
 	uint32_t port;
@@ -247,6 +252,8 @@ struct pci_vtsock_sock {
 	/* valid when SOCK_CONNECTED only */
 	uint32_t local_shutdown, peer_shutdown;
 	time_t rst_deadline; /* When local_shutdown==ALL, expect RST before */
+
+	bool configurable;
 
 	struct vsock_addr local_addr;
 	struct vsock_addr peer_addr;
@@ -434,6 +441,25 @@ static size_t iovec_clip(struct iovec **iov, int *iov_len, size_t bytes)
 	return ret;
 }
 
+static size_t iovec_shift_left1(struct iovec **iov, int *iov_len)
+{
+	char *base;
+	size_t len, total = 0;
+	int i;
+	for (i = 0; i < *iov_len; i++) {
+		base = (*iov)[i].iov_base;
+		len = (*iov)[i].iov_len - 1;
+		memmove(base, base + 1, len);
+		if (i < *iov_len - 1) {
+			memcpy(base + len, (*iov)[i+1].iov_base, 1);
+		} else {
+			(*iov)[*iov_len - 1].iov_len--;
+		}
+		total += (*iov)[i].iov_len;
+	}
+	return total;
+}
+
 /* Pulls @bytes from @iov into @buf. @buf can be NULL, in which case this just discards @bytes */
 static size_t iovec_pull(struct iovec **iov, int *iov_len, void *buf, size_t bytes)
 {
@@ -606,6 +632,8 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	pthread_rwlock_unlock(&sc->list_rwlock);
 
 	if (!s) return NULL;
+
+	s->configurable = true;
 
 	s->buf_alloc = WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
@@ -1644,6 +1672,141 @@ static void pci_vtsock_notify_tx(void *vsc, struct vqueue_info *vq)
 	kick_tx(sc, "notify");
 }
 
+static void apply_socket_config(__unused struct pci_vtsock_sock *s, void *buf)
+{
+	struct vtsock_config_hdr *hdr = (struct vtsock_config_hdr *)buf;
+
+	if (hdr->version != 1) {
+		fprintf(stderr, "config: ERROR "
+			"could not apply unknown config version %d!\n",
+			hdr->version);
+		return;
+	}
+
+}
+
+static void handle_socket_config(struct pci_vtsock_sock *s, int fd)
+{
+	ssize_t len;
+	uint32_t sz;
+	char *szp = (char *)&sz;
+	uint32_t read_upto;
+	void *buf;
+
+ next_message:
+	read_upto = 0;
+
+	do {
+		len = read(fd, szp + read_upto, sizeof(uint32_t) - read_upto);
+		if (len == -1) {
+			if (errno == EAGAIN)
+				continue;
+			fprintf(stderr, "config: ERROR "
+				"%s while reading config message length\n",
+				strerror(errno));
+			return;
+		}
+		if (len == 0) {
+			if (read_upto)
+				fprintf(stderr, "config: ERROR "
+					"EOF during "
+					"config message length read\n");
+			return;
+		}
+		read_upto += len;
+	} while (read_upto < sizeof(uint32_t));
+
+	if (sz < sizeof(struct vtsock_config_hdr)) {
+		fprintf(stderr, "config: ERROR "
+			"message length %d is less than header size %lu\n",
+			sz, sizeof(struct vtsock_config_hdr));
+		return;
+	}
+
+	buf = malloc(sz);
+	if (buf == NULL) {
+		fprintf(stderr, "config: ERROR "
+			"%s from config message buffer malloc\n",
+			strerror(errno));
+		return;
+	}
+	((struct vtsock_config_hdr *)buf)->len = sz;
+
+	do {
+		len = read(fd, ((char *)buf) + read_upto, sz - read_upto);
+		if (len == -1) {
+			if (errno == EAGAIN)
+				continue;
+			fprintf(stderr, "config: ERROR "
+				"%s while reading config message\n",
+				strerror(errno));
+			goto err;
+		}
+		if (len == 0) {
+			fprintf(stderr, "config: ERROR "
+				"EOF during config message body read\n");
+			goto err;
+		}
+		read_upto += len;
+	} while (read_upto < sz);
+
+	apply_socket_config(s, buf);
+
+	free(buf);
+	goto next_message;
+
+ err:
+	free(buf);
+	return;
+}
+
+/*
+ * Check for an attached socket configuration fd, s->mtx must be held
+ *
+ * If a configuration fd is attached, this will block until the
+ * configuration request is handled!
+ *
+ * Returns > 0 for regular messages, 0 for EOF, -1 for error, and -2
+ * for configuration messages.
+ */
+static ssize_t readrx(struct pci_vtsock_sock *s,
+		      struct iovec *iov, int iov_len)
+{
+	ssize_t len;
+	char control[CMSG_SPACE(sizeof(int /* fd */))];
+	struct msghdr msghdr = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = iov,
+		.msg_iovlen = iov_len,
+		.msg_control = control,
+		.msg_controllen = CMSG_SPACE(sizeof(int /* fd */)),
+	};
+	struct cmsghdr *cmsg;
+	int fd;
+
+	len = recvmsg(s->fd, &msghdr, 0);
+	if (s->configurable && len > 0 && msghdr.msg_controllen > 0) {
+		fprintf(stderr, "config: received configuration request\n");
+		cmsg = CMSG_FIRSTHDR(&msghdr);
+		if (cmsg->cmsg_level == SOL_SOCKET
+		    && cmsg->cmsg_type == SCM_RIGHTS) {
+			memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+			handle_socket_config(s, fd);
+			close(fd);
+			if (len > 1) {
+				iovec_shift_left1(&iov, &iov_len);
+				len--;
+			} else {
+				len = -2;
+			}
+		}
+		s->configurable = false;
+	}
+
+	return len;
+}
+
 /*
  * Returns:
  *  -1 == no descriptors available, nothing sent, s->credit_update_required untouched
@@ -1703,7 +1866,11 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 
 	iovec_clip(&iov, &iovec_len, peer_free);
 
-	len = readv(s->fd, iov, iovec_len);
+	len = readrx(s, iov, iovec_len);
+	if (len == -2) {
+		/* Configuration request only */
+		goto credit_update;
+	}
 	if (len == -1) {
 		if (errno == EAGAIN) { /* Nothing to read/would block */
 			DPRINTF(("RX: readv fd=%d EAGAIN\n", s->fd));
