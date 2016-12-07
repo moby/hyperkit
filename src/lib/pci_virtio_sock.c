@@ -2145,7 +2145,7 @@ static int open_connect_socket(struct pci_vtsock_softc *sc)
 	struct sockaddr_un un;
 	int fd, rc;
 
-	assert(sc->connect_fd = -1);
+	assert(sc->connect_fd == -1);
 
 	bzero(&un, sizeof(un));
 
