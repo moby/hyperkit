@@ -196,7 +196,7 @@ struct pci_vtsock_sock {
 	 * |
 	 * |   Note that an RX kick is needed
 	 * |
-         * | Release list_rwlock
+	 * | Release list_rwlock
 	 * |
 	 * `-Kick the rx thread if required
 	 *
@@ -209,7 +209,7 @@ struct pci_vtsock_sock {
 	 * |
 	 * |   Put the socket on a local "to be closed" queue
 	 * |
-         * | Release list_rwlock
+	 * | Release list_rwlock
 	 * |
 	 * | If there a sockets to be closed, take list_rwlock for
 	 * | writing, and for each socket:
@@ -1497,7 +1497,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				if (sock_is_buffering(s))
 					break;
 
-			        /* Close down */
+				/* Close down */
 				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
 				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 
