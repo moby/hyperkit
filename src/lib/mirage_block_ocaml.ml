@@ -1,3 +1,12 @@
+(* Initialise logging *)
+let src =
+  Logs.set_reporter (Logs_fmt.reporter ());
+  let src = Logs.Src.create "mirage" ~doc:"mirage block device interface" in
+  Logs.Src.set_level src (Some Logs.Info);
+  src
+module Log = (val Logs.src_log src : Logs.LOG)
+
+
 (* TODO: parameterise this over block implementations *)
 module Qcow = Qcow.Make(Block)
 
