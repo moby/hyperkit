@@ -186,11 +186,19 @@ struct pci_vtsock_sock {
 	 *
 	 *     Add the sock to inuse_list.
 	 *
+	 *     Allocate DEFAULT_WRITE_BUF_LENGTH memory for ->write_buf
+	 *
+	 *     Allocate and generate a name in ->name
+	 *
 	 *   Drop list_rwlock
 	 *
 	 * To free a sock:
 	 *
 	 *   Set state to CLOSING_TX and kick the tx thread[*].
+	 *
+	 *   Free ->write_buf
+	 *
+	 *   Free ->name
 	 *
 	 * Then the following will happen:
 	 *
@@ -258,6 +266,7 @@ struct pci_vtsock_sock {
 	time_t rst_deadline; /* When local_shutdown==ALL, expect RST before */
 
 	bool configurable;
+	char *name; /* Used in debugging, allocated with malloc */
 
 	struct vsock_addr local_addr;
 	struct vsock_addr peer_addr;
@@ -271,8 +280,10 @@ struct pci_vtsock_sock {
 	uint32_t peer_buf_alloc; /* From the peer */
 	uint32_t peer_fwd_cnt; /* From the peer */
 
-	/* Write buffer. We do not update fwd_cnt until we drain the _whole_ buffer */
-	uint8_t *write_buf;
+	/* Write buffer. We do not update fwd_cnt until we drain the
+	 * _whole_ buffer
+	 */
+	uint8_t *write_buf; /* allocated with malloc */
 	unsigned int write_buf_head, write_buf_tail;
 };
 
@@ -303,6 +314,7 @@ struct pci_vtsock_softc {
 	struct virtio_softc vssc_vs;
 	pthread_mutex_t vssc_mtx;
 	char *path;
+	int next_sock_id;
 	struct vqueue_info vssc_vqs[VTSOCK_QUEUES];
 	struct vtsock_config vssc_cfg;
 
@@ -625,6 +637,7 @@ found:
 static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 {
 	struct pci_vtsock_sock *s;
+	int id = 0;
 
 	pthread_rwlock_wrlock(&sc->list_rwlock);
 	s = LIST_FIRST(&sc->free_list);
@@ -633,6 +646,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 		LIST_REMOVE(s, list);
 		LIST_INSERT_HEAD(&sc->inuse_list, s, list);
 		s->state = SOCK_CONNECTING;
+		id = sc->next_sock_id++;
 	}
 	pthread_rwlock_unlock(&sc->list_rwlock);
 
@@ -651,6 +665,12 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
+
+	if (0 > asprintf(&s->name, "vsock.%d", id)) {
+		fprintf(stderr, "Could not allocate memory for vsock name: "
+			"%s\n", strerror(errno));
+		return NULL;
+	}
 
 	s->write_buf = malloc(s->buf_alloc);
 	if (s->write_buf == NULL) {
@@ -671,6 +691,7 @@ static void free_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s)
 	LIST_REMOVE(s, list);
 	s->state = SOCK_FREE;
 	free(s->write_buf);
+	free(s->name);
 
 	LIST_INSERT_HEAD(&sc->free_list, s, list);
 
