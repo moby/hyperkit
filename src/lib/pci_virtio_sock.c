@@ -158,7 +158,7 @@ struct vsock_addr {
 
 #define FMTADDR(a) a.cid, a.port
 
-#define WRITE_BUF_LENGTH (128*1024)
+#define DEFAULT_WRITE_BUF_LENGTH (128*1024)
 
 struct pci_vtsock_sock {
 	pthread_mutex_t mtx;
@@ -267,7 +267,7 @@ struct pci_vtsock_sock {
 	uint32_t peer_fwd_cnt; /* From the peer */
 
 	/* Write buffer. We do not update fwd_cnt until we drain the _whole_ buffer */
-	uint8_t write_buf[WRITE_BUF_LENGTH];
+	uint8_t *write_buf;
 	unsigned int write_buf_head, write_buf_tail;
 };
 
@@ -635,7 +635,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 
 	s->configurable = true;
 
-	s->buf_alloc = WRITE_BUF_LENGTH;
+	s->buf_alloc = DEFAULT_WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
 
 	s->peer_buf_alloc = 0;
@@ -646,6 +646,12 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
 
+	s->write_buf = malloc(s->buf_alloc);
+	if (s->write_buf == NULL) {
+		fprintf(stderr, "Could not allocate memory for write buf: "
+			"%s\n", strerror(errno));
+		return NULL;
+	}
 	s->write_buf_head = s->write_buf_tail = 0;
 
 	return s;
@@ -658,6 +664,7 @@ static void free_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s)
 {
 	LIST_REMOVE(s, list);
 	s->state = SOCK_FREE;
+	free(s->write_buf);
 
 	LIST_INSERT_HEAD(&sc->free_list, s, list);
 
@@ -1011,12 +1018,12 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 			uint32_t len, struct iovec *iov, int iov_len)
 {
 	size_t nr;
-	if (sock->write_buf_tail + len > WRITE_BUF_LENGTH) {
-		DPRINTF(("TX: fd %d unable to buffer write of 0x%"PRIx32" bytes,"
-			 " buffer use 0x%x/0x%x, 0x%x remaining\n",
-			 sock->fd, len, sock->write_buf_tail,
-			 WRITE_BUF_LENGTH,
-			 WRITE_BUF_LENGTH < sock->write_buf_tail));
+	if (sock->write_buf_tail + len > sock->buf_alloc) {
+		DPRINTF(("TX: fd %d unable to buffer write of 0x%"PRIx32
+			 " bytes, buffer use 0x%x/0x%x, 0x%x remaining\n",
+			 sock->fd, len,
+			 sock->write_buf_tail, sock->buf_alloc,
+			 sock->buf_alloc - sock->write_buf_tail));
 		return -1;
 	}
 
@@ -1027,7 +1034,7 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 
 	sock->write_buf_tail += nr;
 	DPRINTF(("TX: fd %d buffered 0x%"PRIx32" bytes (0x%x/0x%x)\n",
-		 sock->fd, len, sock->write_buf_tail, WRITE_BUF_LENGTH));
+		 sock->fd, len, sock->write_buf_tail, sock->buf_alloc));
 
 	return 0;
 }
@@ -1039,7 +1046,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 
 	DPRINTF(("TX: buffer drain on fd %d 0x%x-0x%x/0x%x\n",
 		 sock->fd, sock->write_buf_head, sock->write_buf_tail,
-		 WRITE_BUF_LENGTH));
+		 sock->buf_alloc));
 
 	assert(sock_is_buffering(sock));
 	assert(sock->write_buf_head < sock->write_buf_tail);
