@@ -1702,6 +1702,32 @@ static void apply_socket_config_set_buf_alloc(struct pci_vtsock_sock *s,
 	fprintf(stderr, "config: %s buf_alloc = %d\n", s->name, buf_alloc);
 }
 
+static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
+{
+	int rc = 0;
+	size_t hdr_sz = sizeof(struct vtsock_config_hdr);
+
+#define CHECK_SIZE(TYPE, CTYPE)						\
+	case TYPE: if (hdr->len < hdr_sz + sizeof(CTYPE)) {		\
+		fprintf(stderr, "config: ERROR "			\
+			#TYPE " message too short for " #CTYPE		\
+			" (%d < %lu)\n",				\
+			hdr->len, hdr_sz + sizeof(CTYPE));		\
+		return 1;						\
+	} else break;
+
+	switch (hdr->type) {
+		CHECK_SIZE(VSOCK_CONFIG_SET_BUF_ALLOC, uint32_t);
+		CHECK_SIZE(VSOCK_CONFIG_SET_CREDIT_LIMIT, uint32_t);
+	default:
+		fprintf(stderr, "config: ERROR "
+			"unknown configuration type %d\n", hdr->type);
+		rc = 1;
+	}
+	return rc;
+#undef CHECK_SIZE
+}
+
 static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
 {
 	struct vtsock_config_hdr *hdr = (struct vtsock_config_hdr *)buf;
@@ -1712,6 +1738,9 @@ static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
 			hdr->version);
 		return;
 	}
+
+	if (is_socket_config_malformed(hdr))
+		return;
 
 	switch (hdr->type) {
 	case VSOCK_CONFIG_SET_BUF_ALLOC:
