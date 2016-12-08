@@ -137,6 +137,7 @@ struct vtsock_config_hdr {
 };
 
 #define VSOCK_CONFIG_SET_BUF_ALLOC 1
+#define VSOCK_CONFIG_SET_CREDIT_LIMIT 2
 
 struct vsock_addr {
 	uint64_t cid;
@@ -263,6 +264,7 @@ struct pci_vtsock_sock {
 
 	uint32_t buf_alloc;
 	uint32_t fwd_cnt;
+	uint32_t credit_limit;
 
 	bool credit_update_required;
 	uint32_t rx_cnt; /* Amount we have sent to the peer */
@@ -640,6 +642,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 
 	s->buf_alloc = DEFAULT_WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
+	s->credit_limit = 0;
 
 	s->peer_buf_alloc = 0;
 	s->peer_fwd_cnt = 0;
@@ -1713,6 +1716,11 @@ static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
 	switch (hdr->type) {
 	case VSOCK_CONFIG_SET_BUF_ALLOC:
 		apply_socket_config_set_buf_alloc(s, *(uint32_t *)(hdr + 1));
+		break;
+	case VSOCK_CONFIG_SET_CREDIT_LIMIT:
+		s->credit_limit = *(uint32_t *)(hdr + 1);
+		fprintf(stderr, "config: %s credit limit = %d\n", s->name,
+			*(uint32_t *)(hdr + 1));
 		break;
 	default:
 		fprintf(stderr, "config: ERROR "
