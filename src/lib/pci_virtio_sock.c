@@ -138,6 +138,7 @@ struct vtsock_config_hdr {
 
 #define VSOCK_CONFIG_SET_BUF_ALLOC 1
 #define VSOCK_CONFIG_SET_CREDIT_LIMIT 2
+#define VSOCK_CONFIG_SET_NAME 3
 
 struct vsock_addr {
 	uint64_t cid;
@@ -266,6 +267,7 @@ struct pci_vtsock_sock {
 	time_t rst_deadline; /* When local_shutdown==ALL, expect RST before */
 
 	bool configurable;
+	int id;
 	char *name; /* Used in debugging, allocated with malloc */
 
 	struct vsock_addr local_addr;
@@ -637,7 +639,6 @@ found:
 static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 {
 	struct pci_vtsock_sock *s;
-	int id = 0;
 
 	pthread_rwlock_wrlock(&sc->list_rwlock);
 	s = LIST_FIRST(&sc->free_list);
@@ -646,7 +647,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 		LIST_REMOVE(s, list);
 		LIST_INSERT_HEAD(&sc->inuse_list, s, list);
 		s->state = SOCK_CONNECTING;
-		id = sc->next_sock_id++;
+		s->id = sc->next_sock_id++;
 	}
 	pthread_rwlock_unlock(&sc->list_rwlock);
 
@@ -666,7 +667,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
 
-	if (0 > asprintf(&s->name, "vsock.%d", id)) {
+	if (0 > asprintf(&s->name, "vsock:%d", s->id)) {
 		fprintf(stderr, "Could not allocate memory for vsock name: "
 			"%s\n", strerror(errno));
 		return NULL;
@@ -1723,6 +1724,31 @@ static void apply_socket_config_set_buf_alloc(struct pci_vtsock_sock *s,
 	fprintf(stderr, "config: %s buf_alloc = %d\n", s->name, buf_alloc);
 }
 
+static void apply_socket_config_set_name(struct pci_vtsock_sock *s,
+					 struct vtsock_config_hdr *hdr)
+{
+	char *new_name;
+	char *msg_name = (char *)(hdr + 1);
+	size_t name_len = hdr->len - sizeof(struct vtsock_config_hdr);
+
+	name_len = strnlen(msg_name, name_len);
+
+	new_name = malloc(name_len + 22); /* max int string length + : + \0 */
+	if (new_name == NULL) {
+		fprintf(stderr, "config: ERROR "
+			"could not allocate new name for %s\n", s->name);
+		return;
+	}
+
+	strncpy(new_name, msg_name, name_len);
+	sprintf(new_name + name_len, ":%d", s->id);
+
+	fprintf(stderr, "config: %s renamed to %s\n", s->name, new_name);
+
+	free(s->name);
+	s->name = new_name;
+}
+
 static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
 {
 	int rc = 0;
@@ -1740,6 +1766,7 @@ static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
 	switch (hdr->type) {
 		CHECK_SIZE(VSOCK_CONFIG_SET_BUF_ALLOC, uint32_t);
 		CHECK_SIZE(VSOCK_CONFIG_SET_CREDIT_LIMIT, uint32_t);
+		CHECK_SIZE(VSOCK_CONFIG_SET_NAME, char);
 	default:
 		fprintf(stderr, "config: ERROR "
 			"unknown configuration type %d\n", hdr->type);
@@ -1771,6 +1798,9 @@ static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
 		s->credit_limit = *(uint32_t *)(hdr + 1);
 		fprintf(stderr, "config: %s credit limit = %d\n", s->name,
 			*(uint32_t *)(hdr + 1));
+		break;
+	case VSOCK_CONFIG_SET_NAME:
+		apply_socket_config_set_name(s, hdr);
 		break;
 	default:
 		fprintf(stderr, "config: ERROR "
