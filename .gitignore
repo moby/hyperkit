@@ -4,3 +4,4 @@
 /test/vmlinuz
 /test/initrd
 /test/initrd.gz
+/test/disk.qcow2

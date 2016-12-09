@@ -138,7 +138,7 @@ TARGET = build/com.docker.hyperkit
 
 all: $(TARGET) | build
 
-.PHONY: clean all test
+.PHONY: clean all test test-qcow
 .SUFFIXES:
 
 -include $(DEP)
@@ -178,9 +178,13 @@ clean:
 	@rm -rf build
 	@rm -f src/include/xhyve/dtrace.h
 	@rm -f test/vmlinuz test/initrd.gz
+	@rm -f test/disk.qcow2
 
 test/vmlinuz test/initrd.gz:
 	@cd test; ./tinycore.sh
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./test_linux.exp)
+
+test-qcow: $(TARGET) test/vmlinuz test/initrd.gz
+	@(cd test && ./test_linux_qcow.exp)
