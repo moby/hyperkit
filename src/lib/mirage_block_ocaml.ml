@@ -66,7 +66,7 @@ end
 module Protocol = struct
   module Request = struct
     type t =
-      | Connect of (Block.Config.t * Qcow.Config.t)
+      | Connect of (Block.Config.t * Qcow.Config.t option)
       | Get_info of int
       | Disconnect of int
       | Read of int * int * (Cstruct.t list)
@@ -155,23 +155,27 @@ module C = struct
       raise (Mirage_block.Error.Error x)
     | `Ok x -> x
 
-  let mirage_block_open block_config qcow_config : int =
-    let description = Printf.sprintf "block_config = %s and qcow_config = %s" block_config qcow_config in
+  let mirage_block_open block_config qcow_config_opt : int =
+    let description = Printf.sprintf "block_config = %s and qcow_config = %s"
+      block_config (match qcow_config_opt with None -> "None" | Some x -> x) in
     Printf.fprintf stdout "mirage_block_open: %s\n%!" description;
     match Block.Config.of_string block_config with
       | `Ok block_config' ->
-        begin match Qcow.Config.of_string qcow_config with
-          | `Ok qcow_config' ->
-            begin match ok_exn (Protocol.rpc (Protocol.Request.Connect (block_config', qcow_config'))) with
-              | Protocol.Response.Connect t ->
-                Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" description t;
-                t
-              | _ ->
-                Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
+        let qcow_config' = match qcow_config_opt with
+          | None -> None
+          | Some x ->
+            begin match Qcow.Config.of_string x with
+              | `Ok qcow_config' -> Some qcow_config'
+              | `Error (`Msg m) ->
+                Printf.fprintf stderr "mirage_block_option %s: %s\n%!" description m;
                 exit 1
-            end
-          | `Error (`Msg m) ->
-            Printf.fprintf stderr "mirage_block_option %s: %s\n%!" description m;
+            end in
+        begin match ok_exn (Protocol.rpc (Protocol.Request.Connect (block_config', qcow_config'))) with
+          | Protocol.Response.Connect t ->
+            Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" description t;
+            t
+          | _ ->
+            Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
             exit 1
         end
       | `Error (`Msg m) ->
@@ -283,7 +287,7 @@ let process_one t =
     | Request.Connect (block_config, qcow_config) ->
       Block.of_config block_config
       >>= fun base ->
-      Qcow.connect ~config:qcow_config base
+      Qcow.connect ?config:qcow_config base
       >>= fun block ->
       ( let open Lwt in
         Qcow.get_info block

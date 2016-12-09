@@ -31,7 +31,8 @@ mirage_block_unregister_thread(void);
 /* An opened mirage-block device */
 typedef int mirage_block_handle;
 
-/* Open a mirage block device with the given string configuration. */
+/* Open a mirage block device with the given optional string configuration.
+   To use the default configuration, pass NULL for options. */
 extern mirage_block_handle
 mirage_block_open(const char *config, const char *options);
 
