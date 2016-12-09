@@ -1346,12 +1346,50 @@ do_rst:
 	return;
 }
 
-static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64_t cid, uint32_t port)
+static int handle_connect_request(int fd, struct vsock_addr *addr)
 {
-	int fd, rc;
+	int rc;
 	char buf[8 + 1 + 8 + 1 + 1]; /* %08x.%08x\n\0 */
 	ssize_t bytes;
+
+	do {
+		bytes = read(fd, buf, sizeof(buf)-1);
+	} while (bytes == -1 && errno == EAGAIN);
+
+	if (bytes != sizeof(buf) - 1) {
+		DPRINTF(("TX: Short read on connect %zd/%zd\n",
+			 bytes, sizeof(buf)-1));
+		if (bytes == -1)
+			DPRINTF(("TX: errno: %s\n", strerror(errno)));
+		return 1;
+	}
+	buf[sizeof(buf)-1] = '\0';
+
+	if (buf[sizeof(buf)-2] != '\n') {
+		DPRINTF(("TX: No newline on connect %s\n", buf));
+		return 1;
+	}
+
+	DPRINTF(("TX: Connect to %s", buf));
+
+	rc = sscanf(buf, SCNaddr"\n", &addr->cid, &addr->port);
+	if (rc != 2) {
+		DPRINTF(("TX: Failed to parse connect attempt\n"));
+		return 1;
+	}
+
+	return 0;
+}
+
+static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd,
+			      uint64_t cid, uint32_t port)
+{
+	int fd, rc;
 	struct pci_vtsock_sock *sock = NULL;
+	struct vsock_addr addr = {
+		.cid  = cid,
+		.port = port,
+	};
 
 	fd = accept(accept_fd, NULL, NULL);
 	if (fd < 0) {
@@ -1370,40 +1408,21 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 
 	DPRINTF(("TX: Connect attempt on connect fd => %d\n", fd));
 
-	if (cid == VMADDR_CID_ANY) {
-		do {
-			bytes = read(fd, buf, sizeof(buf)-1);
-		} while (bytes == -1 && errno == EAGAIN);
-
-		if (bytes != sizeof(buf) - 1) {
-			DPRINTF(("TX: Short read on connect %zd/%zd\n", bytes, sizeof(buf)-1));
-			if (bytes == -1) DPRINTF(("TX: errno: %s\n", strerror(errno)));
+	if (addr.cid == VMADDR_CID_ANY) {
+		if (handle_connect_request(fd, &addr))
 			goto err;
-		}
-		buf[sizeof(buf)-1] = '\0';
-
-		if (buf[sizeof(buf)-2] != '\n') {
-			DPRINTF(("TX: No newline on connect %s\n", buf));
-			goto err;
-		}
-
-		DPRINTF(("TX: Connect to %s", buf));
-
-		rc = sscanf(buf, SCNaddr"\n", &cid, &port);
-		if (rc != 2) {
-			DPRINTF(("TX: Failed to parse connect attempt\n"));
-			goto err;
-		}
-		DPRINTF(("TX: Connection requested to "PRIaddr"\n", cid, port));
+		DPRINTF(("TX: Connection requested to "PRIaddr"\n",
+			 addr.cid, addr.port));
 	} else {
-		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n", cid, port));
+		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n",
+			 addr.cid, addr.port));
 	}
 
-	if (cid >= VMADDR_CID_MAX) {
+	if (addr.cid >= VMADDR_CID_MAX) {
 		DPRINTF(("TX: Attempt to connect to CID over 32-bit\n"));
 		goto err;
 	}
-	if (cid != sc->vssc_cfg.guest_cid) {
+	if (addr.cid != sc->vssc_cfg.guest_cid) {
 		DPRINTF(("TX: Attempt to connect to non-guest CID\n"));
 		goto err;
 	}
@@ -1419,13 +1438,12 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 		 sock - &sc->socks[0], (void *)sock));
 
 	sock->fd = fd;
-	sock->peer_addr.cid = cid;
-	sock->peer_addr.port = port;
+	sock->peer_addr = addr;
 	sock->local_addr.cid = VMADDR_CID_HOST;
 	/* Start at 2^16 to be larger than a TCP port, add a
 	 * generation counter to reduce port reuse.
 	 * XXX Allocate properly.
-         */
+	 */
 	sock->local_addr.port = ((uint32_t)(sock - &sc->socks[0] + 1) << 16)
 		+ (++sock->port_generation);
 
