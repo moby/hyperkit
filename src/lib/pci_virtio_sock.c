@@ -133,7 +133,10 @@ static int pci_vtsock_debug = 0;
 struct vtsock_config_hdr {
 	uint32_t len;
 	uint32_t version;
+	uint32_t type;
 };
+
+#define VSOCK_CONFIG_SET_BUF_ALLOC 1
 
 struct vsock_addr {
 	uint64_t cid;
@@ -1679,7 +1682,24 @@ static void pci_vtsock_notify_tx(void *vsc, struct vqueue_info *vq)
 	kick_tx(sc, "notify");
 }
 
-static void apply_socket_config(__unused struct pci_vtsock_sock *s, void *buf)
+static void apply_socket_config_set_buf_alloc(struct pci_vtsock_sock *s,
+					      uint32_t buf_alloc)
+{
+	uint8_t *buf;
+
+	buf = realloc(s->write_buf, buf_alloc);
+	if (buf == NULL) {
+		fprintf(stderr, "config: ERROR "
+			"could not realloc buffer to %d\n",
+			buf_alloc);
+		return;
+	}
+	s->write_buf = buf;
+	s->buf_alloc = buf_alloc;
+	fprintf(stderr, "config: %s buf_alloc = %d\n", s->name, buf_alloc);
+}
+
+static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
 {
 	struct vtsock_config_hdr *hdr = (struct vtsock_config_hdr *)buf;
 
@@ -1690,6 +1710,14 @@ static void apply_socket_config(__unused struct pci_vtsock_sock *s, void *buf)
 		return;
 	}
 
+	switch (hdr->type) {
+	case VSOCK_CONFIG_SET_BUF_ALLOC:
+		apply_socket_config_set_buf_alloc(s, *(uint32_t *)(hdr + 1));
+		break;
+	default:
+		fprintf(stderr, "config: ERROR "
+			"unknown configuration type %d\n", hdr->type);
+	}
 }
 
 static void handle_socket_config(struct pci_vtsock_sock *s, int fd)
