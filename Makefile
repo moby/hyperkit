@@ -138,7 +138,7 @@ TARGET = build/com.docker.hyperkit
 
 all: $(TARGET) | build
 
-.PHONY: clean all test
+.PHONY: clean all test test-qcow
 .SUFFIXES:
 
 -include $(DEP)
@@ -185,6 +185,6 @@ test/vmlinuz test/initrd.gz:
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./test_linux.exp)
-ifeq ($(HAVE_OCAML_QCOW),YES)
+
+test-qcow: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./test_linux_qcow.exp)
-endif
