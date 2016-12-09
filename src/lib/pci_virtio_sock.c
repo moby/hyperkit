@@ -1880,7 +1880,8 @@ static ssize_t readrx(struct pci_vtsock_sock *s,
 
 	len = recvmsg(s->fd, &msghdr, 0);
 	if (s->configurable && len > 0 && msghdr.msg_controllen > 0) {
-		fprintf(stderr, "config: received configuration request\n");
+		fprintf(stderr, "config: %s received configuration request\n",
+			s->name);
 		cmsg = CMSG_FIRSTHDR(&msghdr);
 		if (cmsg->cmsg_level == SOL_SOCKET
 		    && cmsg->cmsg_type == SCM_RIGHTS) {
