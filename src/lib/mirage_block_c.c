@@ -48,11 +48,17 @@ if (fn == NULL) { \
 static void
 ocaml_mirage_block_open(const char *config, const char *options, int *out, int *err) {
 	CAMLparam0();
-	CAMLlocal3(ocaml_config, ocaml_options, handle);
+	CAMLlocal4(ocaml_config, ocaml_options_opt, ocaml_string, handle);
 	ocaml_config = caml_copy_string(config);
-	ocaml_options = caml_copy_string(options);
+	if (options == NULL) {
+		ocaml_options_opt = Val_int(0); /* None */
+	} else {
+		ocaml_string = caml_copy_string(options);
+		ocaml_options_opt = caml_alloc(1, 0); /* Some */
+		Store_field (ocaml_options_opt, 0, ocaml_string);
+	}
 	OCAML_NAMED_FUNCTION("mirage_block_open")
-	handle = caml_callback2_exn(*fn, ocaml_config, ocaml_options);
+	handle = caml_callback2_exn(*fn, ocaml_config, ocaml_options_opt);
 	if (Is_exception_result(handle)){
 		*err = 1;
 	} else {
