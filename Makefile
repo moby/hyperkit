@@ -178,9 +178,13 @@ clean:
 	@rm -rf build
 	@rm -f src/include/xhyve/dtrace.h
 	@rm -f test/vmlinuz test/initrd.gz
+	@rm -f test/disk.qcow2
 
 test/vmlinuz test/initrd.gz:
 	@cd test; ./tinycore.sh
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./test_linux.exp)
+ifeq ($(HAVE_OCAML_QCOW),YES)
+	@(cd test && ./test_linux_qcow.exp)
+endif
