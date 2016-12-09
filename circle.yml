@@ -9,6 +9,7 @@ test:
   override:
     - make clean
     - make all
+    - test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
     - make test
     - brew install opam libev
     - opam init --yes
