@@ -276,6 +276,7 @@ struct pci_vtsock_sock {
 	uint32_t buf_alloc;
 	uint32_t fwd_cnt;
 	uint32_t credit_limit;
+	uint32_t credit_cnt;
 
 	bool credit_update_required;
 	uint32_t rx_cnt; /* Amount we have sent to the peer */
@@ -658,6 +659,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->buf_alloc = DEFAULT_WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
 	s->credit_limit = 0;
+	s->credit_cnt = 0;
 
 	s->peer_buf_alloc = 0;
 	s->peer_fwd_cnt = 0;
@@ -1020,12 +1022,13 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 }
 
 static void send_response_sock(struct pci_vtsock_softc *sc,
-				 uint16_t op, uint32_t flags,
-				 const struct pci_vtsock_sock *sock)
+			       uint16_t op, uint32_t flags,
+			       struct pci_vtsock_sock *sock)
 {
 	send_response_common(sc, sock->local_addr, sock->peer_addr,
 			     op, VIRTIO_VSOCK_TYPE_STREAM, flags,
 			     sock->buf_alloc, sock->fwd_cnt);
+	sock->credit_cnt = sock->fwd_cnt;
 }
 
 static void send_response_nosock(struct pci_vtsock_softc *sc, uint16_t op,
@@ -1381,6 +1384,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 			goto do_rst;
 		}
 		vq_relchain(vq, idx, 0);
+		sock->credit_cnt = sock->fwd_cnt - sock->credit_limit;
 		set_credit_update_required(sc, sock);
 		break;
 	}
@@ -2008,6 +2012,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 		close_sock(sc, s, "RX");
 		return 0;
 	}
@@ -2021,6 +2026,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 		return 0;
 	}
 	hdr->len = (uint32_t)len;
@@ -2030,6 +2036,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	dprint_header(hdr, 0, "RX");
 	s->credit_update_required = false;
 	vq_relchain(vq, idx, sizeof(*hdr) + (uint32_t)len);
+	s->credit_cnt = hdr->fwd_cnt;
 
 	return len;
 
@@ -2041,6 +2048,7 @@ credit_update:
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 	} else {
 		vq_retchain(vq);
 	}
@@ -2096,6 +2104,9 @@ static bool send_credit_update(struct vqueue_info *vq,
 
 	assert(s->fd >= 0);
 
+	if (s->fwd_cnt - s->credit_cnt < s->credit_limit)
+		return true;
+
 	if (!vq_has_descs(vq)) {
 		DPRINTF(("RX: no queues for credit update!\n"));
 		return false;
@@ -2123,6 +2134,8 @@ static bool send_credit_update(struct vqueue_info *vq,
 	dprint_header(hdr, 0, "RX");
 
 	vq_relchain(vq, idx, sizeof(*hdr));
+
+	s->credit_cnt = hdr->fwd_cnt;
 
 	return true;
 }
