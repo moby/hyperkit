@@ -13,7 +13,7 @@ test:
     - make test
     - brew install opam libev
     - opam init --yes
-    - opam install --yes uri qcow ocamlfind conf-libev logs fmt
+    - opam install --yes uri qcow.0.7.0 ocamlfind conf-libev logs fmt
     - make clean
     - eval `opam config env` && make all
     - make test
