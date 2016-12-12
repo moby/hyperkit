@@ -38,7 +38,7 @@ via `brew` and using `opam` to install the appropriate libraries:
     $ brew install opam libev
     $ opam init
     $ eval `opam config env`
-    $ opam install uri qcow conf-libev logs fmt
+    $ opam install uri qcow.0.7.0 conf-libev logs fmt
 
 Notes:
 
