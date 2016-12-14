@@ -1762,7 +1762,7 @@ static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
 	case TYPE: if (hdr->len < hdr_sz + sizeof(CTYPE)) {		\
 		fprintf(stderr, "config: ERROR "			\
 			#TYPE " message too short for " #CTYPE		\
-			" (%d < %lu)\n",				\
+			" (%d < %zu)\n",				\
 			hdr->len, hdr_sz + sizeof(CTYPE));		\
 		return 1;						\
 	} else break;
@@ -1845,7 +1845,7 @@ static void handle_socket_config(struct pci_vtsock_sock *s, int fd)
 
 	if (sz < sizeof(struct vtsock_config_hdr)) {
 		fprintf(stderr, "config: ERROR "
-			"message length %d is less than header size %lu\n",
+			"message length %d is less than header size %zu\n",
 			sz, sizeof(struct vtsock_config_hdr));
 		return;
 	}
