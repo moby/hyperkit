@@ -140,6 +140,8 @@ struct vtsock_config_hdr {
 #define VSOCK_CONFIG_SET_CREDIT_LIMIT 2
 #define VSOCK_CONFIG_SET_NAME 3
 
+#define MAX_SOCK_NAME_LENGTH 256
+
 struct vsock_addr {
 	uint64_t cid;
 	uint32_t port;
@@ -189,8 +191,6 @@ struct pci_vtsock_sock {
 	 *
 	 *     Allocate DEFAULT_WRITE_BUF_LENGTH memory for ->write_buf
 	 *
-	 *     Allocate and generate a name in ->name
-	 *
 	 *   Drop list_rwlock
 	 *
 	 * To free a sock:
@@ -198,8 +198,6 @@ struct pci_vtsock_sock {
 	 *   Set state to CLOSING_TX and kick the tx thread[*].
 	 *
 	 *   Free ->write_buf
-	 *
-	 *   Free ->name
 	 *
 	 * Then the following will happen:
 	 *
@@ -268,7 +266,7 @@ struct pci_vtsock_sock {
 
 	bool configurable;
 	int id;
-	char *name; /* Used in debugging, allocated with malloc */
+	char name[MAX_SOCK_NAME_LENGTH]; /* Used in debugging */
 
 	struct vsock_addr local_addr;
 	struct vsock_addr peer_addr;
@@ -669,11 +667,7 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
 
-	if (0 > asprintf(&s->name, "vsock:%d", s->id)) {
-		fprintf(stderr, "Could not allocate memory for vsock name: "
-			"%s\n", strerror(errno));
-		return NULL;
-	}
+	snprintf(s->name, MAX_SOCK_NAME_LENGTH, "vsock:%d", s->id);
 
 	s->write_buf = malloc(s->buf_alloc);
 	if (s->write_buf == NULL) {
@@ -694,7 +688,6 @@ static void free_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s)
 	LIST_REMOVE(s, list);
 	s->state = SOCK_FREE;
 	free(s->write_buf);
-	free(s->name);
 
 	LIST_INSERT_HEAD(&sc->free_list, s, list);
 
@@ -1731,26 +1724,25 @@ static void apply_socket_config_set_buf_alloc(struct pci_vtsock_sock *s,
 static void apply_socket_config_set_name(struct pci_vtsock_sock *s,
 					 struct vtsock_config_hdr *hdr)
 {
-	char *new_name;
+	char new_name[MAX_SOCK_NAME_LENGTH];
 	char *msg_name = (char *)(hdr + 1);
 	size_t name_len = hdr->len - sizeof(struct vtsock_config_hdr);
 
 	name_len = strnlen(msg_name, name_len);
 
-	new_name = malloc(name_len + 22); /* max int string length + : + \0 */
-	if (new_name == NULL) {
+	if (name_len > MAX_SOCK_NAME_LENGTH) {
 		fprintf(stderr, "config: ERROR "
-			"could not allocate new name for %s\n", s->name);
+			"name too long (%zu bytes but max=%d)\n",
+			name_len, MAX_SOCK_NAME_LENGTH);
 		return;
 	}
-
 	strncpy(new_name, msg_name, name_len);
-	sprintf(new_name + name_len, ":%d", s->id);
+	snprintf(new_name + name_len, MAX_SOCK_NAME_LENGTH - name_len,
+		 ":%d", s->id);
 
 	fprintf(stderr, "config: %s renamed to %s\n", s->name, new_name);
 
-	free(s->name);
-	s->name = new_name;
+	memcpy(s->name, new_name, MAX_SOCK_NAME_LENGTH);
 }
 
 static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
