@@ -459,6 +459,11 @@ static size_t iovec_clip(struct iovec **iov, int *iov_len, size_t bytes)
 	return ret;
 }
 
+/*
+ * Removes the first byte in the provided iovec and shifts the data in
+ * the rest of the iovec down (left, toward zero) by a single
+ * byte. The iovec metadata and its length remained unchanged.
+ */
 static size_t iovec_shift_left1(struct iovec **iov, int *iov_len)
 {
 	char *base;
@@ -1883,7 +1888,9 @@ static void handle_socket_config(struct pci_vtsock_sock *s, int fd)
  * Check for an attached socket configuration fd, s->mtx must be held
  *
  * If a configuration fd is attached, this will block until the
- * configuration request is handled!
+ * configuration request is handled! A configuration fd may only be
+ * attached at the beginning of the data stream and must be
+ * accompanied by a single byte written.
  *
  * Returns > 0 for regular messages, 0 for EOF, -1 for error, and -2
  * for configuration messages.
@@ -1915,6 +1922,14 @@ static ssize_t readrx(struct pci_vtsock_sock *s,
 			handle_socket_config(s, fd);
 			close(fd);
 			if (len > 1) {
+				/* If recvmsg has coalesced messages,
+				 * we must discard the configuration
+				 * fd carrier byte. Because the iovec
+				 * points to guest-shared vring
+				 * memory, we must shift the data in
+				 * the iovec rather than adjusting the
+				 * iovec metadata.
+				 */
 				iovec_shift_left1(&iov, &iov_len);
 				len--;
 			} else {
