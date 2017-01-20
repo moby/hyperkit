@@ -179,6 +179,10 @@ static void hvdump(int vcpu) {
 		vmcs_read(vcpu, VMCS_CR4_MASK));
 	printf("VMCS_CR4_SHADOW:               0x%016llx\n",
 		vmcs_read(vcpu, VMCS_CR4_SHADOW));
+	printf("VMCS_GUEST_PHYSICAL_ADDRESS:   0x%016llx\n",
+	       vmcs_read(vcpu, VMCS_GUEST_PHYSICAL_ADDRESS));
+	printf("VMCS_GUEST_LINEAR_ADDRESS:     0x%016llx\n",
+	       vmcs_read(vcpu, VMCS_GUEST_LINEAR_ADDRESS));
 	printf("VMCS_GUEST_CS_SELECTOR:        0x%016llx\n",
 		vmcs_read(vcpu, VMCS_GUEST_CS_SELECTOR));
 	printf("VMCS_GUEST_CS_LIMIT:           0x%016llx\n",
