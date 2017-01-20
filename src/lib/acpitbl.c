@@ -46,11 +46,11 @@
  *     RSDT  ->   0xf2440    (36 bytes + 4*7 table addrs, 4 used)
  *     XSDT  ->   0xf2480    (36 bytes + 8*7 table addrs, 4 used)
  *       MADT  ->   0xf2500  (depends on #CPUs)
- *       FADT  ->   0xf2600  (268 bytes)
- *       HPET  ->   0xf2740  (56 bytes)
- *       MCFG  ->   0xf2780  (60 bytes)
- *         FACS  ->   0xf27C0 (64 bytes)
- *         DSDT  ->   0xf2800 (variable - can go up to 0x100000)
+ *       FADT  ->   0xf2a00  (268 bytes)
+ *       HPET  ->   0xf2b40  (56 bytes)
+ *       MCFG  ->   0xf2b80  (60 bytes)
+ *         FACS  ->   0xf2bC0 (64 bytes)
+ *         DSDT  ->   0xf2c00 (variable - can go up to 0x100000)
  */
 
 #include <stdint.h>
@@ -69,11 +69,16 @@
 #define RSDT_OFFSET		0x040
 #define XSDT_OFFSET		0x080
 #define MADT_OFFSET		0x100
-#define FADT_OFFSET		0x200
-#define HPET_OFFSET		0x340
-#define MCFG_OFFSET		0x380
-#define FACS_OFFSET		0x3C0
-#define DSDT_OFFSET		0x400
+#define FADT_OFFSET		0x600
+#define HPET_OFFSET		0x740
+#define MCFG_OFFSET		0x780
+#define FACS_OFFSET		0x7C0
+#define DSDT_OFFSET		0x800
+
+/* Sanity check for MADT size */
+#if (44 + 38 + 8 * VM_MAXCPU) > (FADT_OFFSET - MADT_OFFSET)
+#error "MADT space insufficient for configured max number of CPUs"
+#endif
 
 /* ACPI table base in guest memory */
 static void *tb;

@@ -30,7 +30,7 @@
 
 #include <stdint.h>
 
-#define	VM_MAXCPU 16 /* maximum virtual cpus */
+#define	VM_MAXCPU 64 /* maximum virtual cpus */
 
 enum vm_suspend_how {
 	VM_SUSPEND_NONE,
