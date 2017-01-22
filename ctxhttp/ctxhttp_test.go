@@ -8,14 +8,13 @@
 package ctxhttp
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"context"
 )
 
 func TestGo17Context(t *testing.T) {

@@ -13,12 +13,11 @@
 package ctxhttp
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"context"
 )
 
 // Do sends an HTTP request with the provided http.Client and returns
