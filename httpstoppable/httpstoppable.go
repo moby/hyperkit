@@ -1,5 +1,9 @@
 // Package httpstoppable provides ListenAndServe like http.ListenAndServe,
 // but with ability to stop it.
+//
+// Deprecated: Go 1.8 adds native support for stopping a server in net/http.
+// Once 1.8 is out, net/http should be used instead. This package will be
+// removed shortly thereafter.
 package httpstoppable
 
 import (
