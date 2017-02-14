@@ -8,11 +8,7 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 
 (* TODO: parameterise this over block implementations *)
-module Time = struct
-  type 'a io = 'a Lwt.t
-  let sleep_ns ns = Lwt_unix.sleep (Int64.to_float ns /. 1e9)
-end
-module Qcow = Qcow.Make(Block)(Time)
+module Qcow = Qcow.Make(Block)(OS.Time)
 
 module Mutex = struct
   include Mutex

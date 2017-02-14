@@ -39,7 +39,7 @@ via `brew` and using `opam` to install the appropriate libraries:
     $ opam init
     $ eval `opam config env`
     $ opam remote add mirageos-3-beta git://github.com/mirage/mirageos-3-beta
-    $ opam install uri qcow.0.8.1 mirage-block-unix.2.6.0 conf-libev logs fmt
+    $ opam install uri qcow.0.8.1 mirage-block-unix.2.6.0 conf-libev logs fmt mirage-unix
 
 Notes:
 
