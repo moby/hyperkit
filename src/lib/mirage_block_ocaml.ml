@@ -8,11 +8,7 @@ module Log = (val Logs.src_log src : Logs.LOG)
 
 
 (* TODO: parameterise this over block implementations *)
-module Time = struct
-  type 'a io = 'a Lwt.t
-  let sleep = Lwt_unix.sleep
-end
-module Qcow = Qcow.Make(Block)(Time)
+module Qcow = Qcow.Make(Block)(OS.Time)
 
 module Mutex = struct
   include Mutex
@@ -88,7 +84,7 @@ module Protocol = struct
       | Write of int
       | Delete
       | Flush
-    type t = [ `Ok of ok | `Error of Qcow.error ]
+    type t = (ok, Qcow.write_error) result
   end
 
   (* An in-flight request *)
@@ -148,29 +144,29 @@ module C = struct
       allowed to block. *)
 
   let string_of_error = function
-    | `Unknown x -> Printf.sprintf "Unknown %s" x
     | `Unimplemented -> "Operation is not implemented"
     | `Is_read_only -> "Block device is read-only"
     | `Disconnected -> "Block device is disconnected"
+    | _ -> "Unknown error"
 
   let ok_exn = function
-    | `Error x ->
+    | Error x ->
       Printf.fprintf stderr "Mirage-block error: %s\n%!" (string_of_error x);
-      raise (Mirage_block.Error.Error x)
-    | `Ok x -> x
+      failwith (string_of_error x)
+    | Ok x -> x
 
   let mirage_block_open block_config qcow_config_opt : int =
     let description = Printf.sprintf "block_config = %s and qcow_config = %s"
       block_config (match qcow_config_opt with None -> "None" | Some x -> x) in
     Printf.fprintf stdout "mirage_block_open: %s\n%!" description;
     match Block.Config.of_string block_config with
-      | `Ok block_config' ->
+      | Ok block_config' ->
         let qcow_config' = match qcow_config_opt with
           | None -> None
           | Some x ->
             begin match Qcow.Config.of_string x with
-              | `Ok qcow_config' -> Some qcow_config'
-              | `Error (`Msg m) ->
+              | Ok qcow_config' -> Some qcow_config'
+              | Error (`Msg m) ->
                 Printf.fprintf stderr "mirage_block_option %s: %s\n%!" description m;
                 exit 1
             end in
@@ -182,7 +178,7 @@ module C = struct
             Printf.fprintf stderr "protocol error: unexpected response to connect\n%!";
             exit 1
         end
-      | `Error (`Msg m) ->
+      | Error (`Msg m) ->
         Printf.fprintf stderr "mirage_block_open %s: %s\n%!" description m;
         exit 1
 
@@ -254,7 +250,7 @@ module Handle = struct
   type t = {
     base: Block.t;
     block: Qcow.t;
-    info: Qcow.info;
+    info: Mirage_block.info;
   }
 
   let table = Hashtbl.create 7
@@ -285,58 +281,69 @@ open Lwt
    the Ivar. *)
 let process_one t =
   let open Protocol in
-  let open Mirage_block.Error.Monad in
-  let open Mirage_block.Error.Monad.Infix in
+  let module Monad = struct
+    let (>>=) m f =
+      let open Lwt.Infix in
+      m >>= function
+      | Error e -> Lwt.return (Error e)
+      | Ok x -> f x
+    let return x = Lwt.return (Ok x)
+  end in
+  let open Monad in
   let result_t =
     Lwt.catch
       (fun () ->
         match t.request with
           | Request.Connect (block_config, qcow_config) ->
+            let open Lwt.Infix in
             Block.of_config block_config
             >>= fun base ->
             Qcow.connect ?config:qcow_config base
             >>= fun block ->
-            ( let open Lwt in
-              Qcow.get_info block
-              >>= fun info ->
-              return (`Ok info) )
+            Qcow.get_info block
             >>= fun info ->
             let h = Handle.register { Handle.block; base; info } in
             return (Response.Connect h)
           | Request.Get_info h ->
             let t = Handle.find_or_quit h in
-            let open Lwt in
+            let open Lwt.Infix in
             Qcow.get_info t.Handle.block
             >>= fun info ->
             let config = Qcow.to_config t.Handle.block in
             let candelete = config.Qcow.Config.discard in
-            return (`Ok (Response.Get_info (info.Qcow.read_write, info.Qcow.sector_size, info.Qcow.size_sectors, candelete)))
+            return (Response.Get_info (info.Mirage_block.read_write, info.Mirage_block.sector_size, info.Mirage_block.size_sectors, candelete))
           | Request.Disconnect h ->
             let t = Handle.find_or_quit h in
-            let open Lwt in
+            let open Lwt.Infix in
             Qcow.disconnect t.Handle.block
             >>= fun () ->
-            return (`Ok Response.Disconnect)
+            return Response.Disconnect
           | Request.Read (h, offset, bufs) ->
             let t = Handle.find_or_quit h in
             (* Offset needs to be translated into sectors *)
-            if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
+            if offset mod t.Handle.info.Mirage_block.sector_size <> 0 then begin
               Printf.fprintf stderr "Read offset not at sector boundary\n%!";
               exit 1
             end;
-            let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
-            Qcow.read t.Handle.block sector bufs
-            >>= fun () ->
-            let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
-            return (Response.Read len)
+            let sector = Int64.of_int (offset / t.Handle.info.Mirage_block.sector_size) in
+            let open Lwt.Infix in
+            (* Qcow.error <> Qcow.write_error *)
+            begin Qcow.read t.Handle.block sector bufs
+              >>= function
+              | Error `Disconnected -> Lwt.return (Error `Disconnected)
+              | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Ok () ->
+              let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
+              return (Response.Read len)
+            end
           | Request.Write (h, offset, bufs) ->
             let t = Handle.find_or_quit h in
             (* Offset needs to be translated into sectors *)
-            if offset mod t.Handle.info.Qcow.sector_size <> 0 then begin
+            if offset mod t.Handle.info.Mirage_block.sector_size <> 0 then begin
               Printf.fprintf stderr "Write offset not at sector boundary\n%!";
               exit 1
             end;
-            let sector = Int64.of_int (offset / t.Handle.info.Qcow.sector_size) in
+            let sector = Int64.of_int (offset / t.Handle.info.Mirage_block.sector_size) in
             Qcow.write t.Handle.block sector bufs
             >>= fun () ->
             let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
@@ -344,7 +351,7 @@ let process_one t =
           | Request.Delete (h, offset, len) ->
             let t = Handle.find_or_quit h in
             (* Offset and len need to be translated into sectors *)
-            let sector_size = Int64.of_int t.Handle.info.Qcow.sector_size in
+            let sector_size = Int64.of_int t.Handle.info.Mirage_block.sector_size in
             if Int64.rem offset sector_size <> 0L then begin
               Printf.fprintf stderr "Delete offset not at sector boundary\n%!";
               exit 1
@@ -360,16 +367,23 @@ let process_one t =
             return Response.Delete
           | Request.Flush h ->
             let t = Handle.find_or_quit h in
-            Block.flush t.Handle.base
-            >>= fun () ->
-            return Response.Flush
+            let open Lwt.Infix in
+            (* Block.write_error <> Qcow.write_error *)
+            begin Block.flush t.Handle.base
+              >>= function
+              | Error `Disconnected -> Lwt.return (Error `Disconnected)
+              | Error `Is_read_only -> Lwt.return (Error `Is_read_only)
+              | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Ok () ->
+                return Response.Flush
+            end
       )
       (fun e ->
         (* If the thread fails unexpectedly then convert this into an Error return
            to guarantee we return an error code to the block interface instead of
            dropping the request on the floor. *)
         Log.err (fun f -> f "Mirage block device raised exception: %s" (Printexc.to_string e));
-        Lwt.return (`Error (`Unknown (Printexc.to_string e)))
+        Lwt.return (Error `Disconnected)
       ) in
   let open Lwt in
   result_t >>= fun result ->
