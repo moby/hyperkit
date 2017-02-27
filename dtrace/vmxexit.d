@@ -2,7 +2,7 @@
 /*
  * vmxexit.d - report all VMX exits for particular VM
  *
- * USAGE: vmxexit.d -p <pid of com.docker.hyperkit>
+ * USAGE: vmxexit.d -p <pid of hyperkit>
  */
 
 #pragma D option quiet

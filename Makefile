@@ -135,7 +135,7 @@ INC := -Isrc/include
 
 CFLAGS += -DVERSION=\"$(GIT_VERSION)\" -DVERSION_SHA1=\"$(GIT_VERSION_SHA1)\"
 
-TARGET = build/com.docker.hyperkit
+TARGET = build/hyperkit
 
 all: $(TARGET) | build
 

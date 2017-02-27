@@ -2,7 +2,7 @@
 /*
  * eptfault.d - report all EPT faults for particular VM
  *
- * USAGE: eptfault.d -p <pid of com.docker.hyperkit>
+ * USAGE: eptfault.d -p <pid of hyperkit>
  */
 
 #pragma D option quiet
