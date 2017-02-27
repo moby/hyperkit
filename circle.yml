@@ -13,7 +13,6 @@ test:
     - make test
     - brew install opam libev
     - opam init --yes
-    - opam remote add mirageos-3-beta git://github.com/mirage/mirageos-3-beta
     - opam install --yes uri qcow.0.8.1 mirage-block-unix.2.6.0 ocamlfind conf-libev logs fmt mirage-unix
     - make clean
     - eval `opam config env` && make all
