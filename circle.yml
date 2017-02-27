@@ -1,7 +1,7 @@
 general:
   artifacts:
-    - build/com.docker.hyperkit
-    - build/com.docker.hyperkit.sym
+    - build/hyperkit
+    - build/hyperkit.sym
 machine:
   xcode:
     version: "7.3"

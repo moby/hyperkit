@@ -20,7 +20,7 @@ If you are using Hyperkit directly then please report issues against this reposi
 
 ## Usage
 
-    $ com.docker.hyperkit -h
+    $ hyperkit -h
 
 ## Building
 
@@ -28,7 +28,7 @@ If you are using Hyperkit directly then please report issues against this reposi
     $ cd hyperkit
     $ make
 
-The resulting binary will be in `build/com.docker.hyperkit`
+The resulting binary will be in `build/hyperkit`
 
 To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
 environment is required with the qcow module available. A

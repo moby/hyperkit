@@ -8,7 +8,7 @@ exec hdiutil create -megabytes 20 -fs "MS-DOS" disk
 set DISK [exec hdiutil attach -nomount -noverify -noautofsck disk.dmg | head -n1 | cut -f1 -d " "]
 set RDISK [string map { disk rdisk } $DISK]
 
-spawn ../build/com.docker.hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -s 1:0,ahci-hd,$RDISK -f kexec,$KERNEL,$INITRD,$CMDLINE
+spawn ../build/hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -s 1:0,ahci-hd,$RDISK -f kexec,$KERNEL,$INITRD,$CMDLINE
 set pid [exp_pid]
 set timeout 20
 

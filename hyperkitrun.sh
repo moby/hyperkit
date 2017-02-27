@@ -1,6 +1,6 @@
 #!/bin/sh
 
-HYPERKIT="build/com.docker.hyperkit"
+HYPERKIT="build/hyperkit"
 
 # Linux
 KERNEL="test/vmlinuz"
@@ -36,7 +36,7 @@ if [ ! -f "$KERNEL" ]; then
  ./tinycore.sh
  popd
 fi
-build/com.docker.hyperkit $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f kexec,$KERNEL,$INITRD,"$CMDLINE"
+build/hyperkit $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f kexec,$KERNEL,$INITRD,"$CMDLINE"
 
 # FreeBSD
-#build/com.docker.hyperkit $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f fbsd,$USERBOOT,$BOOTVOLUME,"$KERNELENV"
+#build/hyperkit $ACPI $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_CD $IMG_HDD $UUID -f fbsd,$USERBOOT,$BOOTVOLUME,"$KERNELENV"
