@@ -1,7 +1,7 @@
 // Package analysis provides a routine that determines if a file is generated or handcrafted.
 //
-// It's intended to stay up to date with the proposed format specification
-// in https://github.com/golang/go/issues/13560.
+// Deprecated: Use github.com/shurcooL/go/generated package instead. This implementation
+// was done ad-hoc before a standard was proposed.
 package analysis
 
 import (
@@ -14,6 +14,13 @@ import (
 
 // IsFileGenerated returns true if the specified file is generated, or false if it's handcrafted.
 // rootDir is the filepath of root directory, but name is a '/'-separated path to file.
+//
+// It considers vendored files as "generated", in the sense that they are not the canonical
+// version of a file. This behavior would ideally be factored out into a higher level utility,
+// since it has nothing to do with generated comments.
+//
+// Deprecated: Use generated.ParseFile instead, which is more well defined because it
+// implements a specification.
 func IsFileGenerated(rootDir, name string) (bool, error) {
 	// Detect from name.
 	switch {
