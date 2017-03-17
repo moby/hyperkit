@@ -5,6 +5,10 @@ general:
 machine:
   xcode:
     version: "7.3"
+  environment:
+    GOPATH: "$HOME/go"
+    PROJECT_ROOT: "$GOPATH/src/github.com/docker/hyperkit"
+    PATH: "${PATH}:${GOPATH}/bin"
 test:
   override:
     - make clean
@@ -18,3 +22,7 @@ test:
     - eval `opam config env` && make all
     - make test
     - eval `opam config env` && make test-qcow
+    # Go related steps
+    - mkdir -p $(dirname "$PROJECT_ROOT")
+    - ln -s $(pwd) "$PROJECT_ROOT"
+    - (cd go; make ci)

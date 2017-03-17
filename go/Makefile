@@ -42,3 +42,11 @@ vendor-local:
 	@echo "+ $@"
 	@go get github.com/LK4D4/vndr
 	@vndr init
+
+.PHONY: ci setup
+setup:
+	go get github.com/golang/lint/golint
+
+ci: setup build/hyperkitgo
+	test -z "$$(gofmt -s -l . 2>&1 | grep -v ^vendor/ | tee /dev/stderr)"
+	test -z "$$(golint ./... 2>&1 | grep -v ^vendor/ | grep -v mock/ | tee /dev/stderr)"
