@@ -43,7 +43,7 @@ import (
 // the result is estimated on a best effort basis from a partial AST.
 //
 // TODO: Decide on best policy of what to do in case of syntax errors
-//       being encountered during parsing.
+// being encountered during parsing.
 func ParseFile(filename string) (hasGeneratedComment bool, err error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, filename, nil, parser.PackageClauseOnly|parser.ParseComments)
