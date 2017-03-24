@@ -116,6 +116,7 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query lwt.unix)/lwt.a \
 	$(shell ocamlfind query threads)/libthreadsnat.a \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
+	$(shell ocamlfind query base)/libbase_stubs.a \
         $(LIBEV) \
 	-lasmrun -lbigarray -lunix
 
