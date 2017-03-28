@@ -73,6 +73,8 @@ type HyperKit struct {
 	DiskImage string `json:"disk"`
 	// ISOImage is the (optional) path to a ISO image to attach
 	ISOImage string `json:"iso"`
+	// VSock enables the virtio-socket device and exposes it on the host
+	VSock bool `json:"vsock"`
 
 	// Kernel is the path to the kernel image to boot
 	Kernel string `json:"kernel"`
@@ -193,7 +195,7 @@ func (h *HyperKit) execute(cmdline string) error {
 	var err error
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
-		return fmt.Errorf("If ConsoleFile is set, StateDir was be specified")
+		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
 	}
 	if h.UserData != "" && h.ISOImage != "" {
 		return fmt.Errorf("If UserData is supplied, ISOImage must not be set")
@@ -203,8 +205,11 @@ func (h *HyperKit) execute(cmdline string) error {
 			return fmt.Errorf("ISO %s does not exist", h.ISOImage)
 		}
 	}
+	if h.VSock && h.StateDir == "" {
+		return fmt.Errorf("If virtio-sockets are enabled, StateDir must be specified")
+	}
 	if h.UserData != "" && h.StateDir == "" {
-		return fmt.Errorf("If UserData is supplied, StateDir was be specified")
+		return fmt.Errorf("If UserData is supplied, StateDir must be specified")
 	}
 	if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
 		return fmt.Errorf("Kernel %s does not exist", h.Kernel)
@@ -352,6 +357,9 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 	if h.DiskImage != "" {
 		a = append(a, "-s", fmt.Sprintf("2:0,virtio-blk,%s", h.DiskImage))
+	}
+	if h.VSock {
+		a = append(a, "-s", fmt.Sprintf("3,virtio-sock,guest_cid=3,path=%s", h.StateDir))
 	}
 	if h.ISOImage != "" {
 		a = append(a, "-s", fmt.Sprintf("4,ahci-cd,%s", h.ISOImage))
