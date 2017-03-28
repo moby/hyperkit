@@ -26,6 +26,7 @@ func main() {
 	cpus := flag.Int("cpus", 1, "Number of CPUs")
 	mem := flag.Int("mem", 1024, "Amount of memory in MB")
 	diskSz := flag.Int("disk-size", 0, "Size of Disk in MB")
+	vsock := flag.Bool("vsock", false, "Enable virtio-sockets")
 
 	data := flag.String("data", "", "User data to pass to VM via ISO")
 
@@ -72,6 +73,7 @@ func main() {
 	h.CPUs = *cpus
 	h.Memory = *mem
 	h.DiskSize = *diskSz
+	h.VSock = *vsock
 
 	h.UserData = *data
 
