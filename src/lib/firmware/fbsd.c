@@ -793,7 +793,7 @@ cb_exit(void)
 {
 	tcsetattr(consout_fd, TCSAFLUSH, &oldterm);
 	fprintf(stderr, "fbsd: error\n");
-	exit(-1);
+	exit(1);
 }
 
 static void
@@ -955,7 +955,7 @@ fbsd_load(void)
 		disk_open(config.bootvolume);
 	} else {
 		fprintf(stderr, "fbsd: no boot volume\n");
-		exit(-1);
+		exit(1);
 	}
 
 	if (config.kernelenv) {
@@ -974,13 +974,13 @@ fbsd_load(void)
 	h = dlopen(config.userboot, RTLD_LOCAL);
 	if (!h) {
 		fprintf(stderr, "%s\n", dlerror());
-		exit(-1);
+		exit(1);
 	}
 
 	func = (func_t) dlsym(h, "loader_main");
 	if (!func) {
 		fprintf(stderr, "%s\n", dlerror());
-		exit(-1);
+		exit(1);
 	}
 
 	addenv("smbios.bios.vendor=BHYVE");
