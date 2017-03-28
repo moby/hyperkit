@@ -530,11 +530,10 @@ vmexit_suspend(struct vm_exit *vme, int *pvcpu)
 	pthread_mutex_unlock(&resetcpu_mtx);
 
 	switch ((int) (how)) {
-	case VM_SUSPEND_RESET:
-		exit(0);
 	case VM_SUSPEND_POWEROFF:
-		exit(1);
 	case VM_SUSPEND_HALT:
+		exit(0);
+	case VM_SUSPEND_RESET:
 		exit(2);
 	case VM_SUSPEND_TRIPLEFAULT:
 		exit(3);

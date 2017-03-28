@@ -356,6 +356,24 @@ hyperkit -c 4 \\
 
 .Ed
 
+.Sh EXIT STATUS
+The
+.Nm hyperkit
+process exits with one of the following values:
+.Pp
+.Bl -tag -width flag -compact
+.It Li 0
+The guest either powered down or halted cleanly.
+.It Li 1
+An error occurred.
+.It Li 2
+The guest rebooted/reset. The caller is responsible for starting a new hyperkit process in this case.
+.It Li 3
+A triple fault occurred.
+.It Li 100
+An invalid/unknown VM exit occurred.
+.El
+
 .Sh SIGNALS
 .Bl -tag -width 10n
 .It Pa SIGUSR1

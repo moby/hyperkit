@@ -119,7 +119,7 @@ done:
 	if (fd >= 0)
 		close(fd);
 	if (rv)
-		exit(-1);
+		exit(1);
 	return 0xfff0;
 }
 
