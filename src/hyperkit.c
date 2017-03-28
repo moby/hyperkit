@@ -88,7 +88,6 @@ extern int vmexit_task_switch(struct vm_exit *, int *vcpu);
 char *vmname = "vm";
 
 int guest_ncpus;
-int print_mac;
 char *guest_uuid_str;
 static char *pidfile;
 
@@ -860,7 +859,6 @@ main(int argc, char *argv[])
 	progname = basename(argv[0]);
 	gdb_port = 0;
 	guest_ncpus = 1;
-	print_mac = 0;
 	memsize = 256 * MB;
 	mptgen = 1;
 	rtc_localtime = 1;
@@ -908,9 +906,6 @@ main(int argc, char *argv[])
 			error = parse_memsize(optarg, &memsize);
 			if (error)
 				errx(EX_USAGE, "invalid memsize '%s'", optarg);
-			break;
-		case 'M':
-			print_mac = 1;
 			break;
 		case 'H':
 			guest_vmexit_on_hlt = 1;
