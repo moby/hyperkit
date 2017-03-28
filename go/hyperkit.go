@@ -1,5 +1,3 @@
-// +build darwin
-
 // Package hyperkit provides a Go wrapper around the hyperkit
 // command. It currently shells out to start hyperkit with the
 // provided configuration.
