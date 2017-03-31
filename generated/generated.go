@@ -5,9 +5,12 @@
 //
 // The first priority is correctness (no false negatives, no false positives).
 // It must return accurate results even if the input Go source code is not gofmted.
-// The second priority is performance. The current version is implemented
-// via go/parser, but it may be possible to improve performance via an
-// alternative implementation. That can be explored later.
+//
+// The second priority is performance. The current version uses bufio.Reader and
+// ReadBytes. Performance can be optimized further by using lower level I/O
+// primitives and allocating less. That can be explored later. A lot of the time
+// is spent on reading the entire file without being able to stop early,
+// since the specification allows the comment to appear anywhere in the file.
 //
 // The exact API is undecided and can change. The current API style is somewhat
 // based on go/parser, but that may not be the best approach.
