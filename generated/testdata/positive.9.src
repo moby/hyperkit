@@ -9,4 +9,4 @@
      // Package comment.
 package p
 
-// Doesn't match because it comes after general comment (/*-style).
+// Does match even though it comes after general comment (/*-style).

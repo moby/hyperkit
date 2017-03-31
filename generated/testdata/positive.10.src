@@ -9,4 +9,4 @@ end of a general comment */
 // Package comment.
 package p
 
-// Doesn't match because it's inside general comment (/*-style).
+// Does match even though it's inside general comment (/*-style).
