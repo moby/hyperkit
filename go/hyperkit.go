@@ -144,12 +144,12 @@ func New(hyperkit, statedir, vpnkitsock, diskimage string) (*HyperKit, error) {
 func FromState(statedir string) (*HyperKit, error) {
 	b, err := ioutil.ReadFile(filepath.Join(statedir, jsonFile))
 	if err != nil {
-		return nil, fmt.Errorf("Can't read json file: ", err)
+		return nil, fmt.Errorf("Can't read json file: %s", err)
 	}
 	h := &HyperKit{}
 	err = json.Unmarshal(b, h)
 	if err != nil {
-		return nil, fmt.Errorf("Can't parse json file: ", err)
+		return nil, fmt.Errorf("Can't parse json file: %s", err)
 	}
 
 	// Make sure the pid written by hyperkit is the same as in the json
@@ -502,7 +502,7 @@ func checkHyperKit(hyperkit string) (string, error) {
 	if hyperkit != "" {
 		p, err := exec.LookPath(hyperkit)
 		if err != nil {
-			return "", fmt.Errorf("Could not find hyperkit executable: ", hyperkit)
+			return "", fmt.Errorf("Could not find hyperkit executable %s: %s", hyperkit, err)
 		}
 		return p, nil
 	}
