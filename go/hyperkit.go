@@ -446,6 +446,9 @@ func (h *HyperKit) execHyperKit() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		// Make sure we reap the child when it exits
+		go cmd.Wait()
 	}
 	return nil
 }
