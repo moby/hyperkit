@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -312,6 +313,13 @@ func (h *HyperKit) String() string {
 
 // CreateDiskImage creates a empty file suitable for use as a disk image for a hyperkit VM.
 func CreateDiskImage(location string, sizeMB int) error {
+	diskDir := path.Dir(location)
+	if diskDir != "." {
+		if err := os.MkdirAll(diskDir, 0755); err != nil {
+			return err
+		}
+	}
+
 	f, err := os.Create(location)
 	if err != nil {
 		return err
