@@ -62,7 +62,7 @@ func main() {
 		}
 	}
 
-	h, err := hyperkit.New(*hk, *statedir, *vpnkitsock, *disk)
+	h, err := hyperkit.New(*hk, *vpnkitsock, *statedir)
 	if err != nil {
 		log.Fatalln("Error creating hyperkit: ", err)
 	}
@@ -74,6 +74,7 @@ func main() {
 	h.Memory = *mem
 	h.DiskSize = *diskSz
 	h.VSock = *vsock
+	h.DiskImage = *disk
 	h.ISOImage = *iso
 
 	if *bg {

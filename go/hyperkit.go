@@ -113,7 +113,7 @@ type HyperKit struct {
 // - If vpnkitsock is empty no networking is configured. If it is set
 //   to "auto" it tries to re-use the Docker for Mac VPNKit connection.
 // - If statedir is "" no state is written to disk.
-func New(hyperkit, statedir, vpnkitsock, diskimage string) (*HyperKit, error) {
+func New(hyperkit, vpnkitsock, statedir string) (*HyperKit, error) {
 	h := HyperKit{}
 	var err error
 
@@ -126,7 +126,6 @@ func New(hyperkit, statedir, vpnkitsock, diskimage string) (*HyperKit, error) {
 	if err != nil {
 		return nil, err
 	}
-	h.DiskImage = diskimage
 
 	h.CPUs = defaultCPUs
 	h.Memory = defaultMemory
