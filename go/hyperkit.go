@@ -36,7 +36,6 @@ import (
 	"strings"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/rneugeba/iso9660wrap"
 )
 
 const (
@@ -94,10 +93,6 @@ type HyperKit struct {
 	// connected to. ConsoleStdio and ConsoleFile are supported.
 	Console int `json:"console"`
 
-	// UserData, if non empty, will be added to a ISO under the
-	// filename `config` and passed to the VM.
-	UserData string `json:"user_data"`
-
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
@@ -137,7 +132,6 @@ func New(hyperkit, statedir, vpnkitsock, diskimage string) (*HyperKit, error) {
 	h.Memory = defaultMemory
 
 	h.Console = ConsoleStdio
-	h.UserData = ""
 
 	return &h, nil
 }
@@ -199,9 +193,6 @@ func (h *HyperKit) execute(cmdline string) error {
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
 	}
-	if h.UserData != "" && h.ISOImage != "" {
-		return fmt.Errorf("If UserData is supplied, ISOImage must not be set")
-	}
 	if h.ISOImage != "" {
 		if _, err = os.Stat(h.ISOImage); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", h.ISOImage)
@@ -209,9 +200,6 @@ func (h *HyperKit) execute(cmdline string) error {
 	}
 	if h.VSock && h.StateDir == "" {
 		return fmt.Errorf("If virtio-sockets are enabled, StateDir must be specified")
-	}
-	if h.UserData != "" && h.StateDir == "" {
-		return fmt.Errorf("If UserData is supplied, StateDir must be specified")
 	}
 	if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
 		return fmt.Errorf("Kernel %s does not exist", h.Kernel)
@@ -239,12 +227,6 @@ func (h *HyperKit) execute(cmdline string) error {
 			if err != nil {
 				return err
 			}
-		}
-	}
-	if h.UserData != "" {
-		h.ISOImage, err = createUserDataISO(h.StateDir, h.UserData)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -479,31 +461,6 @@ func stream(r io.ReadCloser, dest chan<- string) {
 			dest <- line
 		}
 	}()
-}
-
-// Create a ISO with Userdata in the specified directory
-func createUserDataISO(dir string, init string) (string, error) {
-	cfgName := filepath.Join(dir, "config")
-	isoName := cfgName + ".iso"
-
-	if err := ioutil.WriteFile(cfgName, []byte(init), 0644); err != nil {
-		return "", err
-	}
-
-	outfh, err := os.OpenFile(isoName, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-	if err != nil {
-		return "", err
-	}
-	infh, err := os.Open(cfgName)
-	if err != nil {
-		return "", err
-	}
-	err = iso9660wrap.WriteFile(outfh, infh)
-	if err != nil {
-		return "", err
-	}
-
-	return isoName, nil
 }
 
 // checkHyperKit tries to find and/or validate the path of hyperkit

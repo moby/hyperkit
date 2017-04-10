@@ -28,7 +28,7 @@ func main() {
 	diskSz := flag.Int("disk-size", 0, "Size of Disk in MB")
 	vsock := flag.Bool("vsock", false, "Enable virtio-sockets")
 
-	data := flag.String("data", "", "User data to pass to VM via ISO")
+	iso := flag.String("iso", "", "ISO image to pass to the VM (not for booting from)")
 
 	flag.Parse()
 	cmd := flag.Args()
@@ -74,8 +74,7 @@ func main() {
 	h.Memory = *mem
 	h.DiskSize = *diskSz
 	h.VSock = *vsock
-
-	h.UserData = *data
+	h.ISOImage = *iso
 
 	if *bg {
 		h.Console = hyperkit.ConsoleFile
