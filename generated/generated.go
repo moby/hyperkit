@@ -23,8 +23,8 @@ import (
 	"os"
 )
 
-// ParseFile parses the source code of a single Go source file
-// specified by filename, and reports whether the file contains
+// Parse parses the source code of a single Go source file
+// provided via src, and reports whether the file contains
 // a "// Code generated ... DO NOT EDIT." line comment
 // matching the specification at https://golang.org/s/generatedcode:
 //
@@ -38,16 +38,8 @@ import (
 // 	and end with `DO NOT EDIT.`, with a period.
 //
 // 	The text may appear anywhere in the file.
-//
-// If the source couldn't be read, the error indicates the specific
-// failure.
-func ParseFile(filename string) (hasGeneratedComment bool, err error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-	br := bufio.NewReader(f)
+func Parse(src io.Reader) (hasGeneratedComment bool, err error) {
+	br := bufio.NewReader(src)
 	for {
 		s, err := br.ReadBytes('\n')
 		if err == io.EOF {
@@ -74,3 +66,14 @@ var (
 	prefix = []byte("// Code generated ")
 	suffix = []byte(" DO NOT EDIT.")
 )
+
+// ParseFile opens the file specified by filename and uses Parse to parse it.
+// If the source couldn't be read, the error indicates the specific failure.
+func ParseFile(filename string) (hasGeneratedComment bool, err error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	return Parse(f)
+}
