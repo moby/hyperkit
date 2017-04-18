@@ -146,8 +146,6 @@ The
 .Li amd_hostbridge
 emulation is identical but uses a PCI vendor ID of
 .Li AMD .
-.It Li passthru
-PCI pass-through device.
 .It Li virtio-net
 Virtio network interface.
 .It Li virtio-blk
@@ -254,23 +252,6 @@ are:
 .Bl -tag -width 8n
 .It Pa log=/path/to/ring-log
 Also log output to a ring buffer
-.El
-.Pp
-Pass-through devices:
-.Bl -tag -width 10n
-.It Ns Ar slot Ns / Ns Ar bus Ns / Ns Ar function
-Connect to a PCI device on the host at the selector described by
-.Ar slot ,
-.Ar bus ,
-and
-.Ar function
-numbers.
-.El
-.Pp
-The host device must have been reserved at boot-time using the
-.Va pptdev
-loader variable as described in
-.Xr vmm 4 .
 .El
 .It Fl u
 RTC keeps UTC time.
