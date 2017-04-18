@@ -926,14 +926,19 @@ disk_open(char *path)
 	return (err);
 }
 
-void
+int
 fbsd_init(char *userboot_path, char *bootvolume_path, char *kernelenv,
 	char *cons)
 {
+	if (!userboot_path || !bootvolume_path)
+		return 1;
+
 	config.userboot = userboot_path;
 	config.bootvolume = bootvolume_path;
 	config.kernelenv = kernelenv;
 	config.cons = cons;
+
+	return 0;
 }
 
 uint64_t
@@ -951,12 +956,7 @@ fbsd_load(void)
 		altcons_open(config.cons);
 	}
 
-	if (config.bootvolume) {
-		disk_open(config.bootvolume);
-	} else {
-		fprintf(stderr, "fbsd: no boot volume\n");
-		exit(1);
-	}
+	disk_open(config.bootvolume);
 
 	if (config.kernelenv) {
 		addenv(config.kernelenv);

@@ -275,23 +275,22 @@ Disable MPtable generation.
 .Pp
 Firmware/bootrom configuration.
 .Bl -tag -width 10n
-.It kexec , Ns Pa kernel , Ns Oo Pa ramdisk Ns Oc , Ns Oo Pa cmdline Oc
+.It kexec , Ns Pa kernel Ns Oo , Ns Pa ramdisk Ns Oc Ns Oo , Ns Pa cmdline Oc
 Launch
 .Ar kernel
 using the Linux kexec protocol.
-.It fbsd , Ns Pa userboot , Ns Pa bootvolume , Ns Pa kernelenv
+.It fbsd , Ns Pa userboot , Ns Pa bootvolume Ns Oo , Ns Pa kernelenv Ns Oc
 Boot using the fbsd protocol.
-.It bootrom , Ns Pa path , Ns ,
+.It bootrom , Ns Pa path
 Boot using
 .Ar path
 as a firmware image. Allows booting a UEFI/tianocore binary, such as
 the one from bhyve (source: <https://github.com/freebsd/uefi-edk2.git>; binary <https://people.freebsd.org/~grehan/bhyve_uefi/>).
-.It multiboot , Ns Pa kernel , Ns Oo Pa module Ns Oo ;cmdline Ns Oc Ns Oo :module Ns Oo ;cmdline Ns Oc Ns Oc Ns ... Oc , Ns Oo Pa cmdline Ns Oc
+.It multiboot , Ns Pa kernel Ns Oo , Ns Pa module Ns Oo ;cmdline Ns Oc Ns Oo :module Ns Oo ;cmdline Ns Oc Ns Oc Ns ... Oc Ns Oo , Ns Pa cmdline Ns Oc
 Boot using the multiboot protocol.
 .El
 .Pp
-Note that all the commas are required in each case, even if the
-options are empty.
+Note that commas are required even for empty options with the exception that they may be omitted for any trailing empty options.
 .El
 .Sh EXAMPLES
 To run a virtual machine with 1GB of memory, two virtual CPUs, a virtio
@@ -311,7 +310,7 @@ hyperkit -s 0,hostbridge -s 1,lpc -s 2:0,virtio-net,tap0 \\
   -s 2:1,virtio-net,tap1 \\
   -s 2:2,virtio-net,tap2,mac=00:be:fa:76:45:00 \\
   -s 3,virtio-blk,/my/image -l com1,stdio \\
-  -A -H -P -m 24G -f fbsd,userboot.so,bootvolume.img,"" \\
+  -A -H -P -m 24G -f fbsd,userboot.so,bootvolume.img \\
 .Ed
 .Pp
 Run an 8GB quad-CPU virtual machine with 8 AHCI SATA disks, a raw AHCI SATA volume,

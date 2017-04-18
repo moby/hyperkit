@@ -227,11 +227,16 @@ kexec_load_ramdisk(char *path) {
 	return 0;
 }
 
-void
+int
 kexec_init(char *kernel_path, char *initrd_path, char *cmdline) {
+	if (!kernel_path)
+		return 1;
+
 	config.kernel = kernel_path;
 	config.initrd = initrd_path;
 	config.cmdline = cmdline;
+
+	return 0;
 }
 
 uint64_t

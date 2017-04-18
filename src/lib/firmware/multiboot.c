@@ -202,12 +202,17 @@ put_image(struct image *img)
 }
 
 // multiboot_init is called by xhyve to pass in the firmware arguments.
-void
+int
 multiboot_init(char *kernel_path, char *module_list, char *kernel_append)
 {
+	if (!kernel_path)
+		return 1;
+
 	config.kernel_path = kernel_path;
 	config.module_list = module_list;
 	config.kernel_append = kernel_append;
+
+	return 0;
 }
 
 // multiboot_parse_elf parses ELF header and determines kernel load/entry
