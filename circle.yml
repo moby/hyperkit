@@ -2,6 +2,7 @@ general:
   artifacts:
     - build/hyperkit
     - build/hyperkit.sym
+    - build/LICENSE
 machine:
   xcode:
     version: "7.3"
@@ -26,3 +27,5 @@ test:
     - mkdir -p $(dirname "$PROJECT_ROOT")
     - ln -s $(pwd) "$PROJECT_ROOT"
     - (cd go; make ci)
+    # LICENSE related steps
+    - find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > build/LICENSE
