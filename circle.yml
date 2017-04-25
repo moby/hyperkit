@@ -10,6 +10,7 @@ machine:
     GOPATH: "$HOME/go"
     PROJECT_ROOT: "$GOPATH/src/github.com/docker/hyperkit"
     PATH: "${PATH}:${GOPATH}/bin"
+    MACOSX_DEPLOYMENT_TARGET: "10.10"
 test:
   override:
     - make clean
