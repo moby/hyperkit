@@ -729,7 +729,7 @@ parse_memsize(const char *opt, size_t *ret_memsize)
 
 static int
 firmware_parse(const char *opt) {
-	char *fw, *opt1, *opt2, *opt3, *cp;
+	char *fw, *opt1 = NULL, *opt2 = NULL, *opt3 = NULL, *cp;
 
 	fw = strdup(opt);
 
@@ -745,51 +745,47 @@ firmware_parse(const char *opt) {
 		goto fail;
 	}
 
-		if ((cp = strchr(fw, ',')) != NULL) {
-			*cp = '\0';
-			opt1 = cp + 1;
-		} else {
-			goto fail;
-		}
+// Gets first comma-separated option from cur and stores it in next.
+#define NEXTARG(cur, next, scratch) do {			\
+	if (cur && (scratch = strchr(cur, ',')) != NULL) {	\
+		*scratch = '\0';				\
+		next = scratch + 1;				\
+	}							\
+} while(0)
 
-		if ((cp = strchr(opt1, ',')) != NULL) {
-			*cp = '\0';
-			opt2 = cp + 1;
-		} else {
-			goto fail;
-		}
+	NEXTARG(fw, opt1, cp);
+	NEXTARG(opt1, opt2, cp);
+	NEXTARG(opt2, opt3, cp);
 
-		if ((cp = strchr(opt2, ',')) != NULL) {
-			*cp = '\0';
-			opt3 = cp + 1;
-		} else {
-			goto fail;
-		}
+#undef NEXTARG
 
-		opt2 = strlen(opt2) ? opt2 : NULL;
-		opt3 = strlen(opt3) ? opt3 : NULL;
+	// Replace zero length options with NULLs
+	opt1 = opt1 && strlen(opt1) ? opt1 : NULL;
+	opt2 = opt2 && strlen(opt2) ? opt2 : NULL;
+	opt3 = opt3 && strlen(opt3) ? opt3 : NULL;
 
+	int ret = 1;
 	if (fw_func == kexec) {
-		kexec_init(opt1, opt2, opt3);
+		ret = kexec_init(opt1, opt2, opt3);
 	} else if (fw_func == fbsd_load) {
 		/* FIXME: let user set boot-loader serial device */
-		fbsd_init(opt1, opt2, opt3, NULL);
+		ret = fbsd_init(opt1, opt2, opt3, NULL);
 	} else if (fw_func == bootrom_load) {
-		bootrom_init(opt1);
+		ret = bootrom_init(opt1);
 	} else if (fw_func == multiboot) {
-		multiboot_init(opt1, opt2, opt3);
-	} else {
-		goto fail;
+		ret = multiboot_init(opt1, opt2, opt3);
 	}
+	if (ret)
+		goto fail;
 
 	return 0;
 
 fail:
 	fprintf(stderr, "Invalid firmware argument\n"
-		"    -f kexec,'kernel','initrd','\"cmdline\"'\n"
-		"    -f fbsd,'userboot','boot volume','\"kernel env\"'\n"
-		"    -f bootrom,'ROM',,\n" /* FIXME: trailing commas _required_! */
-		"    -f multiboot,'kernel',[module[;cmdline][:module[;cmdline]]...],[cmdline]\n");
+		"    -f kexec,'kernel'[,'initrd'][,'\"cmdline\"']\n"
+		"    -f fbsd,'userboot','boot volume'[,'\"kernel env\"']\n"
+		"    -f bootrom,'ROM'\n"
+		"    -f multiboot,'kernel'[,module[;cmdline][:module[;cmdline]]...][,cmdline]\n");
 
 	return -1;
 }
