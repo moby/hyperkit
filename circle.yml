@@ -5,7 +5,7 @@ general:
     - build/LICENSE
 machine:
   xcode:
-    version: "7.3"
+    version: "9.0"
   environment:
     GOPATH: "$HOME/go"
     PROJECT_ROOT: "$GOPATH/src/github.com/moby/hyperkit"
