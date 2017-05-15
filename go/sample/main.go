@@ -8,9 +8,26 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/docker/hyperkit/go"
 )
+
+func stringToIntArray(l string, sep string) ([]int, error) {
+	var err error
+	if l == "" {
+		return []int{}, nil
+	}
+	a := strings.Split(l, sep)
+	r := make([]int, len(a))
+	for idx := range a {
+		if r[idx], err = strconv.Atoi(a[idx]); err != nil {
+			return nil, err
+		}
+	}
+	return r, nil
+}
 
 func main() {
 	hk := flag.String("hyperkit", "", "HyperKit binary to use")
@@ -27,6 +44,7 @@ func main() {
 	mem := flag.Int("mem", 1024, "Amount of memory in MB")
 	diskSz := flag.Int("disk-size", 0, "Size of Disk in MB")
 	vsock := flag.Bool("vsock", false, "Enable virtio-sockets")
+	vsockports := flag.String("vsock-ports", "", "Comma separated list of ports to expose as sockets from guest")
 
 	iso := flag.String("iso", "", "ISO image to pass to the VM (not for booting from)")
 
@@ -74,6 +92,13 @@ func main() {
 	h.Memory = *mem
 	h.DiskSize = *diskSz
 	h.VSock = *vsock
+	if h.VSock {
+		ports, err := stringToIntArray(*vsockports, ",")
+		if err != nil {
+			log.Fatalln("Unable to parse vsockports: ", err)
+		}
+		h.VSockPorts = ports
+	}
 	h.DiskImage = *disk
 	h.ISOImage = *iso
 
