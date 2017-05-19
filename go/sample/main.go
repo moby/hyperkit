@@ -46,6 +46,8 @@ func main() {
 	vsock := flag.Bool("vsock", false, "Enable virtio-sockets")
 	vsockports := flag.String("vsock-ports", "", "Comma separated list of ports to expose as sockets from guest")
 
+	_9psock := flag.String("9p-socket", "", "9P unix domain socket to forward to the guest. Format: socket_path,9p_tag")
+
 	iso := flag.String("iso", "", "ISO image to pass to the VM (not for booting from)")
 
 	flag.Parse()
@@ -101,6 +103,14 @@ func main() {
 	}
 	h.DiskImage = *disk
 	h.ISOImage = *iso
+
+	if *_9psock != "" {
+		p := strings.Split(*_9psock, ",")
+		if len(p) != 2 {
+			log.Fatalln("9psock requires two parameters: path,tag")
+		}
+		h.Sockets9P = []hyperkit.Socket9P{{Path: p[0], Tag: p[1]}}
+	}
 
 	if *bg {
 		h.Console = hyperkit.ConsoleFile
