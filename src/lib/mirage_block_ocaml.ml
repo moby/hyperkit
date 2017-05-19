@@ -155,9 +155,12 @@ module C = struct
       failwith (string_of_error x)
     | Ok x -> x
 
-  let mirage_block_open block_config qcow_config_opt : int =
-    let description = Printf.sprintf "block_config = %s and qcow_config = %s"
-      block_config (match qcow_config_opt with None -> "None" | Some x -> x) in
+  let mirage_block_open block_config qcow_config_opt stats_config_opt : int =
+    let description = Printf.sprintf "block_config = %s and qcow_config = %s and stats_config = %s"
+      block_config
+      (match qcow_config_opt with None -> "None" | Some x -> x)
+      (match stats_config_opt with None -> "None" | Some x -> x)
+      in
     Printf.fprintf stdout "mirage_block_open: %s\n%!" description;
     match Block.Config.of_string block_config with
       | Ok block_config' ->
@@ -170,6 +173,23 @@ module C = struct
                 Printf.fprintf stderr "mirage_block_option %s: %s\n%!" description m;
                 exit 1
             end in
+        (* Start exposing stats if configured *)
+        begin match stats_config_opt with
+          | None -> ()
+          | Some x ->
+            let mode =
+              (* either unix:<path> or tcp:<port> *)
+              match Astring.String.cut ~sep:":" x with
+              | Some ("unix", path) -> `Unix_domain_socket (`File path)
+              | Some ("tcp", port) -> `TCP (`Port (int_of_string port))
+              | _ ->
+                Printf.fprintf stderr "mirage_block_open: unrecognised stats_config: %s" x;
+                exit 1 in
+            let module Server = Prometheus_app.Cohttp(Cohttp_lwt_unix.Server) in
+            let callback = Server.callback in
+            let server = Cohttp_lwt_unix.Server.make ~callback () in
+            Lwt.async (fun () -> Cohttp_lwt_unix.Server.create ~mode server)
+        end;
         begin match ok_exn (Protocol.rpc (Protocol.Request.Connect (block_config', qcow_config'))) with
           | Protocol.Response.Connect t ->
             Printf.fprintf stdout "mirage_block_open: %s returning %d\n%!" description t;
