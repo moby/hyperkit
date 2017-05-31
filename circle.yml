@@ -8,7 +8,7 @@ machine:
     version: "7.3"
   environment:
     GOPATH: "$HOME/go"
-    PROJECT_ROOT: "$GOPATH/src/github.com/docker/hyperkit"
+    PROJECT_ROOT: "$GOPATH/src/github.com/moby/hyperkit"
     PATH: "${PATH}:${GOPATH}/bin"
     MACOSX_DEPLOYMENT_TARGET: "10.10"
 test:

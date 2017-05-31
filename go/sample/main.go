@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/hyperkit/go"
+	"github.com/moby/hyperkit/go"
 )
 
 func stringToIntArray(l string, sep string) ([]int, error) {
