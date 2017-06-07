@@ -4,7 +4,7 @@ ENV GOPATH=/go
 ENV PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # The project sources
-VOLUME ["/go/src/github.com/docker/hyperkit/go"]
-WORKDIR /go/src/github.com/docker/hyperkit/go
+VOLUME ["/go/src/github.com/moby/hyperkit/go"]
+WORKDIR /go/src/github.com/moby/hyperkit/go
 
 ENTRYPOINT ["make"]

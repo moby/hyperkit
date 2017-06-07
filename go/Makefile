@@ -5,7 +5,7 @@ build-in-container: $(DEPS) clean
 	@echo "+ $@"
 	@docker build -t hyperkitgo-build -f ./Dockerfile.build .
 	@docker run --rm \
-		-v ${CURDIR}:/go/src/github.com/docker/hyperkit/go \
+		-v ${CURDIR}:/go/src/github.com/moby/hyperkit/go \
 		hyperkitgo-build build-local
 
 build-local: build/hyperkitgo
@@ -35,7 +35,7 @@ vendor:
 	@rm -rf vendor.conf vendor
 	@docker build -t hyperkitgo-build -f ./Dockerfile.build .
 	@docker run --rm \
-		-v ${CURDIR}:/go/src/github.com/docker/hyperkit/go \
+		-v ${CURDIR}:/go/src/github.com/moby/hyperkit/go \
 		hyperkitgo-build vendor-local VERSION=${VERSION} REVISION=${REVISION}
 
 vendor-local:
