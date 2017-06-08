@@ -15,6 +15,21 @@ build/hyperkitgo: $(DEPS)
 	GOOS=darwin GOARCH=amd64 \
 	go build -o $@ --ldflags '-extldflags "-fno-PIC"' \
 		sample/main.go
+
+# The next two targets make sure we can cross-compile for Linux and Windows.
+# While it makes little sense to run the sample code, it makes it easier for
+# consumers of this package if it cross compiles.
+build/hyperkitgo_linux: $(DEPS)
+	@echo "+ $@"
+	GOOS=linux GOARCH=amd64 \
+	go build -o $@ --ldflags '-extldflags "-fno-PIC"' \
+		sample/main.go
+build/hyperkitgo.exe: $(DEPS)
+	@echo "+ $@"
+	GOOS=windows GOARCH=amd64 \
+	go build -o $@ --ldflags '-extldflags "-fno-PIC"' \
+		sample/main.go
+
 clean:
 	rm -rf build
 
@@ -47,6 +62,6 @@ vendor-local:
 setup:
 	go get github.com/golang/lint/golint
 
-ci: setup build/hyperkitgo
+ci: setup build/hyperkitgo build/hyperkitgo_linux build/hyperkitgo.exe
 	test -z "$$(gofmt -s -l . 2>&1 | grep -v ^vendor/ | tee /dev/stderr)"
 	test -z "$$(golint ./... 2>&1 | grep -v ^vendor/ | grep -v mock/ | tee /dev/stderr)"
