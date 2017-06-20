@@ -110,8 +110,8 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query cstruct)/cstruct.a \
 	$(shell ocamlfind query cstruct)/libcstruct_stubs.a \
 	$(shell ocamlfind query io-page)/io_page.a \
-	$(shell ocamlfind query io-page)/io_page_unix.a \
-	$(shell ocamlfind query io-page)/libio_page_unix_stubs.a \
+	$(shell ocamlfind query io-page-unix)/io_page_unix.a \
+	$(shell ocamlfind query io-page-unix)/libio_page_unix_stubs.a \
 	$(shell ocamlfind query lwt.unix)/liblwt-unix_stubs.a \
 	$(shell ocamlfind query lwt.unix)/lwt-unix.a \
 	$(shell ocamlfind query lwt.unix)/lwt.a \
