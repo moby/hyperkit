@@ -71,8 +71,10 @@ type Socket9P struct {
 
 // DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
 type DiskConfig struct {
-	Path string `json:"path"`
-	Size int    `json:"size"`
+	Path   string `json:"path"`
+	Size   int    `json:"size"`
+	Format string `json:"format"`
+	Driver string `json:"driver"`
 }
 
 // HyperKit contains the configuration of the hyperkit VM
@@ -428,7 +430,18 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	for _, p := range h.Disks {
-		a = append(a, "-s", fmt.Sprintf("%d:0,virtio-blk,%s", nextSlot, p.Path))
+		// Default the driver to virtio-blk
+		driver := "virtio-blk"
+		if p.Driver != "" {
+			driver = p.Driver
+		}
+		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, driver, p.Path)
+
+		// Add on a format instruction if specified.
+		if p.Format != "" {
+			arg += ",format=" + p.Format
+		}
+		a = append(a, "-s", arg)
 		nextSlot++
 	}
 
