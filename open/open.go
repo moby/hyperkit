@@ -1,4 +1,7 @@
 // Package open offers ability to open files or URLs as if user double-clicked it in their OS.
+//
+// Deprecated: Use github.com/shurcooL/go/browser package if you need to open URLs.
+// It respects the BROWSER environment variable.
 package open
 
 import (
