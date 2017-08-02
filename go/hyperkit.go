@@ -110,6 +110,8 @@ type HyperKit struct {
 	Kernel string `json:"kernel"`
 	// Initrd is the path to the initial ramdisk to boot off
 	Initrd string `json:"initrd"`
+	// Bootrom is the path to a boot rom eg for UEFI boot
+	Bootrom string `json:"bootrom"`
 
 	// CPUs is the number CPUs to configure
 	CPUs int `json:"cpus"`
@@ -235,11 +237,17 @@ func (h *HyperKit) execute(cmdline string) error {
 	if !h.VSock && len(h.VSockPorts) > 0 {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
 	}
-	if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
-		return fmt.Errorf("Kernel %s does not exist", h.Kernel)
-	}
-	if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
-		return fmt.Errorf("initrd %s does not exist", h.Initrd)
+	if h.Bootrom == "" {
+		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
+			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
+		}
+		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+			return fmt.Errorf("initrd %s does not exist", h.Initrd)
+		}
+	} else {
+		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
+			return fmt.Errorf("Bootrom %s does not exist", h.Bootrom)
+		}
 	}
 
 	// Create files
@@ -473,8 +481,13 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		a = append(a, "-l", fmt.Sprintf("com1,autopty=%s/tty,log=%s/console-ring", h.StateDir, h.StateDir))
 	}
 
-	kernArgs := fmt.Sprintf("kexec,%s,%s,earlyprintk=serial %s", h.Kernel, h.Initrd, cmdline)
-	a = append(a, "-f", kernArgs)
+	if h.Bootrom == "" {
+		kernArgs := fmt.Sprintf("kexec,%s,%s,earlyprintk=serial %s", h.Kernel, h.Initrd, cmdline)
+		a = append(a, "-f", kernArgs)
+	} else {
+		kernArgs := fmt.Sprintf("bootrom,%s,,", h.Bootrom)
+		a = append(a, "-f", kernArgs)
+	}
 
 	h.Arguments = a
 	h.CmdLine = h.HyperKit + " " + strings.Join(a, " ")
