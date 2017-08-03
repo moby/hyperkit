@@ -19,7 +19,7 @@ test:
     - make test
     - brew install opam libev
     - opam init --yes
-    - opam install --yes uri qcow.0.10.0 qcow-tool mirage-block-unix.2.7.0 ocamlfind conf-libev logs fmt mirage-unix prometheus-app
+    - opam install --yes uri qcow.0.10.3 qcow-tool mirage-block-unix.2.7.0 ocamlfind conf-libev logs fmt mirage-unix prometheus-app
     - make clean
     - eval `opam config env` && make all
     - make test
