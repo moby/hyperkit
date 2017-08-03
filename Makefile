@@ -112,8 +112,8 @@ OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query io-page)/io_page.a \
 	$(shell ocamlfind query io-page-unix)/io_page_unix.a \
 	$(shell ocamlfind query io-page-unix)/libio_page_unix_stubs.a \
-	$(shell ocamlfind query lwt.unix)/liblwt-unix_stubs.a \
-	$(shell ocamlfind query lwt.unix)/lwt-unix.a \
+	$(shell ocamlfind query lwt.unix)/liblwt_unix_stubs.a \
+	$(shell ocamlfind query lwt.unix)/lwt_unix.a \
 	$(shell ocamlfind query lwt.unix)/lwt.a \
 	$(shell ocamlfind query threads)/libthreadsnat.a \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
