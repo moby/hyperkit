@@ -100,7 +100,9 @@ func main() {
 		}
 		h.VSockPorts = ports
 	}
-	h.ISOImage = *iso
+	if *iso != "" {
+		h.ISOImages = []string{*iso}
+	}
 
 	h.Disks = disks
 

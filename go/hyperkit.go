@@ -92,7 +92,7 @@ type HyperKit struct {
 	// Disks contains disk images to use/create.
 	Disks []DiskConfig `json:"disks"`
 	// ISOImage is the (optional) path to a ISO image to attach
-	ISOImage string `json:"iso"`
+	ISOImages []string `json:"iso"`
 	// VSock enables the virtio-socket device and exposes it on the host
 	VSock bool `json:"vsock"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host
@@ -226,9 +226,9 @@ func (h *HyperKit) execute(cmdline string) error {
 	if h.Console == ConsoleStdio && !isTerminal(os.Stdout) && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 	}
-	if h.ISOImage != "" {
-		if _, err = os.Stat(h.ISOImage); os.IsNotExist(err) {
-			return fmt.Errorf("ISO %s does not exist", h.ISOImage)
+	for _, image := range h.ISOImages {
+		if _, err = os.Stat(image); os.IsNotExist(err) {
+			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
 	if h.VSock && h.StateDir == "" {
@@ -462,8 +462,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		nextSlot++
 	}
 
-	if h.ISOImage != "" {
-		a = append(a, "-s", fmt.Sprintf("%d,ahci-cd,%s", nextSlot, h.ISOImage))
+	for _, image := range h.ISOImages {
+		a = append(a, "-s", fmt.Sprintf("%d,ahci-cd,%s", nextSlot, image))
 		nextSlot++
 	}
 
