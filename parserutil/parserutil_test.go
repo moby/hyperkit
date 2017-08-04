@@ -1,8 +1,11 @@
 package parserutil_test
 
 import (
+	"fmt"
 	"go/ast"
 	"os"
+	"reflect"
+	"testing"
 
 	"github.com/shurcooL/go/parserutil"
 )
@@ -50,4 +53,56 @@ func Example() {
 	//     31  .  .  Rparen: 0
 	//     32  .  }
 	//     33  }
+}
+
+func TestParseStmt(t *testing.T) {
+	tests := []struct {
+		in        string
+		want      ast.Stmt
+		wantError error
+	}{
+		{"", &ast.EmptyStmt{Semicolon: 32}, nil},
+	}
+	for _, tc := range tests {
+		stmt, err := parserutil.ParseStmt(tc.in)
+		if got, want := err, tc.wantError; !equalError(got, want) {
+			t.Errorf("got error: %v, want: %v", got, want)
+			continue
+		}
+		if tc.wantError != nil {
+			continue
+		}
+		if got, want := stmt, tc.want; !reflect.DeepEqual(got, want) {
+			t.Errorf("got: %v, want: %v", got, want)
+		}
+	}
+}
+
+func TestParseDecl(t *testing.T) {
+	tests := []struct {
+		in        string
+		want      ast.Decl
+		wantError error
+	}{
+		{"", nil, fmt.Errorf("no declaration")},
+	}
+	for _, tc := range tests {
+		decl, err := parserutil.ParseDecl(tc.in)
+		if got, want := err, tc.wantError; !equalError(got, want) {
+			t.Errorf("got error: %v, want: %v", got, want)
+			continue
+		}
+		if tc.wantError != nil {
+			continue
+		}
+		if got, want := decl, tc.want; !reflect.DeepEqual(got, want) {
+			t.Errorf("got: %v, want: %v", got, want)
+		}
+	}
+}
+
+// equalError reports whether errors a and b are considered equal.
+// They're equal if both are nil, or both are not nil and a.Error() == b.Error().
+func equalError(a, b error) bool {
+	return a == nil && b == nil || a != nil && b != nil && a.Error() == b.Error()
 }
