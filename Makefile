@@ -105,15 +105,15 @@ OCAML_C_SRC := \
 OCAML_WHERE := $(shell ocamlc -where)
 OCAML_PACKS := cstruct cstruct.lwt io-page io-page.unix uri mirage-block \
 	mirage-block-unix qcow unix threads lwt lwt.unix logs logs.fmt   \
-	mirage-unix prometheus-app conduit.lwt cohttp.lwt
+	mirage-unix prometheus-app conduit-lwt cohttp.lwt
 OCAML_LDLIBS := -L $(OCAML_WHERE) \
 	$(shell ocamlfind query cstruct)/cstruct.a \
 	$(shell ocamlfind query cstruct)/libcstruct_stubs.a \
 	$(shell ocamlfind query io-page)/io_page.a \
 	$(shell ocamlfind query io-page-unix)/io_page_unix.a \
 	$(shell ocamlfind query io-page-unix)/libio_page_unix_stubs.a \
-	$(shell ocamlfind query lwt.unix)/liblwt-unix_stubs.a \
-	$(shell ocamlfind query lwt.unix)/lwt-unix.a \
+	$(shell ocamlfind query lwt.unix)/liblwt_unix_stubs.a \
+	$(shell ocamlfind query lwt.unix)/lwt_unix.a \
 	$(shell ocamlfind query lwt.unix)/lwt.a \
 	$(shell ocamlfind query threads)/libthreadsnat.a \
 	$(shell ocamlfind query mirage-block-unix)/libmirage_block_unix_stubs.a \
