@@ -3,6 +3,7 @@ package jsutil
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/gopherjs/gopherjs/js"
@@ -16,6 +17,9 @@ import (
 // It has to be one of those types exactly; it can't be another type that implements the interface like *dom.BasicElement.
 //
 // For other types, the input is assumed to be a JSON string which is then unmarshalled into that type.
+//
+// If the number of arguments provided to the wrapped func doesn't match
+// the number of arguments for original func, it panics.
 //
 // Here is example usage:
 //
@@ -31,6 +35,9 @@ import (
 func Wrap(fn interface{}) func(...*js.Object) {
 	v := reflect.ValueOf(fn)
 	return func(args ...*js.Object) {
+		if len(args) != v.Type().NumIn() {
+			panic(fmt.Errorf("wrapped %v got %v arguments, want %v", v.Type().String(), len(args), v.Type().NumIn()))
+		}
 		in := make([]reflect.Value, v.Type().NumIn())
 		for i := range in {
 			switch t := v.Type().In(i); t {
