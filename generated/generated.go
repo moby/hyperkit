@@ -11,9 +11,6 @@
 // primitives and allocating less. That can be explored later. A lot of the time
 // is spent on reading the entire file without being able to stop early,
 // since the specification allows the comment to appear anywhere in the file.
-//
-// The exact API is undecided and can change. The current API style is somewhat
-// based on go/parser, but that may not be the best approach.
 package generated
 
 import (
@@ -48,9 +45,9 @@ func Parse(src io.Reader) (hasGeneratedComment bool, err error) {
 			return false, err
 		}
 		if len(s) >= 2 && s[len(s)-2] == '\r' {
-			s = s[:len(s)-2] // Trim '\r\n'.
+			s = s[:len(s)-2] // Trim "\r\n".
 		} else {
-			s = s[:len(s)-1] // Trim '\n'.
+			s = s[:len(s)-1] // Trim "\n".
 		}
 		if containsComment(s) {
 			return true, nil
