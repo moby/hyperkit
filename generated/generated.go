@@ -47,7 +47,11 @@ func Parse(src io.Reader) (hasGeneratedComment bool, err error) {
 		} else if err != nil {
 			return false, err
 		}
-		s = s[:len(s)-1] // Trim newline.
+		if len(s) >= 2 && s[len(s)-2] == '\r' {
+			s = s[:len(s)-2] // Trim '\r\n'.
+		} else {
+			s = s[:len(s)-1] // Trim '\n'.
+		}
 		if containsComment(s) {
 			return true, nil
 		}

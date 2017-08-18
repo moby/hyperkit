@@ -1,6 +1,8 @@
 package generated_test
 
 import (
+	"bytes"
+	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -38,7 +40,29 @@ func TestParseFile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			hasGeneratedComment, err := generated.ParseFile(filepath.Join("testdata", tc.name))
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
+				return
+			}
+			if got, want := hasGeneratedComment, tc.want; got != want {
+				t.Errorf("got hasGeneratedComment %v, want %v", got, want)
+			}
+		})
+
+		// On Windows, a file that hasn't been gofmt'ed can have \r\n line endings.
+		// Though rare and unusual, it's still a valid .go file and needs to be supported.
+		t.Run(tc.name+` \r\n line ending version`, func(t *testing.T) {
+			// Replace all "\n" line endings with "\r\n".
+			b, err := ioutil.ReadFile(filepath.Join("testdata", tc.name))
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			b = bytes.Replace(b, []byte("\n"), []byte("\r\n"), -1)
+
+			hasGeneratedComment, err := generated.Parse(bytes.NewReader(b))
+			if err != nil {
+				t.Error(err)
+				return
 			}
 			if got, want := hasGeneratedComment, tc.want; got != want {
 				t.Errorf("got hasGeneratedComment %v, want %v", got, want)
