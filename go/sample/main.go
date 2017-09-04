@@ -33,6 +33,8 @@ func main() {
 	hk := flag.String("hyperkit", "", "HyperKit binary to use")
 	statedir := flag.String("state", "", "Directory to keep state in")
 	vpnkitsock := flag.String("vpnkitsock", "auto", "Path to VPNKit socket")
+	vpnkituuid := flag.String("vpnkituuid", "", "VPNKit UUID. Allows VMs to reconnect and get the same network configuration.")
+	vpnkitip := flag.String("vpnkitip", "", "Preferred IPv4 address in VPNKit range. Requires an unused UUID.")
 	var disks disks
 	flag.Var(&disks, "disk", "Can be specified multiple times. Format: {file=}PATH{,size=SIZE_IN_MB} or just size=SIZE_IN_MB if -state is set. If PATH doesn't exist and size is specified the image will automatically be created.")
 
@@ -113,6 +115,9 @@ func main() {
 		}
 		h.Sockets9P = []hyperkit.Socket9P{{Path: p[0], Tag: p[1]}}
 	}
+
+	h.VPNKitUUID = *vpnkituuid
+	h.VPNKitPreferredIPv4 = *vpnkitip
 
 	if *bg {
 		h.Console = hyperkit.ConsoleFile
