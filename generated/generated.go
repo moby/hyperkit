@@ -1,5 +1,5 @@
 // Package generated provides a function that parses a Go file and reports
-// whether it contains a "// Code generated ... DO NOT EDIT." line comment.
+// whether it contains a "// Code generated … DO NOT EDIT." line comment.
 //
 // It implements the specification at https://golang.org/s/generatedcode.
 //
