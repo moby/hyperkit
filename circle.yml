@@ -5,7 +5,7 @@ general:
     - build/LICENSE
 machine:
   xcode:
-    version: "7.3"
+    version: "9.0"
   environment:
     GOPATH: "$HOME/go"
     PROJECT_ROOT: "$GOPATH/src/github.com/moby/hyperkit"
@@ -29,6 +29,7 @@ test:
     # Go related steps
     - mkdir -p $(dirname "$PROJECT_ROOT")
     - ln -s $(pwd) "$PROJECT_ROOT"
+    - brew install golang
     - (cd go; make ci)
     # LICENSE related steps
     - find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > build/LICENSE

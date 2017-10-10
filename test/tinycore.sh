@@ -4,7 +4,7 @@ set -e
 # These are binaries from a mirror of
 #  http://tinycorelinux.net
 # with the following patch applied:
-# Upstream source is available http://www.tinycorelinux.net/6.x/x86/release/src/
+# Upstream source is available http://www.tinycorelinux.net/8.x/x86/release/src/
 #BASE_URL="http://www.tinycorelinux.net/"
 
 BASE_URL="http://distro.ibiblio.org/tinycorelinux/"
@@ -13,8 +13,8 @@ TMP_DIR=$(mktemp -d -t hyperkit)
 INITRD_DIR="${TMP_DIR}"/initrd
 
 echo Downloading tinycore linux
-curl -s -o vmlinuz "${BASE_URL}/6.x/x86/release/distribution_files/vmlinuz64"
-curl -s -o "${TMP_DIR}"/initrd.gz "${BASE_URL}/6.x/x86/release/distribution_files/core.gz"
+curl -s -o vmlinuz "${BASE_URL}/8.x/x86/release/distribution_files/vmlinuz64"
+curl -s -o "${TMP_DIR}"/initrd.gz "${BASE_URL}/8.x/x86/release/distribution_files/core.gz"
 
 mkdir "${INITRD_DIR}"
 ( cd "${INITRD_DIR}"; gzip -dc "${TMP_DIR}"/initrd.gz | sudo cpio -idm )
