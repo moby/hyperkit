@@ -31,7 +31,6 @@
  * but with a request/response messaging protocol.
  */
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -43,9 +42,10 @@ __FBSDID("$FreeBSD$");
 #include <stdlib.h>
 #include <string.h>
 
-#include "bhyverun.h"
-#include "inout.h"
-#include "fwctl.h"
+#include "xhyve/inout.h"
+#include "xhyve/xhyve.h"
+#include "xhyve/support/misc.h"
+#include "xhyve/fwctl.h"
 
 /*
  * Messaging protocol base operations
@@ -64,7 +64,7 @@ __FBSDID("$FreeBSD$");
 /*
  * Back-end state-machine
  */
-enum state {
+static enum state {
 	DORMANT,
 	IDENT_WAIT,
 	IDENT_SEND,
@@ -77,8 +77,8 @@ static u_int ident_idx;
 
 struct op_info {
 	int op;
-	int  (*op_start)(int len);
-	void (*op_data)(uint32_t data, int len);
+	int  (*op_start)(size_t len);
+	void (*op_data)(uint32_t data, size_t len);
 	int  (*op_result)(struct iovec **data);
 	void (*op_done)(struct iovec *data);
 };
@@ -86,20 +86,18 @@ static struct op_info *ops[OP_MAX+1];
 
 /* Return 0-padded uint32_t */
 static uint32_t
-fwctl_send_rest(uint32_t *data, size_t len)
+fwctl_send_rest(uint8_t *data, size_t len)
 {
 	union {
 		uint8_t c[4];
 		uint32_t w;
 	} u;
-	uint8_t *cdata;
-	int i;
+	size_t i;
 
-	cdata = (uint8_t *) data;
-	u.w = 0;	
+	u.w = 0;
 
 	for (i = 0, u.w = 0; i < len; i++)
-		u.c[i] = *cdata++;
+		u.c[i] = *data++;
 
 	return (u.w);
 }
@@ -117,7 +115,7 @@ errop_set(int err)
 }
 
 static int
-errop_start(int len)
+errop_start(UNUSED size_t len)
 {
 	errop_code = ENOENT;
 
@@ -126,7 +124,7 @@ errop_start(int len)
 }
 
 static void
-errop_data(uint32_t data, int len)
+errop_data(UNUSED uint32_t data, UNUSED size_t len)
 {
 
 	/* ignore */
@@ -142,7 +140,7 @@ errop_result(struct iovec **data)
 }
 
 static void
-errop_done(struct iovec *data)
+errop_done(UNUSED struct iovec *data)
 {
 
 	/* assert data is NULL */
@@ -161,7 +159,7 @@ SET_DECLARE(ctl_set, struct ctl);
 CTL_NODE("hw.ncpu", &guest_ncpus, sizeof(guest_ncpus));
 
 static struct ctl *
-ctl_locate(const char *str, int maxlen)
+ctl_locate(const char *str, size_t maxlen)
 {
 	struct ctl *cp, **cpp;
 
@@ -182,11 +180,11 @@ static struct {
 	size_t f_sz;
 	uint32_t f_data[1024];
 } fget_buf;
-static int fget_cnt;
+static size_t fget_cnt;
 static size_t fget_size;
 
 static int
-fget_start(int len)
+fget_start(size_t len)
 {
 
 	if (len > FGET_STRSZ)
@@ -198,10 +196,9 @@ fget_start(int len)
 }
 
 static void
-fget_data(uint32_t data, int len)
+fget_data(uint32_t data, UNUSED size_t len)
 {
-
-	*((uint32_t *) &fget_str[fget_cnt]) = data;
+	memcpy(&fget_str[fget_cnt], &data, sizeof(data));
 	fget_cnt += sizeof(uint32_t);
 }
 
@@ -222,13 +219,13 @@ fget_result(struct iovec **data, int val)
 		if (val) {
 			/* For now, copy the len/data into a buffer */
 			memset(&fget_buf, 0, sizeof(fget_buf));
-			fget_buf.f_sz = cp->c_len;
+			fget_buf.f_sz = (size_t)cp->c_len;
 			memcpy(fget_buf.f_data, cp->c_data, cp->c_len);
 			fget_biov[0].iov_base = (char *)&fget_buf;
 			fget_biov[0].iov_len  = sizeof(fget_buf.f_sz) +
-				cp->c_len;
+				(size_t)cp->c_len;
 		} else {
-			fget_size = cp->c_len;
+			fget_size = (size_t)cp->c_len;
 			fget_biov[0].iov_base = (char *)&fget_size;
 			fget_biov[0].iov_len  = sizeof(fget_size);
 		}
@@ -242,7 +239,7 @@ fget_result(struct iovec **data, int val)
 }
 
 static void
-fget_done(struct iovec *data)
+fget_done(UNUSED struct iovec *data)
 {
 
 	/* nothing needs to be freed */
@@ -309,7 +306,8 @@ fwctl_request_done(void)
 	if (rinfo.resp_biov == NULL) {
 		rinfo.resp_size = 0;
 	} else {
-		rinfo.resp_size = rinfo.resp_biov[0].iov_len;
+		assert(rinfo.resp_biov[0].iov_len < INT_MAX);
+		rinfo.resp_size = (int)rinfo.resp_biov[0].iov_len;
 	}
 }
 
@@ -344,7 +342,7 @@ fwctl_request_start(void)
 static int
 fwctl_request_data(uint32_t value)
 {
-	int remlen;
+	size_t remlen;
 
 	/* Make sure remaining size is >= 0 */
 	rinfo.req_size -= sizeof(uint32_t);
@@ -398,14 +396,14 @@ fwctl_request(uint32_t value)
 static int
 fwctl_response(uint32_t *retval)
 {
-	uint32_t *dp;
-	int remlen;
+	uint8_t *dp;
+	size_t remlen;
 
 	switch(rinfo.resp_count) {
 	case 0:
 		/* 4 x u32 header len + data */
 		*retval = 4*sizeof(uint32_t) +
-		    roundup(rinfo.resp_size, sizeof(uint32_t));
+		    roundup((uint32_t)rinfo.resp_size, sizeof(uint32_t));
 		rinfo.resp_count++;
 		break;
 	case 1:
@@ -417,15 +415,14 @@ fwctl_response(uint32_t *retval)
 		rinfo.resp_count++;
 		break;
 	case 3:
-		*retval = rinfo.resp_error;
+		*retval = (uint32_t)rinfo.resp_error;
 		rinfo.resp_count++;
 		break;
 	default:
-		remlen = rinfo.resp_size - rinfo.resp_off;
-		dp = (uint32_t *)
-		    ((uint8_t *)rinfo.resp_biov->iov_base + rinfo.resp_off);
+		remlen = (size_t)rinfo.resp_size - (size_t)rinfo.resp_off;
+		dp = ((uint8_t *)rinfo.resp_biov->iov_base + rinfo.resp_off);
 		if (remlen >= sizeof(uint32_t)) {
-			*retval = *dp;
+			memcpy(retval, dp, sizeof(*retval));
 		} else if (remlen > 0) {
 			*retval = fwctl_send_rest(dp, remlen);
 		}
@@ -454,12 +451,16 @@ fwctl_inb(void)
 	retval = 0xff;
 
 	switch (be_state) {
+	case DORMANT:
+	case IDENT_WAIT:
+		break;
 	case IDENT_SEND:
 		retval = sig[ident_idx++];
 		if (ident_idx >= sizeof(sig))
 			be_state = REQ;
 		break;
-	default:
+	case REQ:
+	case RESP:
 		break;
 	}
 
@@ -470,14 +471,17 @@ static void
 fwctl_outw(uint16_t val)
 {
 	switch (be_state) {
+	case DORMANT:
+		break;
 	case IDENT_WAIT:
 		if (val == 0) {
 			be_state = IDENT_SEND;
 			ident_idx = 0;
 		}
 		break;
-	default:
-		/* ignore */
+	case IDENT_SEND:
+	case REQ:
+	case RESP:
 		break;
 	}
 }
@@ -488,12 +492,15 @@ fwctl_inl(void)
 	uint32_t retval;
 
 	switch (be_state) {
+	case DORMANT:
+	case IDENT_WAIT:
+	case IDENT_SEND:
+	case REQ:
+		retval = 0xffffffff;
+		break;
 	case RESP:
 		if (fwctl_response(&retval))
 			be_state = REQ;
-		break;
-	default:
-		retval = 0xffffffff;
 		break;
 	}
 
@@ -505,18 +512,22 @@ fwctl_outl(uint32_t val)
 {
 
 	switch (be_state) {
+	case DORMANT:
+	case IDENT_WAIT:
+	case IDENT_SEND:
+		break;
 	case REQ:
 		if (fwctl_request(val))
 			be_state = RESP;
-	default:
+	case RESP:
 		break;
 	}
 
 }
 
 static int
-fwctl_handler(struct vmctx *ctx, int vcpu, int in, int port, int bytes,
-    uint32_t *eax, void *arg)
+fwctl_handler(UNUSED int vcpu, int in, UNUSED int port, int bytes,
+    uint32_t *eax, UNUSED void *arg)
 {
 
 	if (in) {
@@ -528,7 +539,7 @@ fwctl_handler(struct vmctx *ctx, int vcpu, int in, int port, int bytes,
 			*eax = 0xffff;
 	} else {
 		if (bytes == 2)
-			fwctl_outw(*eax);
+			fwctl_outw((uint16_t)*eax);
 		else if (bytes == 4)
 			fwctl_outl(*eax);
 	}

@@ -29,7 +29,7 @@
 #ifndef _FWCTL_H_
 #define _FWCTL_H_
 
-#include <sys/linker_set.h>
+#include <xhyve/support/linker_set.h>
 
 /*
  * Linker set api for export of information to guest firmware via

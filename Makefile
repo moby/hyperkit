@@ -40,6 +40,7 @@ HYPERKIT_LIB_SRC := \
 	src/lib/block_if.c \
 	src/lib/consport.c \
 	src/lib/dbgport.c \
+	src/lib/fwctl.c \
 	src/lib/inout.c \
 	src/lib/ioapic.c \
 	src/lib/md5c.c \
