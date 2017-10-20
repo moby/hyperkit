@@ -59,6 +59,11 @@ bootrom_init(const char *romfile_path)
 	return 0;
 }
 
+const char * bootrom(void)
+{
+	return romfile;
+}
+
 uint64_t bootrom_load(void)
 {
 

@@ -68,6 +68,7 @@
 #include <xhyve/smbiostbl.h>
 #include <xhyve/xmsr.h>
 #include <xhyve/rtc.h>
+#include <xhyve/fwctl.h>
 
 #include <xhyve/firmware/kexec.h>
 #include <xhyve/firmware/fbsd.h>
@@ -1034,6 +1035,10 @@ main(int argc, char *argv[])
 	if (acpi) {
 		error = acpi_build(guest_ncpus);
 		assert(error == 0);
+	}
+
+	if (bootrom()) {
+		fwctl_init();
 	}
 
 	rip = 0;
