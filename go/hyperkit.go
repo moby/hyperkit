@@ -100,31 +100,32 @@ type HyperKit struct {
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
 	Disks []DiskConfig `json:"disks"`
-	// ISOImage is the (optional) path to a ISO image to attach
+	// ISOImage is the (optional) path to a ISO image to attach.
 	ISOImages []string `json:"iso"`
-	// VSock enables the virtio-socket device and exposes it on the host
+
+	// VSock enables the virtio-socket device and exposes it on the host.
 	VSock bool `json:"vsock"`
-	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host
+	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
 	// VSock guest CID
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
-	// VMNet whether to create vmnet network
+	// VMNet is whether to create vmnet network.
 	VMNet bool `json:"vmnet"`
 
-	// 9P sockets
+	// Sockets9P holds the 9P sockets.
 	Sockets9P []Socket9P `json:"9p_sockets"`
 
-	// Kernel is the path to the kernel image to boot
+	// Kernel is the path to the kernel image to boot.
 	Kernel string `json:"kernel"`
-	// Initrd is the path to the initial ramdisk to boot off
+	// Initrd is the path to the initial ramdisk to boot off.
 	Initrd string `json:"initrd"`
-	// Bootrom is the path to a boot rom eg for UEFI boot
+	// Bootrom is the path to a boot rom eg for UEFI boot.
 	Bootrom string `json:"bootrom"`
 
-	// CPUs is the number CPUs to configure
+	// CPUs is the number CPUs to configure.
 	CPUs int `json:"cpus"`
-	// Memory is the amount of megabytes of memory for the VM
+	// Memory is the amount of megabytes of memory for the VM.
 	Memory int `json:"memory"`
 
 	// Console defines where the console of the VM should be
@@ -540,7 +541,7 @@ func (h *HyperKit) execHyperKit() error {
 				for {
 					tty, err = os.OpenFile(ttyPath, os.O_RDONLY, 0)
 					if err != nil {
-						time.Sleep(10 * 1000 * 1000 * time.Nanosecond)
+						time.Sleep(10 * time.Millisecond)
 						continue
 					} else {
 						break
