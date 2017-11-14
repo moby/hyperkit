@@ -537,15 +537,13 @@ func (h *HyperKit) execHyperKit() error {
 			go func() {
 				ttyPath := fmt.Sprintf("%s/tty", h.StateDir)
 				var tty *os.File
-				var err error
 				for {
+					var err error
 					tty, err = os.OpenFile(ttyPath, os.O_RDONLY, 0)
-					if err != nil {
-						time.Sleep(10 * time.Millisecond)
-						continue
-					} else {
+					if err == nil {
 						break
 					}
+					time.Sleep(10 * time.Millisecond)
 				}
 				saneTerminal(tty)
 				setRaw(tty)
