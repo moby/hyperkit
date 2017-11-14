@@ -283,7 +283,7 @@ func (h *HyperKit) execute(cmdline string) error {
 			if config.Size <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			config.Path = fmt.Sprintf(filepath.Clean(filepath.Join(h.StateDir, "disk%02d.img")), idx)
+			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = config
 		}
 		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
