@@ -102,6 +102,8 @@ type HyperKit struct {
 
 	// VSock enables the virtio-socket device and exposes it on the host.
 	VSock bool `json:"vsock"`
+	// VSockDir specifies where the unix domain sockets will be created. Defaults to StateDir when empty.
+	VSockDir string `json:"vsock_dir"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
 	// VSock guest CID
@@ -248,8 +250,8 @@ func (h *HyperKit) execute(cmdline string) error {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
-	if h.VSock && h.StateDir == "" {
-		return fmt.Errorf("If virtio-sockets are enabled, StateDir must be specified")
+	if h.VSock && h.VSockDir == "" && h.StateDir == "" {
+		return fmt.Errorf("If virtio-sockets are enabled, VSockDir or StateDir must be specified")
 	}
 	if !h.VSock && len(h.VSockPorts) > 0 {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
@@ -272,11 +274,12 @@ func (h *HyperKit) execute(cmdline string) error {
 		}
 	}
 
-	// Create files
-	if h.StateDir != "" {
-		err = os.MkdirAll(h.StateDir, 0755)
-		if err != nil {
-			return err
+	// Create directories.
+	for _, dir := range []string{h.VSockDir, h.StateDir} {
+		if dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("Cannot create directory %q: %v", dir, err)
+			}
 		}
 	}
 
@@ -477,7 +480,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	if h.VSock {
-		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, h.StateDir)
+		path := defaultString(h.VSockDir, h.StateDir)
+		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, path)
 		if len(h.VSockPorts) > 0 {
 			l = fmt.Sprintf("%s,guest_forwards=%s", l, intArrayToString(h.VSockPorts, ";"))
 		}
