@@ -93,12 +93,14 @@ type HyperKit struct {
 
 	// StateDir is the directory where runtime state is kept. If left empty, no state will be kept.
 	StateDir string `json:"state_dir"`
+
 	// VPNKitSock is the location of the VPNKit socket used for networking.
 	VPNKitSock string `json:"vpnkit_sock"`
 	// VPNKitUUID is a string containing a UUID, it can be used in conjunction with VPNKit to get consistent IP address.
 	VPNKitUUID string `json:"vpnkit_uuid"`
 	// VPNKitPreferredIPv4 is a string containing an IPv4 address, it can be used to request a specific IP for a UUID from VPNKit.
 	VPNKitPreferredIPv4 string `json:"vpnkit_preferred_ipv4"`
+
 	// UUID is a string containing a UUID, it sets BIOS DMI UUID for the VM (as found in /sys/class/dmi/id/product_uuid on Linux).
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
@@ -108,9 +110,11 @@ type HyperKit struct {
 
 	// VSock enables the virtio-socket device and exposes it on the host.
 	VSock bool `json:"vsock"`
+	// VSockDir specifies where the VSock will be.  Stands for StateDir if empty.
+	VSockDir string `json:"vsock_dir"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
-	// VSock guest CID
+	// VSock guest CID.
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
 	// VMNet is whether to create vmnet network.
@@ -148,11 +152,11 @@ type HyperKit struct {
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
-	// Pid of the hyperkit process
+	// Pid of the hyperkit process.
 	Pid int `json:"pid"`
-	// Arguments used to execute the hyperkit process
+	// Arguments used to execute the hyperkit process.
 	Arguments []string `json:"arguments"`
-	// CmdLine is a single string of the command line
+	// CmdLine is a single string of the command line.
 	CmdLine string `json:"cmdline"`
 
 	process    *os.Process
@@ -256,8 +260,8 @@ func (h *HyperKit) execute(cmdline string) error {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
-	if h.VSock && h.StateDir == "" {
-		return fmt.Errorf("If virtio-sockets are enabled, StateDir must be specified")
+	if h.VSock && h.VSockDir == "" && h.StateDir == "" {
+		return fmt.Errorf("If virtio-sockets are enabled, VSockDir or StateDir must be specified")
 	}
 	if !h.VSock && len(h.VSockPorts) > 0 {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
@@ -280,11 +284,12 @@ func (h *HyperKit) execute(cmdline string) error {
 		}
 	}
 
-	// Create files
-	if h.StateDir != "" {
-		err = os.MkdirAll(h.StateDir, 0755)
-		if err != nil {
-			return err
+	// Create directories.
+	for _, dir := range []string{h.VSockDir, h.StateDir} {
+		if dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("Cannot create directory %q: %v", dir, err)
+			}
 		}
 	}
 
@@ -467,10 +472,7 @@ func (h *HyperKit) buildArgs(cmdline string) {
 
 	for _, p := range h.Disks {
 		// Default the driver to virtio-blk
-		driver := "virtio-blk"
-		if p.Driver != "" {
-			driver = p.Driver
-		}
+		driver := defaultString(p.Driver, "virtio-blk")
 		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, driver, p.Path)
 
 		// Add on a format instruction if specified.
@@ -482,7 +484,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	if h.VSock {
-		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, h.StateDir)
+		path := defaultString(h.VSockDir, h.StateDir)
+		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, path)
 		if len(h.VSockPorts) > 0 {
 			l = fmt.Sprintf("%s,guest_forwards=%s", l, intArrayToString(h.VSockPorts, ";"))
 		}
@@ -689,4 +692,14 @@ func getHome() string {
 		return usr.HomeDir
 	}
 	return os.Getenv("HOME")
+}
+
+// defaultString returns the first non empty string, or "" if there is none.
+func defaultString(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
 }
