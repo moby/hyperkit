@@ -1,0 +1,39 @@
+From 04a4e29db7d86e56ba7cb3b1ea6a26cdf9e597b2 Mon Sep 17 00:00:00 2001
+From: Gabriel Scherer <gabriel.scherer@gmail.com>
+Date: Fri, 20 Oct 2017 16:13:59 +0200
+Subject: [PATCH] don't install an empty 'num' package if a third-party package
+ exists
+
+When reinstalling/updating ocamlfind in an existing OCaml environment,
+ocamlfind is installed in a context where ocamlfind packages may
+already exist. In particular, the `num` package (separated from the
+compiler distribution in 4.06) may exist and own the file
+${ocaml_core_stdlib}/num.cmi. In this case ocamlfind should not
+overwrite it by installing its own num package -- the behaviour
+observed by Jacques-Pascal Deplaix before this patch.
+
+This approach may be generalizable to the other builtin base packages.
+---
+ configure | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/configure b/configure
+index 6a4a558..2627f1f 100755
+--- a/configure
++++ b/configure
+@@ -524,7 +524,11 @@ fi
+ 
+ # num?
+ 
+-if [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
++if [ -f "${ocaml_sitelib}/num/META" ]; then
++    echo "num: package already present"
++    lnum=""
++    numtop=""
++elif [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
+     echo "num: found"
+     lnum="num num-top"
+     numtop="num-top"
+-- 
+2.9.5
+

@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer:   "Thomas Gazagnaire <thomas@gazagnaire.org>"
+authors:      ["Thomas Gazagnaire <thomas@gazagnaire.org>"]
+homepage:     "https://github.com/mirage/mirage-fs"
+doc:          "https://mirage.github.io/mirage-fs/"
+license:      "ISC"
+dev-repo:     "https://github.com/mirage/mirage-fs.git"
+bug-reports:  "https://github.com/mirage/mirage-fs/issues"
+tags:         ["org:mirage"]
+
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta10"}
+  "fmt"
+  "mirage-device" {>= "1.0.0"}
+]
+
+available: [ ocaml-version >= "4.03.0"]

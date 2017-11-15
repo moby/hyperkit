@@ -1,0 +1,21 @@
+opam-version: "1.2"
+maintainer: "Francois BERENGER <ligand@free.fr>"
+homepage: "http://www.gnu.org/software/which/"
+authors: "Carlo Wood"
+bug-reports: "https://github.com/ocaml/opam-repository/issues"
+dev-repo: "https://github.com/ocaml/opam-repository.git"
+license: "GPL-2+"
+build: [["which" "which"]]
+depexts: [
+
+# the which package is only available for alpine >= 3.4
+# [["alpine"] ["which"]]
+
+  [["centos"] ["which"]]
+  [["fedora"] ["which"]]
+  [["opensuse"] ["which"]]
+  [["debian"] ["debianutils"]]
+  [["ubuntu"] ["debianutils"]]
+  [["nixpkgs"] ["which"]]
+  [["archlinux"] ["which"]]
+]

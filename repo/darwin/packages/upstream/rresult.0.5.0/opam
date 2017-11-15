@@ -1,0 +1,19 @@
+opam-version: "1.2"
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+homepage: "http://erratique.ch/software/rresult"
+doc: "http://erratique.ch/software/rresult"
+dev-repo: "http://erratique.ch/repos/rresult.git"
+bug-reports: "https://github.com/dbuenzli/rresult/issues"
+tags: [ "result" "error" "declarative" "org:erratique" ]
+license: "ISC"
+available: [ ocaml-version >= "4.01.0"]
+depends: [
+   "ocamlfind" {build}
+   "ocamlbuild" {build}
+   "topkg" {build}
+   "result"
+]
+build:[[
+  "ocaml" "pkg/pkg.ml" "build"
+          "--pinned" "%{pinned}%" ]]

@@ -1,0 +1,14 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/ppx_traverse_builtins"
+bug-reports: "https://github.com/janestreet/ppx_traverse_builtins/issues"
+dev-repo: "https://github.com/janestreet/ppx_traverse_builtins.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "--only-packages" "ppx_traverse_builtins" "--root" "." "-j" jobs "@install"]
+]
+depends: [
+  "jbuilder" {build & >= "1.0+beta4"}
+]
+available: [ ocaml-version >= "4.03.0" ]

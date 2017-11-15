@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/ppx_base"
+bug-reports: "https://github.com/janestreet/ppx_base/issues"
+dev-repo: "https://github.com/janestreet/ppx_base.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "--only-packages" "ppx_base" "--root" "." "-j" jobs "@install"]
+]
+depends: [
+  "jbuilder"                {build & >= "1.0+beta4"}
+  "ppx_compare"             {>= "v0.9" & < "v0.10"}
+  "ppx_driver"              {>= "v0.9" & < "v0.10"}
+  "ppx_enumerate"           {>= "v0.9" & < "v0.10"}
+  "ppx_hash"                {>= "v0.9" & < "v0.10"}
+  "ppx_js_style"            {>= "v0.9" & < "v0.10"}
+  "ppx_sexp_conv"           {>= "v0.9" & < "v0.10"}
+  "ppx_type_conv"           {>= "v0.9" & < "v0.10"}
+  "ocaml-migrate-parsetree" {>= "0.4"}
+]
+available: [ ocaml-version >= "4.03.0" ]

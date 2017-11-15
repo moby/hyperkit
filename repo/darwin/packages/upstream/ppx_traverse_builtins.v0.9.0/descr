@@ -1,0 +1,4 @@
+Builtins for Ppx_traverse
+
+This library defines the default methods for builtin types (int,
+string, list, ...) for Ppx_traverse.

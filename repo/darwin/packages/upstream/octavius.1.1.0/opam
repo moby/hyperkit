@@ -1,0 +1,22 @@
+version: "1.1.0"
+opam-version: "1.2"
+name: "octavius"
+maintainer: "leo@lpw25.net"
+authors: [ "Leo White <leo@lpw25.net>" ]
+homepage: "https://github.com/ocaml-doc/octavius"
+doc: "http://ocaml-doc.github.io/octavius/"
+license: "ISC"
+dev-repo: "http://github.com/ocaml-doc/octavius.git"
+bug-reports: "https://github.com/ocaml-doc/octavius/issues"
+tags: ["doc" "ocamldoc" "org:ocaml-doc"]
+
+available: [ ocaml-version >= "4.03.0"]
+depends: [
+  "ocamlfind" {build}
+  "jbuilder" {build}
+  "topkg" {build & >= "0.7.5"} ]
+
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]

@@ -1,0 +1,44 @@
+opam-version: "1.2"
+maintainer: "dave@recoil.org"
+authors: ["David Scott"]
+license: "ISC"
+homepage: "https://github.com/mirage/ocaml-qcow"
+dev-repo: "https://github.com/mirage/ocaml-qcow.git"
+bug-reports: "https://github.com/mirage/ocaml-qcow/issues"
+tags: [
+  "org:mirage"
+]
+
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+
+depends: [
+  "qcow" {= "0.10.3"}
+  "cmdliner"
+  "cstruct"
+  "result"
+  "unix-type-representations"
+  "mirage-types-lwt" {>= "3.0.0"}
+  "lwt"
+  "mirage-block" {>= "0.2"}
+  "mirage-block-lwt"
+  "mirage-block-unix" {>= "2.1.0"}
+  "mirage-time"
+  "mirage-time-lwt"
+  "sha"
+  "sexplib"
+  "logs"
+  "fmt" {>="0.8.2"}
+  "astring"
+  "io-page"
+  "ocamlfind" {build}
+  "jbuilder" {build}
+  "ounit" {test}
+  "mirage-block-ramdisk" {test}
+  "ezjsonm" {test}
+  "nbd" {test & >= "2.0.1"}
+]
+
+available: [ocaml-version >= "4.03.0"]

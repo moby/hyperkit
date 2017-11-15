@@ -1,0 +1,20 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/ppx_sexp_conv"
+bug-reports: "https://github.com/janestreet/ppx_sexp_conv/issues"
+dev-repo: "https://github.com/janestreet/ppx_sexp_conv.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "--only-packages" "ppx_sexp_conv" "--root" "." "-j" jobs "@install"]
+]
+depends: [
+  "jbuilder"                {build & >= "1.0+beta4"}
+  "ppx_core"                {>= "v0.9" & < "v0.10"}
+  "ppx_driver"              {>= "v0.9" & < "v0.10"}
+  "ppx_metaquot"            {>= "v0.9" & < "v0.10"}
+  "ppx_type_conv"           {>= "v0.9" & < "v0.10"}
+  "sexplib"                 {>= "v0.9" & < "v0.10"}
+  "ocaml-migrate-parsetree" {>= "0.4"}
+]
+available: [ ocaml-version >= "4.03.0" ]
