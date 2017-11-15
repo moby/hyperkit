@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer:   "Thomas Gazagnaire <thomas@gazagnaire.org>"
+authors:      ["Thomas Gazagnaire <thomas@gazagnaire.org>"]
+homepage:     "https://github.com/mirage/mirage-kv"
+doc:          "https://mirage.github.io/mirage-kv/"
+license:      "ISC"
+dev-repo:     "https://github.com/mirage/mirage-kv.git"
+bug-reports:  "https://github.com/mirage/mirage-kv/issues"
+tags:         ["org:mirage"]
+
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta10"}
+  "mirage-device" {>= "1.0.0"}
+  "fmt"
+]
+
+available: [ ocaml-version >= "4.03.0"]

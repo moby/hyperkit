@@ -1,0 +1,19 @@
+opam-version: "1.2"
+name: "magic-mime"
+maintainer: "Anil Madhavapeddy <anil@recoil.org>"
+authors: ["Anil Madhavapeddy" "Maxence Guesdon"]
+homepage: "https://github.com/mirage/ocaml-magic-mime"
+bug-reports: "https://github.com/mirage/ocaml-magic-mime/issues"
+dev-repo: "https://github.com/mirage/ocaml-magic-mime.git"
+doc: "https://mirage.github.io/ocaml-magic-mime"
+license: "ISC"
+
+build: [
+  [ "jbuilder" "subst"] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder"  {build & >="1.0+beta9"}
+]
+available: [ ocaml-version >= "4.03.0" ]

@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer:    "thomas@gazagnaire.org"
+homepage:      "https://github.com/mirage/mirage-time"
+bug-reports:   "https://github.com/mirage/mirage-time/issues"
+dev-repo:      "https://github.com/mirage/mirage-time.git"
+doc:           "https://mirage.github.io/mirage-time/"
+authors:       ["Thomas Gazagnaire" "Anil Madhavapeddy" "Gabriel Radanne"
+               "Mindy Preston" "Thomas Leonard" "Nicolas Ojeda Bar"
+               "Dave Scott" "David Kaloper" "Hannes Mehnert" "Richard Mortier"]
+tags:          [ "org:mirage"]
+license:       "ISC"
+
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta9"}
+  "mirage-time" {>= "1.0.0"}
+  "lwt"
+]

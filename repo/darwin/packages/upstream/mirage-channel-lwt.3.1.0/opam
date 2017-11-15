@@ -1,0 +1,32 @@
+opam-version: "1.2"
+maintainer:   "Anil Madhavapeddy <anil@recoil.org>"
+authors:      ["Anil Madhavapeddy" "Mindy Preston" "Thomas Gazagnaire"]
+homepage:     "https://github.com/mirage/mirage-channel"
+doc:          "http://docs.mirage.io/mirage-channel"
+license:      "ISC"
+dev-repo:     "https://github.com/mirage/mirage-channel.git"
+bug-reports:  "https://github.com/mirage/mirage-channel/issues"
+tags:         ["org:mirage"]
+
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+build-test: [
+  [ "jbuilder" "runtest" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta10"}
+  "mirage-flow-lwt" {>= "1.2.0"}
+  "mirage-channel" {>= "3.1.0"}
+  "io-page"
+  "result"
+  "lwt" {>= "2.4.7"}
+  "cstruct"
+  "logs"
+  "alcotest" {test}
+  "io-page-unix" {test}
+]
+conflicts: [ "tcpip" {<"2.5.0"} ]
+available: [ ocaml-version >= "4.02.3"]

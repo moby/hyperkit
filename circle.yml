@@ -11,6 +11,8 @@ machine:
     PROJECT_ROOT: "$GOPATH/src/github.com/moby/hyperkit"
     PATH: "${PATH}:${GOPATH}/bin"
     MACOSX_DEPLOYMENT_TARGET: "10.10"
+    OPAM_REPO: repo/darwin
+    OPAM_COMP: "4.03.0"
     OPAMVERBOSE: "1"
     OPAMYES: "1"
 test:
@@ -20,8 +22,8 @@ test:
     - test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
     - make test
     - brew install opam
-    - opam init
-    - opam config exec -- opam depext -i uri qcow.0.10.3 conduit.1.0.0 lwt.3.1.0 qcow-tool mirage-block-unix.2.7.0 ocamlfind conf-libev logs fmt mirage-unix prometheus-app
+    - opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+    - opam config exec -- opam depext -i hyperkit
     - opam config exec -- make clean
     - opam config exec -- make all
     - opam config exec -- make test
@@ -33,3 +35,5 @@ test:
     - (cd go; make ci)
     # LICENSE related steps
     - find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > build/LICENSE
+    - opam config exec -- make -C repo list-licenses
+    - cat repo/OCAML-LICENSES >> build/LICENSE

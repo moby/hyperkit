@@ -1,0 +1,19 @@
+opam-version: "1.2"
+maintainer:    "thomas@gazagnaire.org"
+homepage:      "https://github.com/mirage/mirage-device"
+bug-reports:   "https://github.com/mirage/mirage-device/issues"
+dev-repo:      "https://github.com/mirage/mirage-device.git"
+doc:           "https://mirage.github.io/mirage-device/"
+authors:       ["Thomas Gazagnaire" "Anil Madhavapeddy" "Gabriel Radanne"
+               "Mindy Preston" "Thomas Leonard" "Nicolas Ojeda Bar"
+               "Dave Scott" "David Kaloper" "Hannes Mehnert" "Richard Mortier"]
+tags:          [ "org:mirage"]
+license:       "ISC"
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "jbuilder"  {build & >="1.0+beta7"}
+  "fmt"
+]

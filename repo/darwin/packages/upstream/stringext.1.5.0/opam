@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer:   "rudi.grinberg@gmail.com"
+authors:      "Rudi Grinberg"
+homepage:     "https://github.com/rgrinberg/stringext"
+bug-reports:  "https://github.com/rgrinberg/stringext/issues"
+license:      "MIT"
+dev-repo:     "https://github.com/rgrinberg/stringext.git"
+
+build: [
+  ["jbuilder" "subst" "-n" name] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
+
+depends: [
+  "jbuilder" {build & >= "1.0+beta10"}
+  "ounit" {test}
+  "qtest" {test & >="2.2"}
+  "base-bytes"
+]
+
+available: [ocaml-version >= "4.02.3"]

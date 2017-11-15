@@ -1,0 +1,20 @@
+opam-version: "1.2"
+maintainer: "yallop@gmail.com"
+authors: ["Jeremy Yallop"
+          "Demi Obenour"
+          "Stephane Glondu"
+          "Andreas Hauptmann"]
+homepage: "https://github.com/ocamllabs/ocaml-integers"
+bug-reports: "https://github.com/ocamllabs/ocaml-integers/issues"
+dev-repo: "https://github.com/ocamllabs/ocaml-integers.git"
+license: "MIT"
+build:
+[[ "ocaml" "pkg/pkg.ml" "build"
+           "--pinned" "%{pinned}%"]]
+depends: [
+  "ocamlbuild" {build}
+  "ocamlfind" {build}
+  "topkg" {build}
+]
+
+doc: "http://ocamllabs.github.io/ocaml-integers/api.docdir/"

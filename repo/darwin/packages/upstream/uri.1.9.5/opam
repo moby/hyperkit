@@ -1,0 +1,33 @@
+opam-version: "1.2"
+homepage: "https://github.com/mirage/ocaml-uri"
+bug-reports: "https://github.com/mirage/ocaml-uri/issues"
+dev-repo: "https://github.com/mirage/ocaml-uri.git"
+maintainer: "sheets@alum.mit.edu"
+authors: [
+  "Anil Madhavapeddy"
+  "David Sheets"
+  "Rudi Grinberg"
+]
+license: "ISC"
+tags: [
+  "url"
+  "uri"
+  "org:mirage"
+  "org:xapi-project"
+]
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+build-test: [ "jbuilder" "runtest" "-p" name "-j" jobs ]
+depends: [
+  "base-bytes"
+  "ocamlfind" {build}
+  "jbuilder" {build & >="1.0+beta7"}
+  "ounit" {test & >= "1.0.2"}
+  "ppx_sexp_conv" {build & >= "v0.9.0"}
+  "re"
+  "sexplib" {>= "v0.9.0"}
+  "stringext" {>= "1.4.0"}
+]
+available: [ ocaml-version >= "4.03.0" ]

@@ -1,0 +1,19 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/ppx_core"
+bug-reports: "https://github.com/janestreet/ppx_core/issues"
+dev-repo: "https://github.com/janestreet/ppx_core.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "--only-packages" "ppx_core" "--root" "." "-j" jobs "@install"]
+]
+depends: [
+  "base"                  {>= "v0.9" & < "v0.10"}
+  "jbuilder"              {build & >= "1.0+beta4"}
+  "ocaml-compiler-libs"   {>= "v0.9" & < "v0.10"}
+  "ppx_ast"               {>= "v0.9" & < "v0.10"}
+  "ppx_traverse_builtins" {>= "v0.9" & < "v0.10"}
+  "stdio"                 {>= "v0.9" & < "v0.10"}
+]
+available: [ ocaml-version >= "4.03.0" & ocaml-version < "4.06.0" ]

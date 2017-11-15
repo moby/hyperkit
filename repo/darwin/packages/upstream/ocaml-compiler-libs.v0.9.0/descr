@@ -1,0 +1,4 @@
+OCaml compiler libraries repackaged
+
+This packages exposes the OCaml compiler libraries repackages under
+the toplevel names Ocaml_common, Ocaml_bytecomp, ...

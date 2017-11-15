@@ -1,0 +1,22 @@
+opam-version: "1.2"
+authors:      ["Anil Madhavapeddy" "Daniel C. Bünzli" "Matthew Gray"]
+maintainer:   "anil@recoil.org"
+homepage:     "https://github.com/mirage/mirage-clock"
+bug-reports:  "https://github.com/mirage/mirage-clock/issues"
+dev-repo:     "https://github.com/mirage/mirage-clock.git"
+doc:          "https://mirage.github.io/mirage-clock/"
+license:      "ISC"
+tags:         ["org:mirage"]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta9"}
+  "mirage-clock" {>= "1.2.0"}
+  "mirage-clock-lwt" {>= "1.2.0"}
+  "lwt"
+  "configurator" {build}
+]
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+build-test: ["jbuilder" "runtest" "-p" name]

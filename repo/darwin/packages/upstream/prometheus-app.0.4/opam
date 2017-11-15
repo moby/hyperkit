@@ -1,0 +1,31 @@
+opam-version: "1.2"
+maintainer:   "datakit@docker.com"
+authors:      ["Thomas Leonard" "David Scott"]
+license:      "Apache"
+homepage:     "https://github.com/mirage/prometheus"
+bug-reports:  "https://github.com/mirage/prometheus/issues"
+dev-repo:     "https://github.com/mirage/prometheus.git"
+doc:          "https://mirage.github.io/prometheus/"
+
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+build-test: [
+  [ "jbuilder" "runtest" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder"  {build & >="1.0+beta10"}
+  "prometheus"
+  "fmt"
+  "re"
+  "cohttp" {>="0.99.0"}
+  "cohttp-lwt"
+  "cohttp-lwt-unix"
+  "lwt" {>="2.5.0"}
+  "cmdliner"
+  "alcotest" {test}
+]
+available: [ocaml-version >= "4.02.3"]

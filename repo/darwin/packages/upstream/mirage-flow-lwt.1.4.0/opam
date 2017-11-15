@@ -1,0 +1,24 @@
+opam-version: "1.2"
+maintainer:    "thomas@gazagnaire.org"
+homepage:      "https://github.com/mirage/mirage-flow"
+bug-reports:   "https://github.com/mirage/mirage-flow/issues"
+dev-repo:      "https://github.com/mirage/mirage-flow.git"
+doc:           "https://mirage.github.io/mirage-flow/"
+authors:       ["Thomas Gazagnaire" "Dave Scott"]
+tags:          [ "org:mirage"]
+license:       "ISC"
+
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder"  {build & >="1.0+beta7"}
+  "fmt"
+  "lwt"
+  "logs"
+  "cstruct" {>= "2.0.0"}
+  "mirage-clock" {>= "1.2.0"}
+  "mirage-flow" {>= "1.2.0"}
+]

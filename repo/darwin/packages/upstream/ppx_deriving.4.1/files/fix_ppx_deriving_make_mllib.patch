@@ -1,0 +1,18 @@
+From a4428407e974361d872e0a70e036bc7ee20e8467 Mon Sep 17 00:00:00 2001
+From: whitequark <whitequark@whitequark.org>
+Date: Tue, 28 Feb 2017 00:37:56 +0000
+Subject: [PATCH] Fix ppx_deriving_make.mllib.
+
+This is a bug that goes back all the way to c2fb119f, but it was
+hidden by a matching bug in ocamlbuild <0.11.
+---
+ src_plugins/ppx_deriving_make.mllib | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src_plugins/ppx_deriving_make.mllib b/src_plugins/ppx_deriving_make.mllib
+index 1b2681b..7f23204 100644
+--- a/src_plugins/ppx_deriving_make.mllib
++++ b/src_plugins/ppx_deriving_make.mllib
+@@ -1 +1 @@
+-ppx_deriving_create
++ppx_deriving_make

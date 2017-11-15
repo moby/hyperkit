@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer: "Thomas Leonard <talex5@gmail.com>"
+authors: "Thomas Leonard <talex5@gmail.com>"
+homepage: "https://github.com/mirage/mirage-profile"
+dev-repo: "https://github.com/mirage/mirage-profile.git"
+bug-reports: "https://github.com/mirage/mirage-profile/issues"
+doc: "https://mirage.github.io/mirage-profile"
+license: "BSD-2-clause"
+
+build: [
+  [ "jbuilder" "subst"] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder"  {build & >="1.0+beta9"}
+  "cstruct" {>= "3.0.0"}
+  "ppx_cstruct" {build}
+  "ocplib-endian"
+  "lwt"
+]
+available: [ ocaml-version >= "4.03.0" ]

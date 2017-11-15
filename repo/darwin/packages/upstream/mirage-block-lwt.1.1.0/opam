@@ -1,0 +1,27 @@
+opam-version: "1.2"
+maintainer: "dave@recoil.org"
+authors: [ "David Scott" ]
+license: "ISC"
+homepage: "https://github.com/mirage/mirage-block"
+dev-repo: "https://github.com/mirage/mirage-block.git"
+bug-reports: "https://github.com/mirage/mirage-block/issues"
+doc: "https://mirage.gitub.io/mirage-block/"
+
+build: [
+  [ "jbuilder" "subst"] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "ocamlfind"  {build}
+  "jbuilder"  {build & >="1.0+beta9"}
+  "base-bytes"
+  "cstruct" {>= "2.0.0"}
+  "io-page"
+  "lwt"
+  "logs"
+  "mirage-block" {>= "1.0.0"}
+]
+
+available: [ocaml-version >= "4.02.0"]
+tags: "org:mirage"

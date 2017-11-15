@@ -1,0 +1,24 @@
+opam-version: "1.2"
+maintainer:   "Mindy Preston <meetup@yomimono.org>"
+authors:      ["Mindy Preston <meetup@yomimono.org>"]
+homepage:     "https://github.com/mirage/mirage-stack"
+doc:          "https://mirage.github.io/mirage-stack/"
+license:      "ISC"
+dev-repo:     "https://github.com/mirage/mirage-stack.git"
+bug-reports:  "https://github.com/mirage/mirage-stack/issues"
+tags:         ["org:mirage"]
+
+build: [
+  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta9"}
+  "mirage-stack" {>= "1.0.0"}
+  "ipaddr"
+  "lwt"
+  "cstruct" {>= "2.4.0"}
+]
+
+available: [ ocaml-version >= "4.03.0"]

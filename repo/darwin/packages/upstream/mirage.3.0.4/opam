@@ -1,0 +1,33 @@
+opam-version: "1.2"
+maintainer:   ["anil@recoil.org" "thomas@gazagnaire.org"]
+authors:      ["Thomas Gazagnaire" "Anil Madhavapeddy" "Gabriel Radanne"
+               "Mindy Preston" "Thomas Leonard" "Nicolas Ojeda Bar"
+               "Dave Scott" "David Kaloper" "Hannes Mehnert" "Richard Mortier"]
+homepage:     "https://mirage.io/"
+bug-reports:  "https://github.com/mirage/mirage/issues/"
+dev-repo:     "https://github.com/mirage/mirage.git"
+tags:         ["org:mirage" "org:xapi-project"]
+doc:          "https://mirage.github.io/mirage/"
+
+build: ["ocaml" "pkg/pkg.ml" "build" "--pkg-name" name "--pinned" "%{pinned}%"]
+
+depends: [
+  "ocamlbuild" {build}
+  "ocamlfind"  {build}
+  "topkg"      {build & >= "0.8.0"}
+  "ipaddr"             {>= "2.6.0"}
+  "functoria"          {>= "2.0.0" & <"2.2.0"}
+  "bos"
+  "astring"
+  "logs"
+  "mirage-runtime"     {>= "3.0.0"}
+]
+conflicts: [
+  "nocrypto" {< "0.4.0"}
+  "cstruct"  {< "1.0.1"}
+  "io-page"  {< "2.0.0"}
+  "mirage-qubes" {< "0.5" }
+  "mirage-solo5" {< "0.2.1" }
+  "crunch"   {< "1.2.2"}
+]
+available: [ocaml-version >= "4.02.3"]

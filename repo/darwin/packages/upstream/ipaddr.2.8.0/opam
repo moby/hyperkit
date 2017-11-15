@@ -1,0 +1,32 @@
+opam-version: "1.2"
+maintainer:   "sheets@alum.mit.edu"
+authors: [
+              "David Sheets"
+              "Anil Madhavapeddy"
+              "Hugo Heuzard"
+]
+license:      "ISC"
+homepage:     "https://github.com/mirage/ocaml-ipaddr"
+bug-reports:  "https://github.com/mirage/ocaml-ipaddr/issues"
+dev-repo:     "https://github.com/mirage/ocaml-ipaddr.git"
+doc:          "https://mirage.github.io/ocaml-ipaddr/"
+
+tags: [
+  "org:mirage"
+  "org:xapi-project"
+]
+
+build: [
+  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+build-test: [ "jbuilder" "runtest" "-p" name "-j" jobs ]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta7"}
+  "base-bytes"
+  "ppx_sexp_conv" {build & >="v0.9.0"}
+  "ounit" {test}
+]
+depopts: [ "base-unix" ]
+available: [ ocaml-version >= "4.03.0" ]

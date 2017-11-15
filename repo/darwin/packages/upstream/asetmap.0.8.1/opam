@@ -1,0 +1,18 @@
+opam-version: "1.2"
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+homepage: "http://erratique.ch/software/asetmap"
+doc: "http://erratique.ch/software/asetmap/doc"
+license: "ISC"
+dev-repo: "http://erratique.ch/repos/asetmap.git"
+bug-reports: "https://github.com/dbuenzli/asetmap/issues"
+tags: [ "org:erratique" "set" "map" "stdlib" ]
+available: [ ocaml-version >= "4.01.0"]
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build} ]
+depopts: []
+build: [
+  "ocaml" "pkg/pkg.ml" "build"
+          "--pinned" "%{pinned}%" ]
