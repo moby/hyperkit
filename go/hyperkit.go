@@ -379,12 +379,10 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	files, _ := ioutil.ReadDir(h.StateDir)
 	for _, f := range files {
 		fn := filepath.Clean(filepath.Join(h.StateDir, f.Name()))
-		if h.isDisk(fn) {
-			continue
-		}
-		err := os.Remove(fn)
-		if err != nil {
-			return err
+		if !h.isDisk(fn) {
+			if err := os.Remove(fn); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
