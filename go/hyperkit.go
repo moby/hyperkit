@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -76,6 +75,13 @@ type DiskConfig struct {
 	Size   int    `json:"size"`
 	Format string `json:"format"`
 	Driver string `json:"driver"`
+}
+
+// Logger is an interface for logging.
+type Logger interface {
+	Fatalf(format string, v ...interface{})
+	Panicf(format string, v ...interface{})
+	Printf(format string, v ...interface{})
 }
 
 // HyperKit contains the configuration of the hyperkit VM
@@ -137,7 +143,9 @@ type HyperKit struct {
 
 	process    *os.Process
 	background bool
-	log        *log.Logger
+
+	// log receives stdout/stderr of the hyperkit process itself, if set.
+	log Logger
 }
 
 // New creates a template config structure.
@@ -204,7 +212,7 @@ func FromState(statedir string) (*HyperKit, error) {
 
 // SetLogger sets the log instance to use for the output of the hyperkit process itself (not the console of the VM).
 // This is only relevant when Console is set to ConsoleFile
-func (h *HyperKit) SetLogger(logger *log.Logger) {
+func (h *HyperKit) SetLogger(logger Logger) {
 	h.log = logger
 }
 
@@ -563,9 +571,9 @@ func (h *HyperKit) execHyperKit() error {
 			for {
 				select {
 				case stderrl := <-stderrChan:
-					log.Printf("%s", stderrl)
+					h.log.Printf("%s", stderrl)
 				case stdoutl := <-stdoutChan:
-					log.Printf("%s", stdoutl)
+					h.log.Printf("%s", stdoutl)
 				case <-done:
 					return
 				}
