@@ -100,36 +100,47 @@ type HyperKit struct {
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
 	Disks []DiskConfig `json:"disks"`
-	// ISOImage is the (optional) path to a ISO image to attach
+	// ISOImage is the (optional) path to a ISO image to attach.
 	ISOImages []string `json:"iso"`
-	// VSock enables the virtio-socket device and exposes it on the host
+
+	// VSock enables the virtio-socket device and exposes it on the host.
 	VSock bool `json:"vsock"`
-	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host
+	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
 	// VSock guest CID
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
-	// VMNet whether to create vmnet network
+	// VMNet is whether to create vmnet network.
 	VMNet bool `json:"vmnet"`
 
-	// 9P sockets
+	// Sockets9P holds the 9P sockets.
 	Sockets9P []Socket9P `json:"9p_sockets"`
 
-	// Kernel is the path to the kernel image to boot
+	// Kernel is the path to the kernel image to boot.
 	Kernel string `json:"kernel"`
-	// Initrd is the path to the initial ramdisk to boot off
+	// Initrd is the path to the initial ramdisk to boot off.
 	Initrd string `json:"initrd"`
-	// Bootrom is the path to a boot rom eg for UEFI boot
+	// Bootrom is the path to a boot rom eg for UEFI boot.
 	Bootrom string `json:"bootrom"`
 
-	// CPUs is the number CPUs to configure
+	// CPUs is the number CPUs to configure.
 	CPUs int `json:"cpus"`
-	// Memory is the amount of megabytes of memory for the VM
+	// Memory is the amount of megabytes of memory for the VM.
 	Memory int `json:"memory"`
 
 	// Console defines where the console of the VM should be
 	// connected to. ConsoleStdio and ConsoleFile are supported.
 	Console int `json:"console"`
+
+	// ExtraFiles is exactly exec.Cmd.ExtraFiles.  It specifies
+	// additional open files to be inherited by the hyperkit
+	// process. It does not include standard input, standard
+	// output, or standard error. If non-nil, entry i becomes file
+	// descriptor 3+i.
+	//
+	// It can be used to keep some files alive even if the parent
+	// process died unexpectedly.
+	ExtraFiles []*os.File `json:"extra_files"`
 
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
@@ -282,7 +293,7 @@ func (h *HyperKit) execute(cmdline string) error {
 			if config.Size <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			config.Path = fmt.Sprintf(filepath.Clean(filepath.Join(h.StateDir, "disk%02d.img")), idx)
+			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = config
 		}
 		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
@@ -368,12 +379,10 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	files, _ := ioutil.ReadDir(h.StateDir)
 	for _, f := range files {
 		fn := filepath.Clean(filepath.Join(h.StateDir, f.Name()))
-		if h.isDisk(fn) {
-			continue
-		}
-		err := os.Remove(fn)
-		if err != nil {
-			return err
+		if !h.isDisk(fn) {
+			if err := os.Remove(fn); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -514,6 +523,7 @@ func (h *HyperKit) execHyperKit() error {
 
 	cmd := exec.Command(h.HyperKit, h.Arguments...)
 	cmd.Env = os.Environ()
+	cmd.ExtraFiles = h.ExtraFiles
 
 	// Plumb in stdin/stdout/stderr.
 	//
@@ -536,15 +546,13 @@ func (h *HyperKit) execHyperKit() error {
 			go func() {
 				ttyPath := fmt.Sprintf("%s/tty", h.StateDir)
 				var tty *os.File
-				var err error
 				for {
+					var err error
 					tty, err = os.OpenFile(ttyPath, os.O_RDONLY, 0)
-					if err != nil {
-						time.Sleep(10 * 1000 * 1000 * time.Nanosecond)
-						continue
-					} else {
+					if err == nil {
 						break
 					}
+					time.Sleep(10 * time.Millisecond)
 				}
 				saneTerminal(tty)
 				setRaw(tty)
