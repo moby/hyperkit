@@ -86,8 +86,11 @@ type Logger interface {
 
 // HyperKit contains the configuration of the hyperkit VM
 type HyperKit struct {
-	// HyperKit is the path to the hyperkit binary
+	// HyperKit is the path to the hyperkit binary.
 	HyperKit string `json:"hyperkit"`
+	// Argv0 is the name to declare as argv[0].  If left empty, argv[0] is left untouched.
+	Argv0 string `json:"argv0"`
+
 	// StateDir is the directory where runtime state is kept. If left empty, no state will be kept.
 	StateDir string `json:"state_dir"`
 	// VPNKitSock is the location of the VPNKit socket used for networking.
@@ -522,6 +525,9 @@ func (h *HyperKit) buildArgs(cmdline string) {
 func (h *HyperKit) execHyperKit() error {
 
 	cmd := exec.Command(h.HyperKit, h.Arguments...)
+	if h.Argv0 != "" {
+		cmd.Args[0] = h.Argv0
+	}
 	cmd.Env = os.Environ()
 	cmd.ExtraFiles = h.ExtraFiles
 
