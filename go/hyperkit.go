@@ -248,6 +248,7 @@ func (h *HyperKit) Start(cmdline string) error {
 
 func (h *HyperKit) execute(cmdline string) error {
 	var err error
+	h.log.Printf("hyperkit: execute %#v", h)
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
@@ -522,6 +523,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 
 	h.Arguments = a
 	h.CmdLine = h.HyperKit + " " + strings.Join(a, " ")
+	h.log.Printf("hyperkit: Arguments: %#v", h.Arguments)
+	h.log.Printf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
 // Execute hyperkit and plumb stdin/stdout/stderr.
@@ -570,6 +573,7 @@ func (h *HyperKit) execHyperKit() error {
 			}()
 		}
 	} else if h.log != nil {
+		h.log.Printf("hyperkit: Redirecting stdout/stderr to logger")
 		stdoutChan := make(chan string)
 		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
@@ -598,25 +602,32 @@ func (h *HyperKit) execHyperKit() error {
 		}()
 	}
 
+	h.log.Printf("hyperkit: Starting %#v", cmd)
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
 	h.Pid = cmd.Process.Pid
+	h.log.Printf("hyperkit: Pid is %v", h.Pid)
 	h.process = cmd.Process
 	err = h.writeState()
 	if err != nil {
+		h.log.Printf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
 		h.process.Kill()
 		return err
 	}
 	if !h.background {
+		h.log.Printf("hyperkit: Waiting for %#v", cmd)
 		err = cmd.Wait()
 		if err != nil {
 			return err
 		}
 	} else {
 		// Make sure we reap the child when it exits
-		go cmd.Wait()
+		go func() {
+			h.log.Printf("hyperkit: Waiting for %#v", cmd)
+			cmd.Wait()
+		}()
 	}
 	return nil
 }
