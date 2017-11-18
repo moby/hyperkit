@@ -305,14 +305,16 @@ func (h *HyperKit) execute(cmdline string) error {
 			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = config
 		}
-		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
-			if config.Size != 0 {
-				err = CreateDiskImage(config.Path, config.Size)
-				if err != nil {
-					return err
+		if !strings.HasPrefix(config.Path, "file://") {
+			if _, err = os.Stat(config.Path); os.IsNotExist(err) {
+				if config.Size != 0 {
+					err = CreateDiskImage(config.Path, config.Size)
+					if err != nil {
+						return err
+					}
+				} else {
+					return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", config.Path)
 				}
-			} else {
-				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", config.Path)
 			}
 		}
 	}
