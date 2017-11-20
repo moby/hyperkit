@@ -247,7 +247,6 @@ func (h *HyperKit) Start(cmdline string) error {
 }
 
 func (h *HyperKit) execute(cmdline string) error {
-	var err error
 	h.log.Printf("hyperkit: execute %#v", h)
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
@@ -257,7 +256,7 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 	}
 	for _, image := range h.ISOImages {
-		if _, err = os.Stat(image); os.IsNotExist(err) {
+		if _, err := os.Stat(image); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
@@ -268,14 +267,14 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
 	}
 	if h.Bootrom == "" {
-		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
 		}
-		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Initrd); os.IsNotExist(err) {
 			return fmt.Errorf("initrd %s does not exist", h.Initrd)
 		}
 	} else {
-		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Bootrom); os.IsNotExist(err) {
 			return fmt.Errorf("Bootrom %s does not exist", h.Bootrom)
 		}
 	}
@@ -306,10 +305,9 @@ func (h *HyperKit) execute(cmdline string) error {
 			h.Disks[idx] = config
 		}
 		if !strings.HasPrefix(config.Path, "file://") {
-			if _, err = os.Stat(config.Path); os.IsNotExist(err) {
+			if _, err := os.Stat(config.Path); os.IsNotExist(err) {
 				if config.Size != 0 {
-					err = CreateDiskImage(config.Path, config.Size)
-					if err != nil {
+					if err := CreateDiskImage(config.Path, config.Size); err != nil {
 						return err
 					}
 				} else {
