@@ -41,9 +41,9 @@ import (
 )
 
 const (
-	// ConsoleStdio configures console to use Stdio
+	// ConsoleStdio configures console to use Stdio.
 	ConsoleStdio = iota
-	// ConsoleFile configures console to a tty and output to a file
+	// ConsoleFile configures console to a tty and output to a file.
 	ConsoleFile
 
 	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
@@ -69,11 +69,15 @@ type Socket9P struct {
 	Tag  string `json:"tag"`
 }
 
-// DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
+// DiskConfig describes a disk image.
 type DiskConfig struct {
-	Path   string `json:"path"`
-	Size   int    `json:"size"`
+	// Path specifies where the image file will be.
+	Path string `json:"path"`
+	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	Size int `json:"size"`
+	// Format is passed as-is to the driver.
 	Format string `json:"format"`
+	// Driver is the name of the disk driver, "ahci-hd" or "virtio-blk".
 	Driver string `json:"driver"`
 }
 
