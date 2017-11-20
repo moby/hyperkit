@@ -47,13 +47,6 @@ type Socket9P struct {
 	Tag  string `json:"tag"`
 }
 
-// Logger is an interface for logging.
-type Logger interface {
-	Fatalf(format string, v ...interface{})
-	Panicf(format string, v ...interface{})
-	Printf(format string, v ...interface{})
-}
-
 // HyperKit contains the configuration of the hyperkit VM
 type HyperKit struct {
 	// HyperKit is the path to the hyperkit binary.
@@ -131,9 +124,6 @@ type HyperKit struct {
 
 	process    *os.Process
 	background bool
-
-	// log receives stdout/stderr of the hyperkit process itself, if set.
-	log Logger
 }
 
 // New creates a template config structure.
@@ -200,8 +190,8 @@ func FromState(statedir string) (*HyperKit, error) {
 
 // SetLogger sets the log instance to use for the output of the hyperkit process itself (not the console of the VM).
 // This is only relevant when Console is set to ConsoleFile
-func (h *HyperKit) SetLogger(logger Logger) {
-	h.log = logger
+func (h *HyperKit) SetLogger(l Logger) {
+	SetLogger(l)
 }
 
 // Run the VM with a given command line until it exits
@@ -217,7 +207,7 @@ func (h *HyperKit) Start(cmdline string) error {
 }
 
 func (h *HyperKit) execute(cmdline string) error {
-	h.log.Printf("hyperkit: execute %#v", h)
+	log.Debugf("hyperkit: execute %#v", h)
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
@@ -443,8 +433,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 
 	h.Arguments = a
 	h.CmdLine = h.HyperKit + " " + strings.Join(a, " ")
-	h.log.Printf("hyperkit: Arguments: %#v", h.Arguments)
-	h.log.Printf("hyperkit: CmdLine: %#v", h.CmdLine)
+	log.Debugf("hyperkit: Arguments: %#v", h.Arguments)
+	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
 // Execute hyperkit and plumb stdin/stdout/stderr.
@@ -492,8 +482,8 @@ func (h *HyperKit) execHyperKit() error {
 				tty.Close()
 			}()
 		}
-	} else if h.log != nil {
-		h.log.Printf("hyperkit: Redirecting stdout/stderr to logger")
+	} else if log != nil {
+		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
 		stdoutChan := make(chan string)
 		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
@@ -512,9 +502,9 @@ func (h *HyperKit) execHyperKit() error {
 			for {
 				select {
 				case stderrl := <-stderrChan:
-					h.log.Printf("%s", stderrl)
+					log.Infof("%s", stderrl)
 				case stdoutl := <-stdoutChan:
-					h.log.Printf("%s", stdoutl)
+					log.Infof("%s", stdoutl)
 				case <-done:
 					return
 				}
@@ -522,22 +512,22 @@ func (h *HyperKit) execHyperKit() error {
 		}()
 	}
 
-	h.log.Printf("hyperkit: Starting %#v", cmd)
+	log.Debugf("hyperkit: Starting %#v", cmd)
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
 	h.Pid = cmd.Process.Pid
-	h.log.Printf("hyperkit: Pid is %v", h.Pid)
+	log.Debugf("hyperkit: Pid is %v", h.Pid)
 	h.process = cmd.Process
 	err = h.writeState()
 	if err != nil {
-		h.log.Printf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
+		log.Debugf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
 		h.process.Kill()
 		return err
 	}
 	if !h.background {
-		h.log.Printf("hyperkit: Waiting for %#v", cmd)
+		log.Debugf("hyperkit: Waiting for %#v", cmd)
 		err = cmd.Wait()
 		if err != nil {
 			return err
@@ -545,7 +535,7 @@ func (h *HyperKit) execHyperKit() error {
 	} else {
 		// Make sure we reap the child when it exits
 		go func() {
-			h.log.Printf("hyperkit: Waiting for %#v", cmd)
+			log.Debugf("hyperkit: Waiting for %#v", cmd)
 			cmd.Wait()
 		}()
 	}
