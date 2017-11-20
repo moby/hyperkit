@@ -1,24 +1,3 @@
-// Package hyperkit provides a Go wrapper around the hyperkit
-// command. It currently shells out to start hyperkit with the
-// provided configuration.
-//
-// Most of the arguments should be self explanatory, but console
-// handling deserves a mention. If the Console is configured with
-// ConsoleStdio, the hyperkit is started with stdin, stdout, and
-// stderr plumbed through to the VM console. If Console is set to
-// ConsoleFile hyperkit the console output is redirected to a file and
-// console input is disabled. For this mode StateDir has to be set and
-// the interactive console is accessible via a 'tty' file created
-// there.
-//
-// Currently this module has some limitations:
-// - Only supports zero or one disk image
-// - Only support zero or one network interface connected to VPNKit
-// - Only kexec boot
-//
-// This package is currently implemented by shelling out a hyperkit
-// process. In the future we may change this to become a wrapper
-// around the hyperkit library.
 package hyperkit
 
 import (
@@ -31,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -67,18 +45,6 @@ var defaultHyperKits = []string{"hyperkit",
 type Socket9P struct {
 	Path string `json:"path"`
 	Tag  string `json:"tag"`
-}
-
-// DiskConfig describes a disk image.
-type DiskConfig struct {
-	// Path specifies where the image file will be.
-	Path string `json:"path"`
-	// Size specifies the size of the disk image.  Used if the image needs to be created.
-	Size int `json:"size"`
-	// Format is passed as-is to the driver.
-	Format string `json:"format"`
-	// Driver is the name of the disk driver, "ahci-hd" or "virtio-blk".
-	Driver string `json:"driver"`
 }
 
 // Logger is an interface for logging.
@@ -308,16 +274,8 @@ func (h *HyperKit) execute(cmdline string) error {
 			disk.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = disk
 		}
-		if !strings.HasPrefix(disk.Path, "file://") {
-			if _, err := os.Stat(disk.Path); os.IsNotExist(err) {
-				if disk.Size != 0 {
-					if err := CreateDiskImage(disk.Path, disk.Size); err != nil {
-						return err
-					}
-				} else {
-					return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", disk.Path)
-				}
-			}
+		if err := disk.Ensure(); err != nil {
+			return err
 		}
 	}
 
@@ -394,24 +352,6 @@ func (h *HyperKit) String() string {
 	return string(s)
 }
 
-// CreateDiskImage creates a empty file suitable for use as a disk image for a hyperkit VM.
-func CreateDiskImage(location string, sizeMB int) error {
-	diskDir := path.Dir(location)
-	if diskDir != "." {
-		if err := os.MkdirAll(diskDir, 0755); err != nil {
-			return err
-		}
-	}
-
-	f, err := os.Create(location)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return f.Truncate(int64(sizeMB) * int64(1024) * int64(1024))
-}
-
 func intArrayToString(i []int, sep string) string {
 	if len(i) == 0 {
 		return ""
@@ -459,16 +399,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		a = append(a, "-U", h.UUID)
 	}
 
-	for _, p := range h.Disks {
-		// Default the driver to virtio-blk
-		driver := defaultString(p.Driver, "virtio-blk")
-		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, driver, p.Path)
-
-		// Add on a format instruction if specified.
-		if p.Format != "" {
-			arg += ",format=" + p.Format
-		}
-		a = append(a, "-s", arg)
+	for _, disk := range h.Disks {
+		a = append(a, "-s", fmt.Sprintf("%d:0,%s", nextSlot, disk.AsArgument()))
 		nextSlot++
 	}
 
