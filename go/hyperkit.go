@@ -289,24 +289,24 @@ func (h *HyperKit) execute(cmdline string) error {
 		}
 	}
 
-	for idx, config := range h.Disks {
-		if config.Path == "" {
+	for idx, disk := range h.Disks {
+		if disk.Path == "" {
 			if h.StateDir == "" {
 				return fmt.Errorf("Unable to create disk image when neither path nor state dir is set")
 			}
-			if config.Size <= 0 {
+			if disk.Size <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
-			h.Disks[idx] = config
+			disk.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
+			h.Disks[idx] = disk
 		}
-		if _, err := os.Stat(config.Path); os.IsNotExist(err) {
-			if config.Size != 0 {
-				if err := CreateDiskImage(config.Path, config.Size); err != nil {
+		if _, err := os.Stat(disk.Path); os.IsNotExist(err) {
+			if disk.Size != 0 {
+				if err := CreateDiskImage(disk.Path, disk.Size); err != nil {
 					return err
 				}
 			} else {
-				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", config.Path)
+				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", disk.Path)
 			}
 		}
 	}
@@ -353,8 +353,8 @@ func (h *HyperKit) IsRunning() bool {
 
 // isDisk checks if the specified path is used as a disk image
 func (h *HyperKit) isDisk(path string) bool {
-	for _, config := range h.Disks {
-		if filepath.Clean(path) == filepath.Clean(config.Path) {
+	for _, disk := range h.Disks {
+		if filepath.Clean(path) == filepath.Clean(disk.Path) {
 			return true
 		}
 	}
