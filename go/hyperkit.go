@@ -319,12 +319,7 @@ func (h *HyperKit) execute(cmdline string) error {
 
 	// Run
 	h.buildArgs(cmdline)
-	err = h.execHyperKit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.execHyperKit()
 }
 
 // Stop the running VM
@@ -335,12 +330,7 @@ func (h *HyperKit) Stop() error {
 	if !h.IsRunning() {
 		return nil
 	}
-	err := h.process.Kill()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.process.Kill()
 }
 
 // IsRunning returns true if the hyperkit process is running.
@@ -350,13 +340,7 @@ func (h *HyperKit) IsRunning() bool {
 	// a call to find out if the process is running either, so we
 	// use another package to find out.
 	proc, err := ps.FindProcess(h.Pid)
-	if err != nil {
-		return false
-	}
-	if proc == nil {
-		return false
-	}
-	return true
+	return err == nil && proc != nil
 }
 
 // isDisk checks if the specified path is used as a disk image
@@ -397,7 +381,7 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	return nil
 }
 
-// Convert to json string
+// Convert to json string.
 func (h *HyperKit) String() string {
 	s, err := json.Marshal(h)
 	if err != nil {
