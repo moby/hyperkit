@@ -147,7 +147,6 @@ func (d *disks) Set(v string) error {
 	}
 
 	var config hyperkit.DiskConfig
-	var err error
 	for _, kv := range strings.Split(v, ",") {
 		p := strings.SplitN(kv, "=", 2)
 		if len(p) == 1 { // Assume no key is a path
@@ -158,6 +157,7 @@ func (d *disks) Set(v string) error {
 		} else {
 			switch p[0] {
 			case "size":
+				var err error
 				if config.Size, err = strconv.Atoi(p[1]); err != nil {
 					return err
 				}

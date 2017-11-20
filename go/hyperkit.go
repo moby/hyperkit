@@ -202,8 +202,7 @@ func FromState(statedir string) (*HyperKit, error) {
 		return nil, fmt.Errorf("Can't read json file: %s", err)
 	}
 	h := &HyperKit{}
-	err = json.Unmarshal(b, h)
-	if err != nil {
+	if err := json.Unmarshal(b, h); err != nil {
 		return nil, fmt.Errorf("Can't parse json file: %s", err)
 	}
 
@@ -247,7 +246,6 @@ func (h *HyperKit) Start(cmdline string) error {
 }
 
 func (h *HyperKit) execute(cmdline string) error {
-	var err error
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
@@ -256,7 +254,7 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 	}
 	for _, image := range h.ISOImages {
-		if _, err = os.Stat(image); os.IsNotExist(err) {
+		if _, err := os.Stat(image); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
@@ -267,14 +265,14 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
 	}
 	if h.Bootrom == "" {
-		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
 		}
-		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Initrd); os.IsNotExist(err) {
 			return fmt.Errorf("initrd %s does not exist", h.Initrd)
 		}
 	} else {
-		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Bootrom); os.IsNotExist(err) {
 			return fmt.Errorf("Bootrom %s does not exist", h.Bootrom)
 		}
 	}
@@ -286,8 +284,7 @@ func (h *HyperKit) execute(cmdline string) error {
 
 	// Create files
 	if h.StateDir != "" {
-		err = os.MkdirAll(h.StateDir, 0755)
-		if err != nil {
+		if err := os.MkdirAll(h.StateDir, 0755); err != nil {
 			return err
 		}
 	}
@@ -303,10 +300,9 @@ func (h *HyperKit) execute(cmdline string) error {
 			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = config
 		}
-		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
+		if _, err := os.Stat(config.Path); os.IsNotExist(err) {
 			if config.Size != 0 {
-				err = CreateDiskImage(config.Path, config.Size)
-				if err != nil {
+				if err := CreateDiskImage(config.Path, config.Size); err != nil {
 					return err
 				}
 			} else {
@@ -317,8 +313,7 @@ func (h *HyperKit) execute(cmdline string) error {
 
 	// Run
 	h.buildArgs(cmdline)
-	err = h.execHyperKit()
-	if err != nil {
+	if err := h.execHyperKit(); err != nil {
 		return err
 	}
 
@@ -333,8 +328,7 @@ func (h *HyperKit) Stop() error {
 	if !h.IsRunning() {
 		return nil
 	}
-	err := h.process.Kill()
-	if err != nil {
+	if err := h.process.Kill(); err != nil {
 		return err
 	}
 
@@ -599,20 +593,17 @@ func (h *HyperKit) execHyperKit() error {
 		}()
 	}
 
-	err := cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 	h.Pid = cmd.Process.Pid
 	h.process = cmd.Process
-	err = h.writeState()
-	if err != nil {
+	if err := h.writeState(); err != nil {
 		h.process.Kill()
 		return err
 	}
 	if !h.background {
-		err = cmd.Wait()
-		if err != nil {
+		if err := cmd.Wait(); err != nil {
 			return err
 		}
 	} else {
