@@ -28,11 +28,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -68,14 +66,6 @@ var defaultHyperKits = []string{"hyperkit",
 type Socket9P struct {
 	Path string `json:"path"`
 	Tag  string `json:"tag"`
-}
-
-// DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
-type DiskConfig struct {
-	Path   string `json:"path"`
-	Size   int    `json:"size"`
-	Format string `json:"format"`
-	Driver string `json:"driver"`
 }
 
 // HyperKit contains the configuration of the hyperkit VM
@@ -284,33 +274,18 @@ func (h *HyperKit) execute(cmdline string) error {
 	}
 
 	for idx, disk := range h.Disks {
-		if disk.Path == "" {
+		if disk.GetPath() == "" {
 			if h.StateDir == "" {
 				return fmt.Errorf("Unable to create disk image when neither path nor state dir is set")
 			}
-			if disk.Size <= 0 {
+			if disk.GetSize() <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			disk.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
+			disk.SetPath(filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx))))
 			h.Disks[idx] = disk
 		}
-
-		// assume the path could be a file:// uri with query params
-		// use the actual path from the parsed result
-		u, err := url.Parse(disk.Path)
-		if err != nil {
+		if err := disk.Ensure(); err != nil {
 			return err
-		}
-
-		if _, err = os.Stat(u.Path); os.IsNotExist(err) {
-			if disk.Size != 0 {
-				err = CreateDiskImage(u.Path, disk.Size)
-				if err != nil {
-					return err
-				}
-			} else {
-				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", disk.Path)
-			}
 		}
 	}
 
@@ -359,7 +334,7 @@ func (h *HyperKit) IsRunning() bool {
 // isDisk checks if the specified path is used as a disk image
 func (h *HyperKit) isDisk(path string) bool {
 	for _, disk := range h.Disks {
-		if filepath.Clean(path) == filepath.Clean(disk.Path) {
+		if filepath.Clean(path) == filepath.Clean(disk.GetPath()) {
 			return true
 		}
 	}
@@ -401,24 +376,6 @@ func (h *HyperKit) String() string {
 		return err.Error()
 	}
 	return string(s)
-}
-
-// CreateDiskImage creates a empty file suitable for use as a disk image for a hyperkit VM.
-func CreateDiskImage(location string, sizeMB int) error {
-	diskDir := path.Dir(location)
-	if diskDir != "." {
-		if err := os.MkdirAll(diskDir, 0755); err != nil {
-			return err
-		}
-	}
-
-	f, err := os.Create(location)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return f.Truncate(int64(sizeMB) * int64(1024) * int64(1024))
 }
 
 func intArrayToString(i []int, sep string) string {
@@ -468,14 +425,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		a = append(a, "-U", h.UUID)
 	}
 
-	for _, p := range h.Disks {
-		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, defaultString(p.Driver, "virtio-blk"), p.Path)
-
-		// Add on a format instruction if specified.
-		if p.Format != "" {
-			arg += ",format=" + p.Format
-		}
-		a = append(a, "-s", arg)
+	for _, disk := range h.Disks {
+		a = append(a, "-s", fmt.Sprintf("%d:0,%s", nextSlot, disk.AsArgument()))
 		nextSlot++
 	}
 
