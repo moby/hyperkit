@@ -12,9 +12,7 @@
 // there.
 //
 // Currently this module has some limitations:
-// - Only supports zero or one disk image
 // - Only support zero or one network interface connected to VPNKit
-// - Only kexec boot
 //
 // This package is currently implemented by shelling out a hyperkit
 // process. In the future we may change this to become a wrapper
