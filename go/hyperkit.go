@@ -466,12 +466,7 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	for _, p := range h.Disks {
-		// Default the driver to virtio-blk
-		driver := "virtio-blk"
-		if p.Driver != "" {
-			driver = p.Driver
-		}
-		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, driver, p.Path)
+		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, defaultString(p.Driver, "virtio-blk"), p.Path)
 
 		// Add on a format instruction if specified.
 		if p.Format != "" {
@@ -699,4 +694,11 @@ func getHome() string {
 		return usr.HomeDir
 	}
 	return os.Getenv("HOME")
+}
+
+func defaultString(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
