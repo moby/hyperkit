@@ -1,24 +1,3 @@
-// Package hyperkit provides a Go wrapper around the hyperkit
-// command. It currently shells out to start hyperkit with the
-// provided configuration.
-//
-// Most of the arguments should be self explanatory, but console
-// handling deserves a mention. If the Console is configured with
-// ConsoleStdio, the hyperkit is started with stdin, stdout, and
-// stderr plumbed through to the VM console. If Console is set to
-// ConsoleFile hyperkit the console output is redirected to a file and
-// console input is disabled. For this mode StateDir has to be set and
-// the interactive console is accessible via a 'tty' file created
-// there.
-//
-// Currently this module has some limitations:
-// - Only supports zero or one disk image
-// - Only support zero or one network interface connected to VPNKit
-// - Only kexec boot
-//
-// This package is currently implemented by shelling out a hyperkit
-// process. In the future we may change this to become a wrapper
-// around the hyperkit library.
 package hyperkit
 
 import (
@@ -31,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -41,9 +19,9 @@ import (
 )
 
 const (
-	// ConsoleStdio configures console to use Stdio
+	// ConsoleStdio configures console to use Stdio.
 	ConsoleStdio = iota
-	// ConsoleFile configures console to a tty and output to a file
+	// ConsoleFile configures console to a tty and output to a file.
 	ConsoleFile
 
 	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
@@ -69,21 +47,6 @@ type Socket9P struct {
 	Tag  string `json:"tag"`
 }
 
-// DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
-type DiskConfig struct {
-	Path   string `json:"path"`
-	Size   int    `json:"size"`
-	Format string `json:"format"`
-	Driver string `json:"driver"`
-}
-
-// Logger is an interface for logging.
-type Logger interface {
-	Fatalf(format string, v ...interface{})
-	Panicf(format string, v ...interface{})
-	Printf(format string, v ...interface{})
-}
-
 // HyperKit contains the configuration of the hyperkit VM
 type HyperKit struct {
 	// HyperKit is the path to the hyperkit binary.
@@ -93,12 +56,14 @@ type HyperKit struct {
 
 	// StateDir is the directory where runtime state is kept. If left empty, no state will be kept.
 	StateDir string `json:"state_dir"`
+
 	// VPNKitSock is the location of the VPNKit socket used for networking.
 	VPNKitSock string `json:"vpnkit_sock"`
 	// VPNKitUUID is a string containing a UUID, it can be used in conjunction with VPNKit to get consistent IP address.
 	VPNKitUUID string `json:"vpnkit_uuid"`
 	// VPNKitPreferredIPv4 is a string containing an IPv4 address, it can be used to request a specific IP for a UUID from VPNKit.
 	VPNKitPreferredIPv4 string `json:"vpnkit_preferred_ipv4"`
+
 	// UUID is a string containing a UUID, it sets BIOS DMI UUID for the VM (as found in /sys/class/dmi/id/product_uuid on Linux).
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
@@ -108,9 +73,11 @@ type HyperKit struct {
 
 	// VSock enables the virtio-socket device and exposes it on the host.
 	VSock bool `json:"vsock"`
+	// VSockDir specifies where the VSock will be.  Stands for StateDir if empty.
+	VSockDir string `json:"vsock_dir"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
-	// VSock guest CID
+	// VSock guest CID.
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
 	// VMNet is whether to create vmnet network.
@@ -148,18 +115,15 @@ type HyperKit struct {
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
-	// Pid of the hyperkit process
+	// Pid of the hyperkit process.
 	Pid int `json:"pid"`
-	// Arguments used to execute the hyperkit process
+	// Arguments used to execute the hyperkit process.
 	Arguments []string `json:"arguments"`
-	// CmdLine is a single string of the command line
+	// CmdLine is a single string of the command line.
 	CmdLine string `json:"cmdline"`
 
 	process    *os.Process
 	background bool
-
-	// log receives stdout/stderr of the hyperkit process itself, if set.
-	log Logger
 }
 
 // New creates a template config structure.
@@ -226,8 +190,8 @@ func FromState(statedir string) (*HyperKit, error) {
 
 // SetLogger sets the log instance to use for the output of the hyperkit process itself (not the console of the VM).
 // This is only relevant when Console is set to ConsoleFile
-func (h *HyperKit) SetLogger(logger Logger) {
-	h.log = logger
+func (h *HyperKit) SetLogger(l Logger) {
+	SetLogger(l)
 }
 
 // Run the VM with a given command line until it exits
@@ -243,7 +207,7 @@ func (h *HyperKit) Start(cmdline string) error {
 }
 
 func (h *HyperKit) execute(cmdline string) error {
-	var err error
+	log.Debugf("hyperkit: execute %#v", h)
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
@@ -252,25 +216,25 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 	}
 	for _, image := range h.ISOImages {
-		if _, err = os.Stat(image); os.IsNotExist(err) {
+		if _, err := os.Stat(image); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
-	if h.VSock && h.StateDir == "" {
-		return fmt.Errorf("If virtio-sockets are enabled, StateDir must be specified")
+	if h.VSock && h.VSockDir == "" && h.StateDir == "" {
+		return fmt.Errorf("If virtio-sockets are enabled, VSockDir or StateDir must be specified")
 	}
 	if !h.VSock && len(h.VSockPorts) > 0 {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
 	}
 	if h.Bootrom == "" {
-		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
 		}
-		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Initrd); os.IsNotExist(err) {
 			return fmt.Errorf("initrd %s does not exist", h.Initrd)
 		}
 	} else {
-		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Bootrom); os.IsNotExist(err) {
 			return fmt.Errorf("Bootrom %s does not exist", h.Bootrom)
 		}
 	}
@@ -280,45 +244,34 @@ func (h *HyperKit) execute(cmdline string) error {
 		}
 	}
 
-	// Create files
-	if h.StateDir != "" {
-		err = os.MkdirAll(h.StateDir, 0755)
-		if err != nil {
-			return err
+	// Create directories.
+	for _, dir := range []string{h.VSockDir, h.StateDir} {
+		if dir != "" {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("Cannot create directory %q: %v", dir, err)
+			}
 		}
 	}
 
-	for idx, config := range h.Disks {
-		if config.Path == "" {
+	for idx, disk := range h.Disks {
+		if disk.Path == "" {
 			if h.StateDir == "" {
 				return fmt.Errorf("Unable to create disk image when neither path nor state dir is set")
 			}
-			if config.Size <= 0 {
+			if disk.Size <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
-			h.Disks[idx] = config
+			disk.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
+			h.Disks[idx] = disk
 		}
-		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
-			if config.Size != 0 {
-				err = CreateDiskImage(config.Path, config.Size)
-				if err != nil {
-					return err
-				}
-			} else {
-				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", config.Path)
-			}
+		if err := disk.Ensure(); err != nil {
+			return err
 		}
 	}
 
 	// Run
 	h.buildArgs(cmdline)
-	err = h.execHyperKit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.execHyperKit()
 }
 
 // Stop the running VM
@@ -329,12 +282,7 @@ func (h *HyperKit) Stop() error {
 	if !h.IsRunning() {
 		return nil
 	}
-	err := h.process.Kill()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.process.Kill()
 }
 
 // IsRunning returns true if the hyperkit process is running.
@@ -344,19 +292,13 @@ func (h *HyperKit) IsRunning() bool {
 	// a call to find out if the process is running either, so we
 	// use another package to find out.
 	proc, err := ps.FindProcess(h.Pid)
-	if err != nil {
-		return false
-	}
-	if proc == nil {
-		return false
-	}
-	return true
+	return err == nil && proc != nil
 }
 
 // isDisk checks if the specified path is used as a disk image
 func (h *HyperKit) isDisk(path string) bool {
-	for _, config := range h.Disks {
-		if filepath.Clean(path) == filepath.Clean(config.Path) {
+	for _, disk := range h.Disks {
+		if filepath.Clean(path) == filepath.Clean(disk.Path) {
 			return true
 		}
 	}
@@ -391,31 +333,13 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	return nil
 }
 
-// Convert to json string
+// Convert to json string.
 func (h *HyperKit) String() string {
 	s, err := json.Marshal(h)
 	if err != nil {
 		return err.Error()
 	}
 	return string(s)
-}
-
-// CreateDiskImage creates a empty file suitable for use as a disk image for a hyperkit VM.
-func CreateDiskImage(location string, sizeMB int) error {
-	diskDir := path.Dir(location)
-	if diskDir != "." {
-		if err := os.MkdirAll(diskDir, 0755); err != nil {
-			return err
-		}
-	}
-
-	f, err := os.Create(location)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	return f.Truncate(int64(sizeMB) * int64(1024) * int64(1024))
 }
 
 func intArrayToString(i []int, sep string) string {
@@ -465,24 +389,14 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		a = append(a, "-U", h.UUID)
 	}
 
-	for _, p := range h.Disks {
-		// Default the driver to virtio-blk
-		driver := "virtio-blk"
-		if p.Driver != "" {
-			driver = p.Driver
-		}
-		arg := fmt.Sprintf("%d:0,%s,%s", nextSlot, driver, p.Path)
-
-		// Add on a format instruction if specified.
-		if p.Format != "" {
-			arg += ",format=" + p.Format
-		}
-		a = append(a, "-s", arg)
+	for _, disk := range h.Disks {
+		a = append(a, "-s", fmt.Sprintf("%d:0,%s", nextSlot, disk.AsArgument()))
 		nextSlot++
 	}
 
 	if h.VSock {
-		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, h.StateDir)
+		path := defaultString(h.VSockDir, h.StateDir)
+		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, path)
 		if len(h.VSockPorts) > 0 {
 			l = fmt.Sprintf("%s,guest_forwards=%s", l, intArrayToString(h.VSockPorts, ";"))
 		}
@@ -519,6 +433,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 
 	h.Arguments = a
 	h.CmdLine = h.HyperKit + " " + strings.Join(a, " ")
+	log.Debugf("hyperkit: Arguments: %#v", h.Arguments)
+	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
 // Execute hyperkit and plumb stdin/stdout/stderr.
@@ -566,7 +482,8 @@ func (h *HyperKit) execHyperKit() error {
 				tty.Close()
 			}()
 		}
-	} else if h.log != nil {
+	} else if log != nil {
+		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
 		stdoutChan := make(chan string)
 		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
@@ -585,9 +502,9 @@ func (h *HyperKit) execHyperKit() error {
 			for {
 				select {
 				case stderrl := <-stderrChan:
-					h.log.Printf("%s", stderrl)
+					log.Infof("%s", stderrl)
 				case stdoutl := <-stdoutChan:
-					h.log.Printf("%s", stdoutl)
+					log.Infof("%s", stdoutl)
 				case <-done:
 					return
 				}
@@ -595,25 +512,32 @@ func (h *HyperKit) execHyperKit() error {
 		}()
 	}
 
+	log.Debugf("hyperkit: Starting %#v", cmd)
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
 	h.Pid = cmd.Process.Pid
+	log.Debugf("hyperkit: Pid is %v", h.Pid)
 	h.process = cmd.Process
 	err = h.writeState()
 	if err != nil {
+		log.Debugf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
 		h.process.Kill()
 		return err
 	}
 	if !h.background {
+		log.Debugf("hyperkit: Waiting for %#v", cmd)
 		err = cmd.Wait()
 		if err != nil {
 			return err
 		}
 	} else {
 		// Make sure we reap the child when it exits
-		go cmd.Wait()
+		go func() {
+			log.Debugf("hyperkit: Waiting for %#v", cmd)
+			cmd.Wait()
+		}()
 	}
 	return nil
 }
@@ -689,4 +613,14 @@ func getHome() string {
 		return usr.HomeDir
 	}
 	return os.Getenv("HOME")
+}
+
+// defaultString returns the first non empty string, or "" if there is none.
+func defaultString(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
 }
