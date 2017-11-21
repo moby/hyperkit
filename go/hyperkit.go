@@ -12,9 +12,7 @@
 // there.
 //
 // Currently this module has some limitations:
-// - Only supports zero or one disk image
 // - Only support zero or one network interface connected to VPNKit
-// - Only kexec boot
 //
 // This package is currently implemented by shelling out a hyperkit
 // process. In the future we may change this to become a wrapper
@@ -41,9 +39,9 @@ import (
 )
 
 const (
-	// ConsoleStdio configures console to use Stdio
+	// ConsoleStdio configures console to use Stdio.
 	ConsoleStdio = iota
-	// ConsoleFile configures console to a tty and output to a file
+	// ConsoleFile configures console to a tty and output to a file.
 	ConsoleFile
 
 	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
@@ -69,11 +67,15 @@ type Socket9P struct {
 	Tag  string `json:"tag"`
 }
 
-// DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
+// DiskConfig describes a disk image.
 type DiskConfig struct {
-	Path   string `json:"path"`
-	Size   int    `json:"size"`
+	// Path specifies where the image file will be.
+	Path string `json:"path"`
+	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	Size int `json:"size"`
+	// Format is passed as-is to the driver.
 	Format string `json:"format"`
+	// Driver is the name of the disk driver, "ahci-hd" or "virtio-blk".
 	Driver string `json:"driver"`
 }
 
@@ -93,12 +95,14 @@ type HyperKit struct {
 
 	// StateDir is the directory where runtime state is kept. If left empty, no state will be kept.
 	StateDir string `json:"state_dir"`
+
 	// VPNKitSock is the location of the VPNKit socket used for networking.
 	VPNKitSock string `json:"vpnkit_sock"`
 	// VPNKitUUID is a string containing a UUID, it can be used in conjunction with VPNKit to get consistent IP address.
 	VPNKitUUID string `json:"vpnkit_uuid"`
 	// VPNKitPreferredIPv4 is a string containing an IPv4 address, it can be used to request a specific IP for a UUID from VPNKit.
 	VPNKitPreferredIPv4 string `json:"vpnkit_preferred_ipv4"`
+
 	// UUID is a string containing a UUID, it sets BIOS DMI UUID for the VM (as found in /sys/class/dmi/id/product_uuid on Linux).
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
@@ -110,7 +114,7 @@ type HyperKit struct {
 	VSock bool `json:"vsock"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
-	// VSock guest CID
+	// VSock guest CID.
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
 	// VMNet is whether to create vmnet network.
@@ -148,11 +152,11 @@ type HyperKit struct {
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
-	// Pid of the hyperkit process
+	// Pid of the hyperkit process.
 	Pid int `json:"pid"`
-	// Arguments used to execute the hyperkit process
+	// Arguments used to execute the hyperkit process.
 	Arguments []string `json:"arguments"`
-	// CmdLine is a single string of the command line
+	// CmdLine is a single string of the command line.
 	CmdLine string `json:"cmdline"`
 
 	process    *os.Process
@@ -391,7 +395,7 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	return nil
 }
 
-// Convert to json string
+// Convert to json string.
 func (h *HyperKit) String() string {
 	s, err := json.Marshal(h)
 	if err != nil {
