@@ -12,9 +12,7 @@
 // there.
 //
 // Currently this module has some limitations:
-// - Only supports zero or one disk image
 // - Only support zero or one network interface connected to VPNKit
-// - Only kexec boot
 //
 // This package is currently implemented by shelling out a hyperkit
 // process. In the future we may change this to become a wrapper
@@ -41,9 +39,9 @@ import (
 )
 
 const (
-	// ConsoleStdio configures console to use Stdio
+	// ConsoleStdio configures console to use Stdio.
 	ConsoleStdio = iota
-	// ConsoleFile configures console to a tty and output to a file
+	// ConsoleFile configures console to a tty and output to a file.
 	ConsoleFile
 
 	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
@@ -69,11 +67,15 @@ type Socket9P struct {
 	Tag  string `json:"tag"`
 }
 
-// DiskConfig contains the path to a disk image and an optional size if the image needs to be created.
+// DiskConfig describes a disk image.
 type DiskConfig struct {
-	Path   string `json:"path"`
-	Size   int    `json:"size"`
+	// Path specifies where the image file will be.
+	Path string `json:"path"`
+	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	Size int `json:"size"`
+	// Format is passed as-is to the driver.
 	Format string `json:"format"`
+	// Driver is the name of the disk driver, "ahci-hd" or "virtio-blk".
 	Driver string `json:"driver"`
 }
 
@@ -93,12 +95,14 @@ type HyperKit struct {
 
 	// StateDir is the directory where runtime state is kept. If left empty, no state will be kept.
 	StateDir string `json:"state_dir"`
+
 	// VPNKitSock is the location of the VPNKit socket used for networking.
 	VPNKitSock string `json:"vpnkit_sock"`
 	// VPNKitUUID is a string containing a UUID, it can be used in conjunction with VPNKit to get consistent IP address.
 	VPNKitUUID string `json:"vpnkit_uuid"`
 	// VPNKitPreferredIPv4 is a string containing an IPv4 address, it can be used to request a specific IP for a UUID from VPNKit.
 	VPNKitPreferredIPv4 string `json:"vpnkit_preferred_ipv4"`
+
 	// UUID is a string containing a UUID, it sets BIOS DMI UUID for the VM (as found in /sys/class/dmi/id/product_uuid on Linux).
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
@@ -110,7 +114,7 @@ type HyperKit struct {
 	VSock bool `json:"vsock"`
 	// VSockPorts is a list of guest VSock ports that should be exposed as sockets on the host.
 	VSockPorts []int `json:"vsock_ports"`
-	// VSock guest CID
+	// VSock guest CID.
 	VSockGuestCID int `json:"vsock_guest_cid"`
 
 	// VMNet is whether to create vmnet network.
@@ -148,11 +152,11 @@ type HyperKit struct {
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
-	// Pid of the hyperkit process
+	// Pid of the hyperkit process.
 	Pid int `json:"pid"`
-	// Arguments used to execute the hyperkit process
+	// Arguments used to execute the hyperkit process.
 	Arguments []string `json:"arguments"`
-	// CmdLine is a single string of the command line
+	// CmdLine is a single string of the command line.
 	CmdLine string `json:"cmdline"`
 
 	process    *os.Process
@@ -198,8 +202,7 @@ func FromState(statedir string) (*HyperKit, error) {
 		return nil, fmt.Errorf("Can't read json file: %s", err)
 	}
 	h := &HyperKit{}
-	err = json.Unmarshal(b, h)
-	if err != nil {
+	if err := json.Unmarshal(b, h); err != nil {
 		return nil, fmt.Errorf("Can't parse json file: %s", err)
 	}
 
@@ -243,7 +246,6 @@ func (h *HyperKit) Start(cmdline string) error {
 }
 
 func (h *HyperKit) execute(cmdline string) error {
-	var err error
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
 		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
@@ -252,7 +254,7 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 	}
 	for _, image := range h.ISOImages {
-		if _, err = os.Stat(image); os.IsNotExist(err) {
+		if _, err := os.Stat(image); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
@@ -263,14 +265,14 @@ func (h *HyperKit) execute(cmdline string) error {
 		return fmt.Errorf("To forward vsock ports vsock must be enabled")
 	}
 	if h.Bootrom == "" {
-		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
 		}
-		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Initrd); os.IsNotExist(err) {
 			return fmt.Errorf("initrd %s does not exist", h.Initrd)
 		}
 	} else {
-		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
+		if _, err := os.Stat(h.Bootrom); os.IsNotExist(err) {
 			return fmt.Errorf("Bootrom %s does not exist", h.Bootrom)
 		}
 	}
@@ -282,39 +284,36 @@ func (h *HyperKit) execute(cmdline string) error {
 
 	// Create files
 	if h.StateDir != "" {
-		err = os.MkdirAll(h.StateDir, 0755)
-		if err != nil {
+		if err := os.MkdirAll(h.StateDir, 0755); err != nil {
 			return err
 		}
 	}
 
-	for idx, config := range h.Disks {
-		if config.Path == "" {
+	for idx, disk := range h.Disks {
+		if disk.Path == "" {
 			if h.StateDir == "" {
 				return fmt.Errorf("Unable to create disk image when neither path nor state dir is set")
 			}
-			if config.Size <= 0 {
+			if disk.Size <= 0 {
 				return fmt.Errorf("Unable to create disk image when size is 0 or not set")
 			}
-			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
-			h.Disks[idx] = config
+			disk.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
+			h.Disks[idx] = disk
 		}
-		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
-			if config.Size != 0 {
-				err = CreateDiskImage(config.Path, config.Size)
-				if err != nil {
+		if _, err := os.Stat(disk.Path); os.IsNotExist(err) {
+			if disk.Size != 0 {
+				if err := CreateDiskImage(disk.Path, disk.Size); err != nil {
 					return err
 				}
 			} else {
-				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", config.Path)
+				return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", disk.Path)
 			}
 		}
 	}
 
 	// Run
 	h.buildArgs(cmdline)
-	err = h.execHyperKit()
-	if err != nil {
+	if err := h.execHyperKit(); err != nil {
 		return err
 	}
 
@@ -329,8 +328,7 @@ func (h *HyperKit) Stop() error {
 	if !h.IsRunning() {
 		return nil
 	}
-	err := h.process.Kill()
-	if err != nil {
+	if err := h.process.Kill(); err != nil {
 		return err
 	}
 
@@ -355,8 +353,8 @@ func (h *HyperKit) IsRunning() bool {
 
 // isDisk checks if the specified path is used as a disk image
 func (h *HyperKit) isDisk(path string) bool {
-	for _, config := range h.Disks {
-		if filepath.Clean(path) == filepath.Clean(config.Path) {
+	for _, disk := range h.Disks {
+		if filepath.Clean(path) == filepath.Clean(disk.Path) {
 			return true
 		}
 	}
@@ -391,7 +389,7 @@ func (h *HyperKit) Remove(keepDisk bool) error {
 	return nil
 }
 
-// Convert to json string
+// Convert to json string.
 func (h *HyperKit) String() string {
 	s, err := json.Marshal(h)
 	if err != nil {
@@ -595,20 +593,17 @@ func (h *HyperKit) execHyperKit() error {
 		}()
 	}
 
-	err := cmd.Start()
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 	h.Pid = cmd.Process.Pid
 	h.process = cmd.Process
-	err = h.writeState()
-	if err != nil {
+	if err := h.writeState(); err != nil {
 		h.process.Kill()
 		return err
 	}
 	if !h.background {
-		err = cmd.Wait()
-		if err != nil {
+		if err := cmd.Wait(); err != nil {
 			return err
 		}
 	} else {
