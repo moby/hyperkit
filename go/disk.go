@@ -1,8 +1,12 @@
 package hyperkit
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -180,5 +184,160 @@ func (d *RawDisk) AsArgument() string {
 	if d.Format != "" {
 		res += ",format=" + d.Format
 	}
+	return res
+}
+
+/*-----------.
+| QcowDisk.  |
+`-----------*/
+
+// QcowDisk describes a qcow2 disk image file.
+type QcowDisk struct {
+	// Path specifies where the image file will be.
+	Path string `json:"path"`
+	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	Size int `json:"size"`
+	// Format is passed as-is to the driver.
+	Format string `json:"format"`
+	// Trim specifies whether we should trim the image file.
+	Trim bool `json:"trim"`
+	// QcowToolPath is the path to the binary to use to manage this image.
+	// Defaults to "qcow-tool" when empty.
+	QcowToolPath   string
+	OnFlush        string
+	CompactAfter   int
+	KeepErased     int
+	RuntimeAsserts bool
+	Stats          string
+}
+
+// GetPath returns the location of the disk image file.
+func (d *QcowDisk) GetPath() string {
+	return d.Path
+}
+
+// SetPath changes the location of the disk image file.
+func (d *QcowDisk) SetPath(p string) {
+	d.Path = p
+}
+
+// GetSize returns the desired size of the disk image file.
+func (d *QcowDisk) GetSize() int {
+	return d.Size
+}
+
+// String returns the path.
+func (d *QcowDisk) String() string {
+	return d.Path
+}
+
+// QcowTool prepares a call to qcow-tool on this image.
+func (d *QcowDisk) QcowTool(verb string, args ...string) *exec.Cmd {
+	return exec.Command(defaultString(d.QcowToolPath, "qcow-tool"),
+		append([]string{verb, d.Path}, args...)...)
+}
+
+// Exists if the image file exists.
+func (d *QcowDisk) Exists() bool {
+	return exists(d)
+}
+
+// Ensure creates the disk image if needed, and resizes it if needed.
+func (d *QcowDisk) Ensure() error {
+	return ensure(d)
+}
+
+// Create a disk with the given size in MiB
+func (d *QcowDisk) create() error {
+	cmd := d.QcowTool("create", "--size", fmt.Sprintf("%dMiB", d.Size))
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	return cmd.Wait()
+}
+
+// Query the current virtual size of the disk in MiB
+func (d *QcowDisk) getFileSize() (int, error) {
+	// Return a failure if the file doesn't exist yet
+	if _, err := os.Stat(d.Path); err != nil {
+		return 0, err
+	}
+	cmd := d.QcowTool("info", "--filter", ".size")
+	out, err := cmd.Output()
+	size, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return int(size / mib), nil
+}
+
+// Resize the virtual size of the disk
+func (d *QcowDisk) resize() error {
+	cmd := d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size))
+	return cmd.Run()
+}
+
+func (d *QcowDisk) sizeString() string {
+	s, err := d.getFileSize()
+	if err != nil {
+		return fmt.Sprintf("cannot get size: %v", err)
+	}
+	return fmt.Sprintf("%vMiB", s)
+}
+
+// compact the disk to shrink the physical size.
+func (d *QcowDisk) compact(lockFh *os.File) error {
+	log.Infof("Compact: %q... (%v)", d, d.sizeString())
+	cmd := d.QcowTool("compact")
+	// Pass a reference to the file lock to the compact program
+	cmd.ExtraFiles = []*os.File{lockFh}
+	if err := cmd.Run(); err != nil {
+		if err.(*exec.ExitError) != nil {
+			return errors.New("Failed to compact qcow2")
+		}
+		return err
+	}
+	log.Infof("Compact: %q: done (%v)", d, d.sizeString())
+	return nil
+}
+
+// check the disk is well-formed.
+func (d *QcowDisk) check(lockFile *os.File) error {
+	cmd := d.QcowTool("check")
+	// Pass a reference to the file lock to the compact program.
+	cmd.ExtraFiles = []*os.File{lockFile}
+	if err := cmd.Run(); err != nil {
+		if err.(*exec.ExitError) != nil {
+			return errors.New("qcow2 failed integrity check: it may be corrupt")
+		}
+		return err
+	}
+	return nil
+}
+
+// Stop cleans up this disk when we are quitting.
+func (d *QcowDisk) Stop(lockFile *os.File) error {
+	if !d.Trim && d.CompactAfter == 0 {
+		log.Infof("TRIM is enabled but auto-compaction disabled: compacting now")
+		if err := d.compact(lockFile); err != nil {
+			return fmt.Errorf("Failed to compact %q: %v", d, err)
+		}
+		if err := d.check(lockFile); err != nil {
+			return fmt.Errorf("Post-compact disk integrity check of %q failed: %v", d, err)
+		}
+		log.Infof("Post-compact disk integrity check of %q successful", d)
+	}
+	return nil
+}
+
+// AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
+func (d *QcowDisk) AsArgument() string {
+	res := fmt.Sprintf("%s,file://%s?sync=%s&buffered=1", diskDriver(d.Trim), d.Path, d.OnFlush)
+	res += fmt.Sprintf(",format=%v", defaultString(d.Format, "qcow"))
+	if d.Stats != "" {
+		res += ",qcow-stats-config=" + d.Stats
+	}
+	res += fmt.Sprintf(",qcow-config=discard=%t;compact_after_unmaps=%d;keep_erased=%d;runtime_asserts=%t",
+		d.Trim, d.CompactAfter, d.KeepErased, d.RuntimeAsserts)
 	return res
 }
