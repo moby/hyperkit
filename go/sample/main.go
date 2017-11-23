@@ -134,7 +134,7 @@ func main() {
 
 }
 
-type disks []hyperkit.RawDisk
+type disks []hyperkit.Disk
 
 func (d *disks) String() string {
 	return fmt.Sprintf("%v", *d)
@@ -167,6 +167,6 @@ func (d *disks) Set(v string) error {
 			return fmt.Errorf("Unrecognised disk config key: %s", p[0])
 		}
 	}
-	*d = append(*d, disk)
+	*d = append(*d, &disk)
 	return nil
 }

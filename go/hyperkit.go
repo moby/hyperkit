@@ -86,7 +86,7 @@ type HyperKit struct {
 	// UUID is a string containing a UUID, it sets BIOS DMI UUID for the VM (as found in /sys/class/dmi/id/product_uuid on Linux).
 	UUID string `json:"uuid"`
 	// Disks contains disk images to use/create.
-	Disks []RawDisk `json:"disks"`
+	Disks []Disk `json:"disks"`
 	// ISOImage is the (optional) path to a ISO image to attach.
 	ISOImages []string `json:"iso"`
 
