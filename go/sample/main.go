@@ -134,7 +134,7 @@ func main() {
 
 }
 
-type disks []hyperkit.DiskConfig
+type disks []hyperkit.RawDisk
 
 func (d *disks) String() string {
 	return fmt.Sprintf("%v", *d)
@@ -146,7 +146,7 @@ func (d *disks) Set(v string) error {
 		return fmt.Errorf("Empty disk config")
 	}
 
-	var disk hyperkit.DiskConfig
+	var disk hyperkit.RawDisk
 	for _, kv := range strings.Split(v, ",") {
 		p := strings.SplitN(kv, "=", 2)
 		if len(p) == 1 { // Assume no key is a path

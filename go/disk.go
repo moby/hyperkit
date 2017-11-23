@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 )
 
-// DiskConfig describes a disk image.
-type DiskConfig struct {
+// RawDisk describes a disk image.
+type RawDisk struct {
 	// Path specifies where the image file will be.
 	Path string `json:"path"`
 	// Size specifies the size of the disk image.  Used if the image needs to be created.
@@ -18,28 +18,28 @@ type DiskConfig struct {
 	Driver string `json:"driver"`
 }
 
-// GetPath is the location of the disk image file.
-func (d *DiskConfig) GetPath() string {
+// GetPath returns the location of the disk image file.
+func (d *RawDisk) GetPath() string {
 	return d.Path
 }
 
 // SetPath changes the location of the disk image file.
-func (d *DiskConfig) SetPath(p string) {
+func (d *RawDisk) SetPath(p string) {
 	d.Path = p
 }
 
-// GetSize is the desired size of the disk image file.
-func (d *DiskConfig) GetSize() int {
+// GetSize returns the desired size of the disk image file.
+func (d *RawDisk) GetSize() int {
 	return d.Size
 }
 
 // String returns the path.
-func (d *DiskConfig) String() string {
+func (d *RawDisk) String() string {
 	return d.Path
 }
 
 // Ensure create the image file if it does not exist.
-func (d *DiskConfig) Ensure() error {
+func (d *RawDisk) Ensure() error {
 	if !d.exists() {
 		return d.create()
 	}
@@ -47,13 +47,13 @@ func (d *DiskConfig) Ensure() error {
 }
 
 // exists if the image file exists.
-func (d *DiskConfig) exists() bool {
+func (d *RawDisk) exists() bool {
 	_, err := os.Stat(d.Path)
 	return err == nil
 }
 
 // create creates an empty file suitable for use as a disk image for a hyperkit VM.
-func (d *DiskConfig) create() error {
+func (d *RawDisk) create() error {
 	if d.Size == 0 {
 		return fmt.Errorf("Disk image %s not found and unable to create it as size is not specified", d.Path)
 	}
@@ -72,7 +72,7 @@ func (d *DiskConfig) create() error {
 }
 
 // AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
-func (d *DiskConfig) AsArgument() string {
+func (d *RawDisk) AsArgument() string {
 	res := fmt.Sprintf("%s,%s", defaultString(d.Driver, "virtio-blk"), d.Path)
 	if d.Format != "" {
 		res += ",format=" + d.Format
