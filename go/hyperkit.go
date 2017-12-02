@@ -28,6 +28,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -299,9 +300,17 @@ func (h *HyperKit) execute(cmdline string) error {
 			config.Path = filepath.Clean(filepath.Join(h.StateDir, fmt.Sprintf("disk%02d.img", idx)))
 			h.Disks[idx] = config
 		}
-		if _, err = os.Stat(config.Path); os.IsNotExist(err) {
+
+		// assume the path could be a file:// uri with query params
+		// use the actual path from the parsed result
+		u, err := url.Parse(config.Path)
+		if err != nil {
+			return err
+		}
+
+		if _, err = os.Stat(u.Path); os.IsNotExist(err) {
 			if config.Size != 0 {
-				err = CreateDiskImage(config.Path, config.Size)
+				err = CreateDiskImage(u.Path, config.Size)
 				if err != nil {
 					return err
 				}
