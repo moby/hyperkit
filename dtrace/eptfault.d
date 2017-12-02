@@ -1,8 +1,9 @@
-#!/usr/sbin/dtrace -s
+#!/usr/sbin/dtrace -C -s
 /*
  * eptfault.d - report all EPT faults for particular VM
  *
- * USAGE: eptfault.d -p <pid of hyperkit>
+ * USAGE: sudo eptfault.d -p <pid of hyperkit>
+ *        sudo eptfault.d -D TOTAL -p <pid of hyperkit>
  */
 
 #pragma D option quiet

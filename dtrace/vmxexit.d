@@ -1,8 +1,9 @@
-#!/usr/sbin/dtrace -s
+#!/usr/sbin/dtrace -C -s
 /*
  * vmxexit.d - report all VMX exits for particular VM
  *
- * USAGE: vmxexit.d -p <pid of hyperkit>
+ * USAGE: sudo vmxexit.d -p <pid of hyperkit>
+ *        sudo vmxexit.d -D TOTAL -p <pid of hyperkit>
  */
 
 #pragma D option quiet
