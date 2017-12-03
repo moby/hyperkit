@@ -4,6 +4,15 @@
  *
  * USAGE: sudo vmxexit.d -p <pid of hyperkit>
  *        sudo vmxexit.d -D TOTAL -p <pid of hyperkit>
+ *
+ * It seems that tracing starts before the end of dtrace:::BEGIN, i.e.
+ * before the 'reasons' array is fully initialised. This results in
+ * some empty/corrupted exit reasons to be printed. According to the
+ * documentation, this should not happen, so it might be a bug in High
+ * Sierra.
+ *
+ * As a workaround, specifying '-D·NUMERIC' stores and prints the VM
+ * Exit reasons numbers instead of names.
  */
 
 #pragma D option quiet
@@ -49,11 +58,14 @@ dtrace:::BEGIN
         reasons[32] = "WRMSR";
         reasons[33] = "INVAL_VMCS";
         reasons[34] = "INVAL_MSR";
+        /* 35 not documented */
         reasons[36] = "MWAIT";
         reasons[37] = "MTF";
+        /* 38 not documented */
         reasons[39] = "MONITOR";
         reasons[40] = "PAUSE";
         reasons[41] = "MCE_DURING_ENTRY";
+        /* 42 not documented */
         reasons[43] = "TPR";
         reasons[44] = "APIC_ACCESS";
         reasons[45] = "VIRTUALIZED_EOI";
@@ -74,7 +86,11 @@ dtrace:::BEGIN
 
 hyperkit$target:::vmx-exit
 {
+        #ifdef NUMERIC
+        @num[arg1, arg0] = count();
+        #else
         @num[reasons[arg1], arg0] = count();
+        #endif
 }
 
 dtrace:::END
@@ -85,5 +101,9 @@ dtrace:::END
         printf("%16s %-4s %8s\n", "REASON", "vCPU", "RATE (1/s)");
         normalize(@num, (timestamp - start) / 1000000000);
         #endif
+        #ifdef NUMERIC
+        printa("              %2d %-4d %@8d\n", @num);
+        #else
         printa("%16s %-4d %@8d\n", @num);
+        #endif
 }
