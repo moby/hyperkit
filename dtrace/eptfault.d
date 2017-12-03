@@ -4,6 +4,10 @@
  *
  * USAGE: sudo eptfault.d -p <pid of hyperkit>
  *        sudo eptfault.d -D TOTAL -p <pid of hyperkit>
+ *        sudo eptfault.d -D INTERVAL=1 -p <pid of hyperkit>
+ *
+ * If '-D INTERVAL=<seconds>' is specified periodically print a
+ * summary of EPT Faults per vCPU.
  *
  * It seems that tracing starts before the end of dtrace:::BEGIN, i.e.
  * before the 'lapic_map' array is fully initialised. This results in
@@ -91,6 +95,12 @@ dtrace:::BEGIN
         lapic_map[0x3F0] = "SELF_IPI";
 
         printf("Tracing... Hit Ctrl-C to end.\n");
+
+        #ifdef INTERVAL
+        secs = INTERVAL;
+        printf("\n\n");
+        printf("Per CPU VM Exits\n");
+        #endif
 }
 
 hyperkit$target:::vmx-ept-fault
@@ -108,8 +118,30 @@ hyperkit$target:::vmx-ept-fault
 
 hyperkit$target:::vmx-ept-fault
 {
+        #ifdef INTERVAL
+        /* Per vCPU count for periodic reporting */
+        @total[arg0] = count();
+        #endif
+
         @all_faults[arg1, arg0] = count();
 }
+
+#ifdef INTERVAL
+/* timer */
+profile:::tick-1sec
+{
+       secs--;
+}
+
+/* Periodically print per vCPU VM Exits */
+profile:::tick-1sec
+/secs == 0/
+{
+        printa(@total);
+        clear(@total);
+        secs = INTERVAL;
+}
+#endif
 
 dtrace:::END
 {
