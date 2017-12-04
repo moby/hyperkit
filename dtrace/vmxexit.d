@@ -1,8 +1,22 @@
-#!/usr/sbin/dtrace -s
+#!/usr/sbin/dtrace -C -s
 /*
- * vmxexit.d - report all VMX exits for particular VM
+ * vmxexit.d - report VMX exits for particular VM
  *
- * USAGE: vmxexit.d -p <pid of hyperkit>
+ * USAGE: sudo vmxexit.d -p <pid of hyperkit>
+ *        sudo vmxexit.d -D TOTAL -p <pid of hyperkit>
+ *        sudo vmxexit.d -D INTERVAL=1 -p <pid of hyperkit>
+ *
+ * If '-D INTERVAL=<seconds>' is specified periodically print a
+ * summary of VM Exits per vCPU.
+ *
+ * It seems that tracing starts before the end of dtrace:::BEGIN, i.e.
+ * before the 'reasons' array is fully initialised. This results in
+ * some empty/corrupted exit reasons to be printed. According to the
+ * documentation, this should not happen, so it might be a bug in High
+ * Sierra.
+ *
+ * As a workaround, specifying '-D·NUMERIC' stores and prints the VM
+ * Exit reasons numbers instead of names.
  */
 
 #pragma D option quiet
@@ -48,11 +62,14 @@ dtrace:::BEGIN
         reasons[32] = "WRMSR";
         reasons[33] = "INVAL_VMCS";
         reasons[34] = "INVAL_MSR";
+        /* 35 not documented */
         reasons[36] = "MWAIT";
         reasons[37] = "MTF";
+        /* 38 not documented */
         reasons[39] = "MONITOR";
         reasons[40] = "PAUSE";
         reasons[41] = "MCE_DURING_ENTRY";
+        /* 42 not documented */
         reasons[43] = "TPR";
         reasons[44] = "APIC_ACCESS";
         reasons[45] = "VIRTUALIZED_EOI";
@@ -69,12 +86,45 @@ dtrace:::BEGIN
         reasons[56] = "APIC_WRITE";
 
         printf("Tracing... Hit Ctrl-C to end.\n");
+
+        #ifdef INTERVAL
+        secs = INTERVAL;
+        printf("\n\n");
+        printf("Per CPU VM Exits\n");
+        #endif
 }
 
 hyperkit$target:::vmx-exit
 {
+        #ifdef INTERVAL
+        /* Per vCPU count for periodic reporting */
+        @total[arg0] = count();
+        #endif
+
+        /* Per Reason per vCPU counts for summary */
+        #ifdef NUMERIC
+        @num[arg1, arg0] = count();
+        #else
         @num[reasons[arg1], arg0] = count();
+        #endif
 }
+
+#ifdef INTERVAL
+/* timer */
+profile:::tick-1sec
+{
+       secs--;
+}
+
+/* Periodically print per vCPU VM Exits */
+profile:::tick-1sec
+/secs == 0/
+{
+        printa(@total);
+        clear(@total);
+        secs = INTERVAL;
+}
+#endif
 
 dtrace:::END
 {
@@ -84,5 +134,9 @@ dtrace:::END
         printf("%16s %-4s %8s\n", "REASON", "vCPU", "RATE (1/s)");
         normalize(@num, (timestamp - start) / 1000000000);
         #endif
+        #ifdef NUMERIC
+        printa("              %2d %-4d %@8d\n", @num);
+        #else
         printa("%16s %-4d %@8d\n", @num);
+        #endif
 }
