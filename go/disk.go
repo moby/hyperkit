@@ -233,8 +233,11 @@ func (d *QcowDisk) String() string {
 
 // QcowTool prepares a call to qcow-tool on this image.
 func (d *QcowDisk) QcowTool(verb string, args ...string) *exec.Cmd {
-	return exec.Command(defaultString(d.QcowToolPath, "qcow-tool"),
-		append([]string{verb, d.Path}, args...)...)
+	path := d.QcowToolPath
+	if path == "" {
+		path = "qcow-tool"
+	}
+	return exec.Command(path, append([]string{verb, d.Path}, args...)...)
 }
 
 // Exists if the image file exists.
@@ -333,7 +336,13 @@ func (d *QcowDisk) Stop(lockFile *os.File) error {
 // AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
 func (d *QcowDisk) AsArgument() string {
 	res := fmt.Sprintf("%s,file://%s?sync=%s&buffered=1", diskDriver(d.Trim), d.Path, d.OnFlush)
-	res += fmt.Sprintf(",format=%v", defaultString(d.Format, "qcow"))
+	{
+		format := d.Format
+		if format == "" {
+			format = "qcow"
+		}
+		res += fmt.Sprintf(",format=%v", format)
+	}
 	if d.Stats != "" {
 		res += ",qcow-stats-config=" + d.Stats
 	}

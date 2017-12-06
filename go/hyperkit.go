@@ -431,7 +431,10 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	if h.VSock {
-		path := defaultString(h.VSockDir, h.StateDir)
+		path := h.VSockDir
+		if path == "" {
+			path = h.StateDir
+		}
 		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, path)
 		if len(h.VSockPorts) > 0 {
 			l = fmt.Sprintf("%s,guest_forwards=%s", l, intArrayToString(h.VSockPorts, ";"))
@@ -649,11 +652,4 @@ func getHome() string {
 		return usr.HomeDir
 	}
 	return os.Getenv("HOME")
-}
-
-func defaultString(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }
