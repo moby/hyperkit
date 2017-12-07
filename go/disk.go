@@ -243,6 +243,13 @@ func (d *QcowDisk) QcowTool(verb string, args ...string) *exec.Cmd {
 	return exec.Command(path, append([]string{verb, d.Path}, args...)...)
 }
 
+func run(cmd *exec.Cmd) (string, error) {
+	buf, err := cmd.CombinedOutput()
+	out := string(buf)
+	log.Debugf("ran %v: out=%q, err=%v", cmd.Args, out, err)
+	return out, err
+}
+
 // Exists iff the image file can be stat'd without error.
 func (d *QcowDisk) Exists() bool {
 	return exists(d)
@@ -255,11 +262,8 @@ func (d *QcowDisk) Ensure() error {
 
 // Create a disk with the given size in MiB
 func (d *QcowDisk) create() error {
-	cmd := d.QcowTool("create", "--size", fmt.Sprintf("%dMiB", d.Size))
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	return cmd.Wait()
+	_, err := run(d.QcowTool("create", "--size", fmt.Sprintf("%dMiB", d.Size)))
+	return err
 }
 
 // The current disk size in MiB.
@@ -267,8 +271,10 @@ func (d *QcowDisk) getCurrentSize() (int, error) {
 	if _, err := os.Stat(d.Path); err != nil {
 		return 0, err
 	}
-	cmd := d.QcowTool("info", "--filter", ".size")
-	out, err := cmd.Output()
+	out, err := run(d.QcowTool("info", "--filter", ".size"))
+	if err != nil {
+		return 0, err
+	}
 	size, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
 	if err != nil {
 		return 0, err
@@ -278,8 +284,8 @@ func (d *QcowDisk) getCurrentSize() (int, error) {
 
 // Resize the virtual size of the disk
 func (d *QcowDisk) resize() error {
-	cmd := d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size))
-	return cmd.Run()
+	_, err := run(d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size)))
+	return err
 }
 
 func (d *QcowDisk) sizeString() string {
@@ -296,7 +302,7 @@ func (d *QcowDisk) compact(lockFh *os.File) error {
 	cmd := d.QcowTool("compact")
 	// Pass a reference to the file lock to the compact program
 	cmd.ExtraFiles = []*os.File{lockFh}
-	if err := cmd.Run(); err != nil {
+	if _, err := run(cmd); err != nil {
 		if err.(*exec.ExitError) != nil {
 			return errors.New("Failed to compact qcow2")
 		}
@@ -311,7 +317,7 @@ func (d *QcowDisk) check(lockFile *os.File) error {
 	cmd := d.QcowTool("check")
 	// Pass a reference to the file lock to the compact program.
 	cmd.ExtraFiles = []*os.File{lockFile}
-	if err := cmd.Run(); err != nil {
+	if _, err := run(cmd); err != nil {
 		if err.(*exec.ExitError) != nil {
 			return errors.New("qcow2 failed integrity check: it may be corrupt")
 		}
