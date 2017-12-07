@@ -1,4 +1,4 @@
-version: "1.1.0"
+version: "1.2.0"
 opam-version: "1.2"
 name: "octavius"
 maintainer: "leo@lpw25.net"

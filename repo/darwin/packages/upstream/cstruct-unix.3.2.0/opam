@@ -12,17 +12,9 @@ build: [
   ["jbuilder" "subst" "-p" name "--name" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
-build-test: [
-  ["jbuilder" "runtest" "-p" name "-j" jobs]
-]
 depends: [
   "jbuilder" {build & >="1.0+beta7"}
-  "cstruct" {>="3.1.1"}
-  "ounit" {test}
-  "ppx_tools_versioned" {>="5.0.1"}
-  "ocaml-migrate-parsetree"
-  "ppx_driver"    {test & >= "v0.9.0"}
-  "ppx_sexp_conv" {test}
-  "cstruct-unix"  {test}
+  "base-unix"
+  "cstruct"
 ]
 available: [ocaml-version >= "4.03.0"]

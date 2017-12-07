@@ -21,7 +21,7 @@ depends: [
   "prometheus"
   "fmt"
   "re"
-  "cohttp" {>="0.99.0"}
+  "cohttp" {>="0.99.0" & <"1.0"}
   "cohttp-lwt"
   "cohttp-lwt-unix"
   "lwt" {>="2.5.0"}

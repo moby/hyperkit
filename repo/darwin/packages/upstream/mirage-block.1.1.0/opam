@@ -17,6 +17,7 @@ depends: [
   "ocamlfind" {build}
   "jbuilder"  {build & >="1.0+beta9"}
   "mirage-device" {>= "1.0.0"}
+  "result"
 ]
 
 available: [ocaml-version >= "4.02.0"]

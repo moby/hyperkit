@@ -12,10 +12,11 @@ build: [
   ["jbuilder" "subst" "-p" name "--name" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
+build-test: ["jbuilder" "runtest" "-p" name]
+
 depends: [
-  "base-unix"
-  "lwt"
-  "cstruct" {>="3.1.1"}
-  "jbuilder" {build & >="1.0+beta7"}
+  "jbuilder" {build & >="1.0+beta10"}
+  "sexplib"
+  "ounit" {test}
 ]
 available: [ocaml-version >= "4.03.0"]

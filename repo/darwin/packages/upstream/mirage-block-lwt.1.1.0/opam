@@ -21,6 +21,7 @@ depends: [
   "lwt"
   "logs"
   "mirage-block" {>= "1.0.0"}
+  "result"
 ]
 
 available: [ocaml-version >= "4.02.0"]
