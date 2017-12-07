@@ -28,7 +28,7 @@ type Disk interface {
 	// String returns the path.
 	String() string
 
-	// Exists is true iff the disk image file exists.
+	// Exists iff the disk image file can be stat'd without error.
 	Exists() bool
 	// Ensure creates the disk image if needed, and resizes it if needed.
 	Ensure() error
@@ -41,13 +41,17 @@ type Disk interface {
 	AsArgument() string
 
 	create() error
+	// Query the current virtual size of the disk in MiB.
 	getFileSize() (int, error)
 	resize() error
 }
 
-// exists if the image file exists.
+// exists iff the image file can be stat'd without error.
 func exists(d Disk) bool {
 	_, err := os.Stat(d.GetPath())
+	if err != nil && !os.IsNotExist(err) {
+		log.Debugf("cannot stat %q: %v", d.GetPath(), err)
+	}
 	return err == nil
 }
 
@@ -138,7 +142,7 @@ func (d *RawDisk) String() string {
 	return d.Path
 }
 
-// Exists if the image file exists.
+// Exists iff the image file can be stat's without error.
 func (d *RawDisk) Exists() bool {
 	return exists(d)
 }
@@ -160,7 +164,6 @@ func (d *RawDisk) create() error {
 
 // Query the current virtual size of the disk in MiB
 func (d *RawDisk) getFileSize() (int, error) {
-	// Return a failure if the file doesn't exist yet
 	fileinfo, err := os.Stat(d.Path)
 	if err != nil {
 		return 0, err
@@ -240,7 +243,7 @@ func (d *QcowDisk) QcowTool(verb string, args ...string) *exec.Cmd {
 	return exec.Command(path, append([]string{verb, d.Path}, args...)...)
 }
 
-// Exists if the image file exists.
+// Exists iff the image file can be stat'd without error.
 func (d *QcowDisk) Exists() bool {
 	return exists(d)
 }
@@ -261,7 +264,6 @@ func (d *QcowDisk) create() error {
 
 // Query the current virtual size of the disk in MiB
 func (d *QcowDisk) getFileSize() (int, error) {
-	// Return a failure if the file doesn't exist yet
 	if _, err := os.Stat(d.Path); err != nil {
 		return 0, err
 	}
