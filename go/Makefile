@@ -30,6 +30,7 @@ build/hyperkitgo.exe: $(DEPS)
 	go build -o $@ --ldflags '-extldflags "-fno-PIC"' \
 		sample/main.go
 
+.PHONY: clean fmt lint check
 clean:
 	rm -rf build
 
@@ -42,6 +43,10 @@ lint:
 	$(if $(shell which golint || echo ''), , \
 		$(error Please install golint))
 	@test -z "$$(golint ./... 2>&1 | grep -v ^vendor/ | grep -v mock/ | tee /dev/stderr)"
+
+check:
+	@echo "+ $@"
+	@go test . $(TESTFLAGS)
 
 # this will blow away the vendored code and update it to latest
 .PHONY: vendor vendor-local

@@ -2,6 +2,7 @@ package hyperkit
 
 import (
 	"os"
+	"os/exec"
 	"reflect"
 	"testing"
 )
@@ -11,6 +12,27 @@ func checkEqual(t *testing.T, expected, effective interface{}) {
 	if !reflect.DeepEqual(expected, effective) {
 		t.Errorf("FAIL:\n expected: %v\neffective: %v", expected, effective)
 	}
+}
+
+func TestQcowDisk(t *testing.T) {
+	if _, err := exec.LookPath("qcow-tool"); err != nil {
+		t.Skip("cannot find qcow-tool: %v", err)
+	}
+	disk := QcowDisk{
+		Path: "test.qcow",
+		Size: 1,
+	}
+	os.Remove(disk.Path)
+
+	checkEqual(t, "virtio-blk,file://test.qcow?sync=&buffered=1,format=qcow,qcow-config=discard=false;compact_after_unmaps=0;keep_erased=0;runtime_asserts=false", disk.AsArgument())
+	checkEqual(t, nil, disk.Ensure())
+	// Running twice is fine.
+	checkEqual(t, nil, disk.Ensure())
+	checkEqual(t, 1, disk.GetSize())
+	// Rerunning resizes.
+	disk.Size = 2
+	checkEqual(t, nil, disk.Ensure())
+	checkEqual(t, 2, disk.GetSize())
 }
 
 func TestRawDisk(t *testing.T) {
@@ -25,6 +47,7 @@ func TestRawDisk(t *testing.T) {
 	// Running twice is fine.
 	checkEqual(t, nil, disk.Ensure())
 	{
+		checkEqual(t, 1, disk.GetSize())
 		s, err := os.Stat(disk.Path)
 		checkEqual(t, nil, err)
 		checkEqual(t, 1024*1024, int(s.Size()))
@@ -33,6 +56,7 @@ func TestRawDisk(t *testing.T) {
 	disk.Size = 2
 	checkEqual(t, nil, disk.Ensure())
 	{
+		checkEqual(t, 2, disk.GetSize())
 		s, err := os.Stat(disk.Path)
 		checkEqual(t, nil, err)
 		checkEqual(t, 2*1024*1024, int(s.Size()))
