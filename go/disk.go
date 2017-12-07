@@ -23,7 +23,7 @@ type Disk interface {
 	GetPath() string
 	// SetPath changes the location of the disk image file.
 	SetPath(p string)
-	// GetSize returns the desired size of the disk image file.
+	// GetSize returns the desired disk size.
 	GetSize() int
 	// String returns the path.
 	String() string
@@ -41,8 +41,8 @@ type Disk interface {
 	AsArgument() string
 
 	create() error
-	// Query the current virtual size of the disk in MiB.
-	getFileSize() (int, error)
+	// The current disk size in MiB.
+	getCurrentSize() (int, error)
 	resize() error
 }
 
@@ -57,7 +57,7 @@ func exists(d Disk) bool {
 
 // ensure creates the disk image if needed, and resizes it if needed.
 func ensure(d Disk) error {
-	current, err := d.getFileSize()
+	current, err := d.getCurrentSize()
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -114,7 +114,7 @@ func diskDriver(trim bool) string {
 type RawDisk struct {
 	// Path specifies where the image file will be.
 	Path string `json:"path"`
-	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	// Size specifies the size of the disk.
 	Size int `json:"size"`
 	// Format is passed as-is to the driver.
 	Format string `json:"format"`
@@ -132,7 +132,7 @@ func (d *RawDisk) SetPath(p string) {
 	d.Path = p
 }
 
-// GetSize returns the desired size of the disk image file.
+// GetSize returns the desired disk size.
 func (d *RawDisk) GetSize() int {
 	return d.Size
 }
@@ -162,8 +162,8 @@ func (d *RawDisk) create() error {
 	return f.Truncate(int64(d.Size) * mib)
 }
 
-// Query the current virtual size of the disk in MiB
-func (d *RawDisk) getFileSize() (int, error) {
+// The current disk size in MiB.
+func (d *RawDisk) getCurrentSize() (int, error) {
 	fileinfo, err := os.Stat(d.Path)
 	if err != nil {
 		return 0, err
@@ -198,7 +198,7 @@ func (d *RawDisk) AsArgument() string {
 type QcowDisk struct {
 	// Path specifies where the image file will be.
 	Path string `json:"path"`
-	// Size specifies the size of the disk image.  Used if the image needs to be created.
+	// Size specifies the size of the disk.
 	Size int `json:"size"`
 	// Format is passed as-is to the driver.
 	Format string `json:"format"`
@@ -224,7 +224,7 @@ func (d *QcowDisk) SetPath(p string) {
 	d.Path = p
 }
 
-// GetSize returns the desired size of the disk image file.
+// GetSize returns the desired disk size.
 func (d *QcowDisk) GetSize() int {
 	return d.Size
 }
@@ -262,8 +262,8 @@ func (d *QcowDisk) create() error {
 	return cmd.Wait()
 }
 
-// Query the current virtual size of the disk in MiB
-func (d *QcowDisk) getFileSize() (int, error) {
+// The current disk size in MiB.
+func (d *QcowDisk) getCurrentSize() (int, error) {
 	if _, err := os.Stat(d.Path); err != nil {
 		return 0, err
 	}
@@ -283,7 +283,7 @@ func (d *QcowDisk) resize() error {
 }
 
 func (d *QcowDisk) sizeString() string {
-	s, err := d.getFileSize()
+	s, err := d.getCurrentSize()
 	if err != nil {
 		return fmt.Sprintf("cannot get size: %v", err)
 	}
