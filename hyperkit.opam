@@ -7,7 +7,7 @@ depends: [
   "sha"               {= "1.9"}
   "conduit"           {= "1.0.0"}
   "lwt"               {= "3.1.0"}
-  "mirage-block-unix" {= "2.7.0"}
+  "mirage-block-unix" {= "2.9.0"}
   "conf-libev"
   "logs"
   "fmt"
