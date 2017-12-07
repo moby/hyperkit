@@ -240,12 +240,18 @@ func (h *HyperKit) execute(cmdline string) error {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
 	}
-	if h.VSock && h.VSockDir == "" && h.StateDir == "" {
-		return fmt.Errorf("If virtio-sockets are enabled, VSockDir or StateDir must be specified")
+
+	if h.VSock {
+		if h.VSockDir == "" {
+			if h.StateDir == "" {
+				return fmt.Errorf("If virtio-sockets are enabled, VSockDir or StateDir must be specified")
+			}
+			h.VSockDir = h.StateDir
+		}
+	} else if len(h.VSockPorts) > 0 {
+		return fmt.Errorf("To forward vsock ports VSock must be enabled")
 	}
-	if !h.VSock && len(h.VSockPorts) > 0 {
-		return fmt.Errorf("To forward vsock ports vsock must be enabled")
-	}
+
 	if h.Bootrom == "" {
 		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
@@ -431,11 +437,7 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	if h.VSock {
-		path := h.VSockDir
-		if path == "" {
-			path = h.StateDir
-		}
-		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, path)
+		l := fmt.Sprintf("%d,virtio-sock,guest_cid=%d,path=%s", nextSlot, h.VSockGuestCID, h.VSockDir)
 		if len(h.VSockPorts) > 0 {
 			l = fmt.Sprintf("%s,guest_forwards=%s", l, intArrayToString(h.VSockPorts, ";"))
 		}

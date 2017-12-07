@@ -236,11 +236,10 @@ func (d *QcowDisk) String() string {
 
 // QcowTool prepares a call to qcow-tool on this image.
 func (d *QcowDisk) QcowTool(verb string, args ...string) *exec.Cmd {
-	path := d.QcowToolPath
-	if path == "" {
-		path = "qcow-tool"
+	if d.QcowToolPath == "" {
+		d.QcowToolPath = "qcow-tool"
 	}
-	return exec.Command(path, append([]string{verb, d.Path}, args...)...)
+	return exec.Command(d.QcowToolPath, append([]string{verb, d.Path}, args...)...)
 }
 
 func run(cmd *exec.Cmd) (string, error) {
