@@ -3,8 +3,10 @@ package hyperkit
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -44,6 +46,52 @@ type Disk interface {
 	// The current disk size in MiB.
 	getCurrentSize() (int, error)
 	resize() error
+}
+
+// DiskFormat describes the physical format of the disk data
+type DiskFormat int
+
+const (
+	// DiskFormatQcow means the disk is a qcow2.
+	DiskFormatQcow DiskFormat = iota
+
+	// DiskFormatRaw means the disk is a raw file.
+	DiskFormatRaw
+)
+
+// GetDiskFormat computes the format based on the path's extensions.
+func GetDiskFormat(path string) DiskFormat {
+	switch ext := filepath.Ext(path); ext {
+	case ".qcow2":
+		return DiskFormatQcow
+	case ".raw":
+		return DiskFormatRaw
+	default:
+		log.Debugf("Unknown disk extension %q, will use raw format", path)
+		return DiskFormatRaw
+	}
+}
+
+// NewDisk creates a qcow/raw disk configuration based on the spec.
+func NewDisk(spec string, size int) (Disk, error) {
+	u, err := url.Parse(spec)
+	if err != nil {
+		return nil, fmt.Errorf("invalid disk path %q: %v", spec, err)
+	}
+	switch path := u.Path; GetDiskFormat(path) {
+	case DiskFormatRaw:
+		return &RawDisk{
+			Path: path,
+			Size: size,
+			Trim: true,
+		}, nil
+	case DiskFormatQcow:
+		return &QcowDisk{
+			Path: path,
+			Size: size,
+		}, nil
+	}
+	return nil, fmt.Errorf("impossible")
 }
 
 // exists iff the image file can be stat'd without error.

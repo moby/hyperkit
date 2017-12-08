@@ -10,7 +10,7 @@ import (
 // checkEqual allows to avoid importing testify.
 func checkEqual(t *testing.T, expected, effective interface{}) {
 	if !reflect.DeepEqual(expected, effective) {
-		t.Errorf("FAIL:\n expected: %v\neffective: %v", expected, effective)
+		t.Errorf("FAIL:\n expected: %#v\neffective: %#v", expected, effective)
 	}
 }
 
@@ -70,4 +70,23 @@ func TestRawDiskTrim(t *testing.T) {
 		Trim: true,
 	}
 	checkEqual(t, "ahci-hd,test.raw", disk.AsArgument())
+}
+
+func newDisk(t *testing.T, p string, s int) Disk {
+	res, err := NewDisk(p, s)
+	checkEqual(t, nil, err)
+	return res
+}
+
+func TestNewDisk(t *testing.T) {
+	{
+		var ref Disk = &QcowDisk{Path: "/test.qcow2", Size: 1}
+		checkEqual(t, ref, newDisk(t, "/test.qcow2", 1))
+		checkEqual(t, ref, newDisk(t, "file:///test.qcow2", 1))
+	}
+	{
+		var ref Disk = &RawDisk{Path: "/test.raw", Size: 1, Trim: true}
+		checkEqual(t, ref, newDisk(t, "/test.raw", 1))
+		checkEqual(t, ref, newDisk(t, "file:///test.raw", 1))
+	}
 }
