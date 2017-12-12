@@ -134,7 +134,7 @@ func main() {
 
 }
 
-type disks []hyperkit.DiskConfig
+type disks []hyperkit.Disk
 
 func (d *disks) String() string {
 	return fmt.Sprintf("%v", *d)
@@ -146,28 +146,27 @@ func (d *disks) Set(v string) error {
 		return fmt.Errorf("Empty disk config")
 	}
 
-	var config hyperkit.DiskConfig
-	var err error
+	var disk hyperkit.RawDisk
 	for _, kv := range strings.Split(v, ",") {
 		p := strings.SplitN(kv, "=", 2)
 		if len(p) == 1 { // Assume no key is a path
-			if config.Path != "" {
+			p = []string{"file", kv}
+		}
+		switch p[0] {
+		case "size":
+			var err error
+			if disk.Size, err = strconv.Atoi(p[1]); err != nil {
+				return err
+			}
+		case "file":
+			if disk.Path != "" {
 				return fmt.Errorf("Invalid disk config, path already set")
 			}
-			config.Path = p[0]
-		} else {
-			switch p[0] {
-			case "size":
-				if config.Size, err = strconv.Atoi(p[1]); err != nil {
-					return err
-				}
-			case "file":
-				config.Path = p[1]
-			default:
-				return fmt.Errorf("Unrecognised disk config key: %s", p[0])
-			}
+			disk.Path = p[1]
+		default:
+			return fmt.Errorf("Unrecognised disk config key: %s", p[0])
 		}
 	}
-	*d = append(*d, config)
+	*d = append(*d, &disk)
 	return nil
 }
