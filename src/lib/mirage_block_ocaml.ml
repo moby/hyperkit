@@ -316,7 +316,7 @@ let process_one t =
         match t.request with
           | Request.Connect (block_config, qcow_config) ->
             let open Lwt.Infix in
-            Block.of_config block_config
+            Block.of_config { block_config with Block.Config.lock = true }
             >>= fun base ->
             Qcow.connect ?config:qcow_config base
             >>= fun block ->

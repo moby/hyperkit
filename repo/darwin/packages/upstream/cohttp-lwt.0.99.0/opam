@@ -22,7 +22,7 @@ build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 depends: [
   "jbuilder" {build & >= "1.0+beta10"}
   "conduit" {>= "0.14.0"}
-  "cohttp" {>="0.99.0"}
+  "cohttp" {>="0.99.0" & < "1.0"}
   "lwt"
 ]
 conflicts: [
