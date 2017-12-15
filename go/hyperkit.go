@@ -305,12 +305,11 @@ func (h *HyperKit) execute(cmdline string) error {
 	}
 	// Run
 	h.buildArgs(cmdline)
-	err := h.execHyperKit()
+	cmd, err := h.makeCommand()
 	if err != nil {
 		return err
 	}
-
-	return nil
+	return h.execHyperKit(cmd)
 }
 
 // Stop the running VM
@@ -486,8 +485,9 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
-// Execute hyperkit and plumb stdin/stdout/stderr.
-func (h *HyperKit) execHyperKit() error {
+// makeCommand forges the command to run hyperkit, runs and returns it.
+// It also plumbs stdin/stdout/stderr.
+func (h *HyperKit) makeCommand() (*exec.Cmd, error) {
 
 	cmd := exec.Command(h.HyperKit, h.Arguments...)
 	if h.Argv0 != "" {
@@ -537,11 +537,11 @@ func (h *HyperKit) execHyperKit() error {
 		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		stream(stdout, stdoutChan)
 		stream(stderr, stderrChan)
@@ -564,7 +564,7 @@ func (h *HyperKit) execHyperKit() error {
 	log.Debugf("hyperkit: Starting %#v", cmd)
 	err := cmd.Start()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	h.Pid = cmd.Process.Pid
 	log.Debugf("hyperkit: Pid is %v", h.Pid)
@@ -573,11 +573,16 @@ func (h *HyperKit) execHyperKit() error {
 	if err != nil {
 		log.Debugf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
 		h.process.Kill()
-		return err
+		return nil, err
 	}
+	return cmd, nil
+}
+
+// execHyperKit waits for hyperkit, in background if demanded.
+func (h *HyperKit) execHyperKit(cmd *exec.Cmd) error {
 	if !h.background {
 		log.Debugf("hyperkit: Waiting for %#v", cmd)
-		err = cmd.Wait()
+		err := cmd.Wait()
 		if err != nil {
 			return err
 		}
