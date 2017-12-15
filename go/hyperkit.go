@@ -236,7 +236,7 @@ func (h *HyperKit) Start(cmdline string) error {
 		return err
 	}
 	h.buildArgs(cmdline)
-	cmd, err := h.makeCommand()
+	cmd, err := h.execute()
 	if err != nil {
 		return err
 	}
@@ -494,9 +494,9 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
-// makeCommand forges the command to run hyperkit, runs and returns it.
+// execute forges the command to run hyperkit, runs and returns it.
 // It also plumbs stdin/stdout/stderr.
-func (h *HyperKit) makeCommand() (*exec.Cmd, error) {
+func (h *HyperKit) execute() (*exec.Cmd, error) {
 
 	cmd := exec.Command(h.HyperKit, h.Arguments...)
 	if h.Argv0 != "" {
