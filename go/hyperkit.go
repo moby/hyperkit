@@ -225,8 +225,9 @@ func (h *HyperKit) Start(cmdline string) error {
 	return h.execute(cmdline)
 }
 
-func (h *HyperKit) execute(cmdline string) error {
-	log.Debugf("hyperkit: execute %#v", h)
+// check validates `h`.  It also creates the disks if needed.
+func (h *HyperKit) check() error {
+	log.Debugf("hyperkit: check %#v", h)
 	var err error
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
@@ -294,10 +295,17 @@ func (h *HyperKit) execute(cmdline string) error {
 			return err
 		}
 	}
+	return nil
+}
 
+func (h *HyperKit) execute(cmdline string) error {
+	log.Debugf("hyperkit: execute %#v", h)
+	if err := h.check(); err != nil {
+		return err
+	}
 	// Run
 	h.buildArgs(cmdline)
-	err = h.execHyperKit()
+	err := h.execHyperKit()
 	if err != nil {
 		return err
 	}
