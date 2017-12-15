@@ -131,6 +131,9 @@ type HyperKit struct {
 	// process died unexpectedly.
 	ExtraFiles []*os.File `json:"extra_files"`
 
+	// ErrorCh is where the result of Wait'ing for hyperkit is sent.
+	ErrorCh chan error `json:"-"`
+
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
@@ -141,8 +144,7 @@ type HyperKit struct {
 	// CmdLine is a single string of the command line
 	CmdLine string `json:"cmdline"`
 
-	process    *os.Process
-	background bool
+	process *os.Process
 }
 
 // New creates a template config structure.
@@ -170,6 +172,8 @@ func New(hyperkit, vpnkitsock, statedir string) (*HyperKit, error) {
 	h.VSockGuestCID = defaultVSockGuestCID
 
 	h.Console = ConsoleStdio
+
+	h.ErrorCh = make(chan error, 1)
 
 	return &h, nil
 }
@@ -204,6 +208,8 @@ func FromState(statedir string) (*HyperKit, error) {
 		return nil, err
 	}
 
+	h.ErrorCh = make(chan error, 1)
+
 	return h, nil
 }
 
@@ -213,16 +219,33 @@ func (h *HyperKit) SetLogger(l Logger) {
 	SetLogger(l)
 }
 
-// Run the VM with a given command line until it exits
+// Run the VM with a given command line until it exits.
 func (h *HyperKit) Run(cmdline string) error {
-	h.background = false
-	return h.execute(cmdline)
+	if err := h.Start(cmdline); err != nil {
+		return err
+	}
+	return <-h.ErrorCh
 }
 
-// Start the VM with a given command line in the background
+// Start the VM with a given command line in the background.  Return
+// failures to start the process.  Process errors are published in
+// h.ErrorCh.
 func (h *HyperKit) Start(cmdline string) error {
-	h.background = true
-	return h.execute(cmdline)
+	log.Debugf("hyperkit: Start %#v", h)
+	if err := h.check(); err != nil {
+		return err
+	}
+	h.buildArgs(cmdline)
+	cmd, err := h.makeCommand()
+	if err != nil {
+		return err
+	}
+	// Make sure we reap the child when it exits
+	go func() {
+		log.Debugf("hyperkit: Waiting for %#v", cmd)
+		h.ErrorCh <- cmd.Wait()
+	}()
+	return nil
 }
 
 // check validates `h`.  It also creates the disks if needed.
@@ -296,20 +319,6 @@ func (h *HyperKit) check() error {
 		}
 	}
 	return nil
-}
-
-func (h *HyperKit) execute(cmdline string) error {
-	log.Debugf("hyperkit: execute %#v", h)
-	if err := h.check(); err != nil {
-		return err
-	}
-	// Run
-	h.buildArgs(cmdline)
-	cmd, err := h.makeCommand()
-	if err != nil {
-		return err
-	}
-	return h.execHyperKit(cmd)
 }
 
 // Stop the running VM
@@ -576,24 +585,6 @@ func (h *HyperKit) makeCommand() (*exec.Cmd, error) {
 		return nil, err
 	}
 	return cmd, nil
-}
-
-// execHyperKit waits for hyperkit, in background if demanded.
-func (h *HyperKit) execHyperKit(cmd *exec.Cmd) error {
-	if !h.background {
-		log.Debugf("hyperkit: Waiting for %#v", cmd)
-		err := cmd.Wait()
-		if err != nil {
-			return err
-		}
-	} else {
-		// Make sure we reap the child when it exits
-		go func() {
-			log.Debugf("hyperkit: Waiting for %#v", cmd)
-			cmd.Wait()
-		}()
-	}
-	return nil
 }
 
 // writeState write the state to a JSON file
