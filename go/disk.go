@@ -35,9 +35,7 @@ type Disk interface {
 	// Ensure creates the disk image if needed, and resizes it if needed.
 	Ensure() error
 	// Stop can be called when hyperkit has quit.  It performs sanity checks, compaction, etc.
-	// It can be passed a lock file which is not-used, but kept alive even if the parent
-	// process died.
-	Stop(lockFile *os.File) error
+	Stop() error
 
 	// AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
 	AsArgument() string
@@ -225,7 +223,7 @@ func (d *RawDisk) resize() error {
 }
 
 // Stop cleans up this disk when we are quitting.
-func (d *RawDisk) Stop(lockFile *os.File) error {
+func (d *RawDisk) Stop() error {
 	return nil
 }
 
@@ -344,11 +342,9 @@ func (d *QcowDisk) sizeString() string {
 }
 
 // compact the disk to shrink the physical size.
-func (d *QcowDisk) compact(lockFh *os.File) error {
+func (d *QcowDisk) compact() error {
 	log.Infof("Compact: %q... (%v)", d, d.sizeString())
 	cmd := d.QcowTool("compact")
-	// Pass a reference to the file lock to the compact program
-	cmd.ExtraFiles = []*os.File{lockFh}
 	if _, err := run(cmd); err != nil {
 		if err.(*exec.ExitError) != nil {
 			return errors.New("Failed to compact qcow2")
@@ -360,10 +356,8 @@ func (d *QcowDisk) compact(lockFh *os.File) error {
 }
 
 // check the disk is well-formed.
-func (d *QcowDisk) check(lockFile *os.File) error {
+func (d *QcowDisk) check() error {
 	cmd := d.QcowTool("check")
-	// Pass a reference to the file lock to the compact program.
-	cmd.ExtraFiles = []*os.File{lockFile}
 	if _, err := run(cmd); err != nil {
 		if err.(*exec.ExitError) != nil {
 			return errors.New("qcow2 failed integrity check: it may be corrupt")
@@ -374,13 +368,13 @@ func (d *QcowDisk) check(lockFile *os.File) error {
 }
 
 // Stop cleans up this disk when we are quitting.
-func (d *QcowDisk) Stop(lockFile *os.File) error {
+func (d *QcowDisk) Stop() error {
 	if !d.Trim && d.CompactAfter == 0 {
 		log.Infof("TRIM is enabled but auto-compaction disabled: compacting now")
-		if err := d.compact(lockFile); err != nil {
+		if err := d.compact(); err != nil {
 			return fmt.Errorf("Failed to compact %q: %v", d, err)
 		}
-		if err := d.check(lockFile); err != nil {
+		if err := d.check(); err != nil {
 			return fmt.Errorf("Post-compact disk integrity check of %q failed: %v", d, err)
 		}
 		log.Infof("Post-compact disk integrity check of %q successful", d)
