@@ -121,7 +121,7 @@ func main() {
 
 	if *bg {
 		h.Console = hyperkit.ConsoleFile
-		err = h.Start("console=ttyS0")
+		_, err = h.Start("console=ttyS0")
 
 	} else {
 		err = h.Run("console=ttyS0")
@@ -131,7 +131,6 @@ func main() {
 		fmt.Println(h.Arguments)
 		log.Fatalln("Error creating hyperkit: ", err)
 	}
-
 }
 
 type disks []hyperkit.Disk

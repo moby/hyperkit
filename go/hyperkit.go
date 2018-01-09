@@ -141,8 +141,7 @@ type HyperKit struct {
 	// CmdLine is a single string of the command line
 	CmdLine string `json:"cmdline"`
 
-	process    *os.Process
-	background bool
+	process *os.Process
 }
 
 // New creates a template config structure.
@@ -213,20 +212,40 @@ func (h *HyperKit) SetLogger(l Logger) {
 	SetLogger(l)
 }
 
-// Run the VM with a given command line until it exits
+// Run the VM with a given command line until it exits.
 func (h *HyperKit) Run(cmdline string) error {
-	h.background = false
-	return h.execute(cmdline)
+	errCh, err := h.Start(cmdline)
+	if err != nil {
+		return err
+	}
+	return <-errCh
 }
 
-// Start the VM with a given command line in the background
-func (h *HyperKit) Start(cmdline string) error {
-	h.background = true
-	return h.execute(cmdline)
+// Start the VM with a given command line in the background.  On
+// success, returns a channel on which the result of Wait'ing for
+// hyperkit is sent.  Return failures to start the process.
+func (h *HyperKit) Start(cmdline string) (chan error, error) {
+	log.Debugf("hyperkit: Start %#v", h)
+	if err := h.check(); err != nil {
+		return nil, err
+	}
+	h.buildArgs(cmdline)
+	cmd, err := h.execute()
+	if err != nil {
+		return nil, err
+	}
+	errCh := make(chan error, 1)
+	// Make sure we reap the child when it exits
+	go func() {
+		log.Debugf("hyperkit: Waiting for %#v", cmd)
+		errCh <- cmd.Wait()
+	}()
+	return errCh, nil
 }
 
-func (h *HyperKit) execute(cmdline string) error {
-	log.Debugf("hyperkit: execute %#v", h)
+// check validates `h`.  It also creates the disks if needed.
+func (h *HyperKit) check() error {
+	log.Debugf("hyperkit: check %#v", h)
 	var err error
 	// Sanity checks on configuration
 	if h.Console == ConsoleFile && h.StateDir == "" {
@@ -294,14 +313,6 @@ func (h *HyperKit) execute(cmdline string) error {
 			return err
 		}
 	}
-
-	// Run
-	h.buildArgs(cmdline)
-	err = h.execHyperKit()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -478,8 +489,9 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
-// Execute hyperkit and plumb stdin/stdout/stderr.
-func (h *HyperKit) execHyperKit() error {
+// execute forges the command to run hyperkit, runs and returns it.
+// It also plumbs stdin/stdout/stderr.
+func (h *HyperKit) execute() (*exec.Cmd, error) {
 
 	cmd := exec.Command(h.HyperKit, h.Arguments...)
 	if h.Argv0 != "" {
@@ -529,11 +541,11 @@ func (h *HyperKit) execHyperKit() error {
 		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		stream(stdout, stdoutChan)
 		stream(stderr, stderrChan)
@@ -556,7 +568,7 @@ func (h *HyperKit) execHyperKit() error {
 	log.Debugf("hyperkit: Starting %#v", cmd)
 	err := cmd.Start()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	h.Pid = cmd.Process.Pid
 	log.Debugf("hyperkit: Pid is %v", h.Pid)
@@ -565,22 +577,9 @@ func (h *HyperKit) execHyperKit() error {
 	if err != nil {
 		log.Debugf("hyperkit: Cannot write state: %v, killing %v", err, h.Pid)
 		h.process.Kill()
-		return err
+		return nil, err
 	}
-	if !h.background {
-		log.Debugf("hyperkit: Waiting for %#v", cmd)
-		err = cmd.Wait()
-		if err != nil {
-			return err
-		}
-	} else {
-		// Make sure we reap the child when it exits
-		go func() {
-			log.Debugf("hyperkit: Waiting for %#v", cmd)
-			cmd.Wait()
-		}()
-	}
-	return nil
+	return cmd, nil
 }
 
 // writeState write the state to a JSON file
