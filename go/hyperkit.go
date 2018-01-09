@@ -131,9 +131,6 @@ type HyperKit struct {
 	// process died unexpectedly.
 	ExtraFiles []*os.File `json:"extra_files"`
 
-	// ErrorCh is where the result of Wait'ing for hyperkit is sent.
-	ErrorCh chan error `json:"-"`
-
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
@@ -173,8 +170,6 @@ func New(hyperkit, vpnkitsock, statedir string) (*HyperKit, error) {
 
 	h.Console = ConsoleStdio
 
-	h.ErrorCh = make(chan error, 1)
-
 	return &h, nil
 }
 
@@ -208,8 +203,6 @@ func FromState(statedir string) (*HyperKit, error) {
 		return nil, err
 	}
 
-	h.ErrorCh = make(chan error, 1)
-
 	return h, nil
 }
 
@@ -221,31 +214,33 @@ func (h *HyperKit) SetLogger(l Logger) {
 
 // Run the VM with a given command line until it exits.
 func (h *HyperKit) Run(cmdline string) error {
-	if err := h.Start(cmdline); err != nil {
+	errCh, err := h.Start(cmdline)
+	if err != nil {
 		return err
 	}
-	return <-h.ErrorCh
+	return <-errCh
 }
 
-// Start the VM with a given command line in the background.  Return
-// failures to start the process.  Process errors are published in
-// h.ErrorCh.
-func (h *HyperKit) Start(cmdline string) error {
+// Start the VM with a given command line in the background.  On
+// success, returns a channel on which the result of Wait'ing for
+// hyperkit is sent.  Return failures to start the process.
+func (h *HyperKit) Start(cmdline string) (chan error, error) {
 	log.Debugf("hyperkit: Start %#v", h)
 	if err := h.check(); err != nil {
-		return err
+		return nil, err
 	}
 	h.buildArgs(cmdline)
 	cmd, err := h.execute()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	errCh := make(chan error, 1)
 	// Make sure we reap the child when it exits
 	go func() {
 		log.Debugf("hyperkit: Waiting for %#v", cmd)
-		h.ErrorCh <- cmd.Wait()
+		errCh <- cmd.Wait()
 	}()
-	return nil
+	return errCh, nil
 }
 
 // check validates `h`.  It also creates the disks if needed.
