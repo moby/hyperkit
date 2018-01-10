@@ -27,6 +27,8 @@ type Disk interface {
 	SetPath(p string)
 	// GetSize returns the desired disk size.
 	GetSize() int
+	// GetCurrentSize returns the current disk size in MiB.
+	GetCurrentSize() (int, error)
 	// String returns the path.
 	String() string
 
@@ -41,8 +43,6 @@ type Disk interface {
 	AsArgument() string
 
 	create() error
-	// The current disk size in MiB.
-	getCurrentSize() (int, error)
 	resize() error
 }
 
@@ -103,7 +103,7 @@ func exists(d Disk) bool {
 
 // ensure creates the disk image if needed, and resizes it if needed.
 func ensure(d Disk) error {
-	current, err := d.getCurrentSize()
+	current, err := d.GetCurrentSize()
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -208,8 +208,8 @@ func (d *RawDisk) create() error {
 	return f.Truncate(int64(d.Size) * mib)
 }
 
-// The current disk size in MiB.
-func (d *RawDisk) getCurrentSize() (int, error) {
+// GetCurrentSize returns the current disk size in MiB.
+func (d *RawDisk) GetCurrentSize() (int, error) {
 	fileinfo, err := os.Stat(d.Path)
 	if err != nil {
 		return 0, err
@@ -311,8 +311,8 @@ func (d *QcowDisk) create() error {
 	return err
 }
 
-// The current disk size in MiB.
-func (d *QcowDisk) getCurrentSize() (int, error) {
+// GetCurrentSize returns the current disk size in MiB.
+func (d *QcowDisk) GetCurrentSize() (int, error) {
 	if _, err := os.Stat(d.Path); err != nil {
 		return 0, err
 	}
@@ -334,7 +334,7 @@ func (d *QcowDisk) resize() error {
 }
 
 func (d *QcowDisk) sizeString() string {
-	s, err := d.getCurrentSize()
+	s, err := d.GetCurrentSize()
 	if err != nil {
 		return fmt.Sprintf("cannot get size: %v", err)
 	}
