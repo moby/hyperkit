@@ -163,39 +163,6 @@ func New(hyperkit, vpnkitsock, statedir string) (*HyperKit, error) {
 	return &h, nil
 }
 
-// FromState reads a json file from statedir and populates a HyperKit structure.
-func FromState(statedir string) (*HyperKit, error) {
-	b, err := ioutil.ReadFile(filepath.Join(statedir, jsonFile))
-	if err != nil {
-		return nil, fmt.Errorf("Can't read json file: %s", err)
-	}
-	h := &HyperKit{}
-	err = json.Unmarshal(b, h)
-	if err != nil {
-		return nil, fmt.Errorf("Can't parse json file: %s", err)
-	}
-
-	// Make sure the pid written by hyperkit is the same as in the json
-	d, err := ioutil.ReadFile(filepath.Join(statedir, pidFile))
-	if err != nil {
-		return nil, err
-	}
-	pid, err := strconv.Atoi(string(d[:]))
-	if err != nil {
-		return nil, err
-	}
-	if h.Pid != pid {
-		return nil, fmt.Errorf("pids do not match %d != %d", h.Pid, pid)
-	}
-
-	h.process, err = os.FindProcess(h.Pid)
-	if err != nil {
-		return nil, err
-	}
-
-	return h, nil
-}
-
 // SetLogger sets the log instance to use for the output of the hyperkit process itself (not the console of the VM).
 // This is only relevant when Console is set to ConsoleFile
 func (h *HyperKit) SetLogger(l Logger) {
