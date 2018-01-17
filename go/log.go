@@ -11,6 +11,8 @@ type Logger interface {
 	Debugf(format string, v ...interface{})
 	// Infof logs a message with "info" severity (less verbose).
 	Infof(format string, v ...interface{})
+	// Warnf logs a message with "warn" (non-fatal) severity.
+	Warnf(format string, v ...interface{})
 	// Errorf logs an (non-fatal) error.
 	Errorf(format string, v ...interface{})
 	// Fatalf logs a fatal error message, and exits 1.
@@ -28,6 +30,11 @@ func (*StandardLogger) Debugf(f string, v ...interface{}) {
 // Infof logs a message with "info" severity.
 func (*StandardLogger) Infof(f string, v ...interface{}) {
 	golog.Printf("INFO : %v", fmt.Sprintf(f, v...))
+}
+
+// Warnf logs a message with "warn" (non-fatal) severity.
+func (*StandardLogger) Warnf(f string, v ...interface{}) {
+	golog.Printf("WARN : %v", fmt.Sprintf(f, v...))
 }
 
 // Errorf logs an (non-fatal) error.
