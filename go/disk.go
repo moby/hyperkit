@@ -302,6 +302,13 @@ func (d *QcowDisk) Exists() bool {
 
 // Ensure creates the disk image if needed, and resizes it if needed.
 func (d *QcowDisk) Ensure() error {
+	if d.Trim {
+		log.Infof("%v: TRIM is enabled; recycling thread will keep %v sectors free and will compact after %v more sectors are free",
+			d, d.KeepErased, d.CompactAfter)
+	}
+	if d.RuntimeAsserts {
+		log.Warnf("%v: Expensive runtime checks are enabled", d)
+	}
 	return ensure(d)
 }
 
