@@ -121,16 +121,6 @@ type HyperKit struct {
 	// connected to. ConsoleStdio and ConsoleFile are supported.
 	Console int `json:"console"`
 
-	// ExtraFiles is exactly exec.Cmd.ExtraFiles.  It specifies
-	// additional open files to be inherited by the hyperkit
-	// process. It does not include standard input, standard
-	// output, or standard error. If non-nil, entry i becomes file
-	// descriptor 3+i.
-	//
-	// It can be used to keep some files alive even if the parent
-	// process died unexpectedly.
-	ExtraFiles []*os.File `json:"extra_files"`
-
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
 
@@ -498,7 +488,6 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 		cmd.Args[0] = h.Argv0
 	}
 	cmd.Env = os.Environ()
-	cmd.ExtraFiles = h.ExtraFiles
 
 	// Plumb in stdin/stdout/stderr.
 	//
