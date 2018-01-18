@@ -200,12 +200,15 @@ func (d *RawDisk) Ensure() error {
 
 // Create a disk.
 func (d *RawDisk) create() error {
+	log.Infof("Create %q", d)
 	f, err := os.Create(d.Path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return f.Truncate(int64(d.Size) * mib)
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return d.resize()
 }
 
 // GetCurrentSize returns the current disk size in MiB.
@@ -314,6 +317,7 @@ func (d *QcowDisk) Ensure() error {
 
 // Create a disk with the given size in MiB
 func (d *QcowDisk) create() error {
+	log.Infof("Create %q", d)
 	_, err := run(d.QcowTool("create", "--size", fmt.Sprintf("%dMiB", d.Size)))
 	return err
 }
