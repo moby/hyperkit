@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -56,32 +55,7 @@ func main() {
 	cmd := flag.Args()
 
 	if len(cmd) != 0 {
-		if *statedir == "" {
-			log.Fatalln("Specify existing state directory for: ", cmd[0])
-		}
-		h, err := hyperkit.FromState(*statedir)
-		if err != nil {
-			log.Fatalln("Error getting hyperkit: ", err)
-		}
-		switch cmd[0] {
-		case "info":
-			fmt.Println("Running: ", h.IsRunning())
-			s, _ := json.MarshalIndent(h, "", "  ")
-			fmt.Println(string(s))
-			return
-		case "stop", "kill":
-			err := h.Stop()
-			if err != nil {
-				log.Fatalln("Error stopping hyperkit: ", err)
-			}
-			err = h.Remove(false)
-			if err != nil {
-				log.Fatalln("Error removing state: ", err)
-			}
-			return
-		default:
-			log.Fatalln("Unknown command: ", cmd[0])
-		}
+		log.Fatalf("Unexpected arguments: %v", cmd)
 	}
 
 	h, err := hyperkit.New(*hk, *vpnkitsock, *statedir)
