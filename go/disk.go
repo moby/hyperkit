@@ -62,7 +62,7 @@ func GetDiskFormat(path string) DiskFormat {
 	switch ext := filepath.Ext(path); ext {
 	case ".qcow2":
 		return DiskFormatQcow
-	case ".raw":
+	case ".raw", ".img":
 		return DiskFormatRaw
 	default:
 		log.Debugf("Unknown disk extension %q, will use raw format", path)
@@ -96,7 +96,7 @@ func NewDisk(spec string, size int) (Disk, error) {
 func exists(d Disk) bool {
 	_, err := os.Stat(d.GetPath())
 	if err != nil && !os.IsNotExist(err) {
-		log.Debugf("cannot stat %q: %v", d.GetPath(), err)
+		log.Debugf("cannot stat %q: %v", d, err)
 	}
 	return err == nil
 }
@@ -111,7 +111,6 @@ func ensure(d Disk) error {
 		return d.create()
 	}
 	if current < d.GetSize() {
-		log.Infof("Attempting to resize %q from %dMiB to %dMiB", d, current, d.GetSize())
 		return d.resize()
 	}
 	if d.GetSize() < current {
@@ -200,12 +199,15 @@ func (d *RawDisk) Ensure() error {
 
 // Create a disk.
 func (d *RawDisk) create() error {
+	log.Infof("Create %q", d)
 	f, err := os.Create(d.Path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return f.Truncate(int64(d.Size) * mib)
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return d.resize()
 }
 
 // GetCurrentSize returns the current disk size in MiB.
@@ -219,7 +221,28 @@ func (d *RawDisk) GetCurrentSize() (int, error) {
 
 // Resize the virtual size of the disk
 func (d *RawDisk) resize() error {
-	return os.Truncate(d.Path, int64(d.Size)*mib)
+	s, err := d.GetCurrentSize()
+	if err != nil {
+		return fmt.Errorf("Cannot resize %q: %v", d, err)
+	}
+	log.Infof("Resize %q from %vMiB to %vMiB", d, s, d.GetSize())
+	// APFS exhibits a weird behavior wrt sparse files: we cannot
+	// create (or grow) them "too fast": there's a limit,
+	// apparently related to the available disk space.  However,
+	// if the additional space is small enough, we can procede way
+	// beyond the available disk space.  So grow incrementally,
+	// by steps of 1GB.
+	for s < d.Size {
+		s += 1000
+		if d.Size < s {
+			s = d.Size
+		}
+		if err := os.Truncate(d.Path, int64(s)*mib); err != nil {
+			return fmt.Errorf("Cannot resize %q to %vMiB: %v", d, s, err)
+		}
+	}
+	log.Infof("Resized %q to %vMiB", d, d.GetSize())
+	return nil
 }
 
 // Stop cleans up this disk when we are quitting.
@@ -314,6 +337,7 @@ func (d *QcowDisk) Ensure() error {
 
 // Create a disk with the given size in MiB
 func (d *QcowDisk) create() error {
+	log.Infof("Create %q", d)
 	_, err := run(d.QcowTool("create", "--size", fmt.Sprintf("%dMiB", d.Size)))
 	return err
 }
@@ -334,18 +358,19 @@ func (d *QcowDisk) GetCurrentSize() (int, error) {
 	return int(size / mib), nil
 }
 
-// Resize the virtual size of the disk
-func (d *QcowDisk) resize() error {
-	_, err := run(d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size)))
-	return err
-}
-
 func (d *QcowDisk) sizeString() string {
 	s, err := d.GetCurrentSize()
 	if err != nil {
 		return fmt.Sprintf("cannot get size: %v", err)
 	}
 	return fmt.Sprintf("%vMiB", s)
+}
+
+// Resize the virtual size of the disk
+func (d *QcowDisk) resize() error {
+	log.Infof("Resize %q from %v to %dMiB", d, d.sizeString(), d.GetSize())
+	_, err := run(d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size)))
+	return err
 }
 
 // compact the disk to shrink the physical size.
@@ -377,7 +402,7 @@ func (d *QcowDisk) check() error {
 // Stop cleans up this disk when we are quitting.
 func (d *QcowDisk) Stop() error {
 	if !d.Trim && d.CompactAfter == 0 {
-		log.Infof("TRIM is enabled but auto-compaction disabled: compacting now")
+		log.Infof("TRIM is enabled but auto-compaction disabled: compacting %q now", d)
 		if err := d.compact(); err != nil {
 			return fmt.Errorf("Failed to compact %q: %v", d, err)
 		}
