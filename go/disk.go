@@ -111,7 +111,6 @@ func ensure(d Disk) error {
 		return d.create()
 	}
 	if current < d.GetSize() {
-		log.Infof("Attempting to resize %q from %dMiB to %dMiB", d, current, d.GetSize())
 		return d.resize()
 	}
 	if d.GetSize() < current {
@@ -338,18 +337,19 @@ func (d *QcowDisk) GetCurrentSize() (int, error) {
 	return int(size / mib), nil
 }
 
-// Resize the virtual size of the disk
-func (d *QcowDisk) resize() error {
-	_, err := run(d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size)))
-	return err
-}
-
 func (d *QcowDisk) sizeString() string {
 	s, err := d.GetCurrentSize()
 	if err != nil {
 		return fmt.Sprintf("cannot get size: %v", err)
 	}
 	return fmt.Sprintf("%vMiB", s)
+}
+
+// Resize the virtual size of the disk
+func (d *QcowDisk) resize() error {
+	log.Infof("Resize %q from %v to %dMiB", d, d.sizeString(), d.GetSize())
+	_, err := run(d.QcowTool("resize", "--size", fmt.Sprintf("%dMiB", d.Size)))
+	return err
 }
 
 // compact the disk to shrink the physical size.
