@@ -221,7 +221,28 @@ func (d *RawDisk) GetCurrentSize() (int, error) {
 
 // Resize the virtual size of the disk
 func (d *RawDisk) resize() error {
-	return os.Truncate(d.Path, int64(d.Size)*mib)
+	s, err := d.GetCurrentSize()
+	if err != nil {
+		return fmt.Errorf("Cannot resize %q: %v", d, err)
+	}
+	log.Infof("Resize %q from %vMiB to %vMiB", d, s, d.GetSize())
+	// APFS exhibits a weird behavior wrt sparse files: we cannot
+	// create (or grow) them "too fast": there's a limit,
+	// apparently related to the available disk space.  However,
+	// if the additional space is small enough, we can procede way
+	// beyond the available disk space.  So grow incrementally,
+	// by steps of 1GB.
+	for s < d.Size {
+		s += 1000
+		if d.Size < s {
+			s = d.Size
+		}
+		if err := os.Truncate(d.Path, int64(s)*mib); err != nil {
+			return fmt.Errorf("Cannot resize %q to %vMiB: %v", d, s, err)
+		}
+	}
+	log.Infof("Resized %q to %vMiB", d, d.GetSize())
+	return nil
 }
 
 // Stop cleans up this disk when we are quitting.
