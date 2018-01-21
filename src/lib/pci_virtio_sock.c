@@ -130,6 +130,18 @@ static int pci_vtsock_debug = 0;
 
 /* XXX need to use rx and tx more consistently */
 
+struct vtsock_config_hdr {
+	uint32_t len;
+	uint32_t version;
+	uint32_t type;
+};
+
+#define VSOCK_CONFIG_SET_BUF_ALLOC 1
+#define VSOCK_CONFIG_SET_CREDIT_LIMIT 2
+#define VSOCK_CONFIG_SET_NAME 3
+
+#define MAX_SOCK_NAME_LENGTH 256
+
 struct vsock_addr {
 	uint64_t cid;
 	uint32_t port;
@@ -153,7 +165,7 @@ struct vsock_addr {
 
 #define FMTADDR(a) a.cid, a.port
 
-#define WRITE_BUF_LENGTH (128*1024)
+#define DEFAULT_WRITE_BUF_LENGTH (128*1024)
 
 struct pci_vtsock_sock {
 	pthread_mutex_t mtx;
@@ -177,11 +189,15 @@ struct pci_vtsock_sock {
 	 *
 	 *     Add the sock to inuse_list.
 	 *
+	 *     Allocate DEFAULT_WRITE_BUF_LENGTH memory for ->write_buf
+	 *
 	 *   Drop list_rwlock
 	 *
 	 * To free a sock:
 	 *
 	 *   Set state to CLOSING_TX and kick the tx thread[*].
+	 *
+	 *   Free ->write_buf
 	 *
 	 * Then the following will happen:
 	 *
@@ -196,7 +212,7 @@ struct pci_vtsock_sock {
 	 * |
 	 * |   Note that an RX kick is needed
 	 * |
-         * | Release list_rwlock
+	 * | Release list_rwlock
 	 * |
 	 * `-Kick the rx thread if required
 	 *
@@ -209,7 +225,7 @@ struct pci_vtsock_sock {
 	 * |
 	 * |   Put the socket on a local "to be closed" queue
 	 * |
-         * | Release list_rwlock
+	 * | Release list_rwlock
 	 * |
 	 * | If there a sockets to be closed, take list_rwlock for
 	 * | writing, and for each socket:
@@ -248,19 +264,27 @@ struct pci_vtsock_sock {
 	uint32_t local_shutdown, peer_shutdown;
 	time_t rst_deadline; /* When local_shutdown==ALL, expect RST before */
 
+	bool configurable;
+	int id;
+	char name[MAX_SOCK_NAME_LENGTH]; /* Used in debugging */
+
 	struct vsock_addr local_addr;
 	struct vsock_addr peer_addr;
 
 	uint32_t buf_alloc;
 	uint32_t fwd_cnt;
+	uint32_t credit_limit;
+	uint32_t credit_cnt;
 
 	bool credit_update_required;
 	uint32_t rx_cnt; /* Amount we have sent to the peer */
 	uint32_t peer_buf_alloc; /* From the peer */
 	uint32_t peer_fwd_cnt; /* From the peer */
 
-	/* Write buffer. We do not update fwd_cnt until we drain the _whole_ buffer */
-	uint8_t write_buf[WRITE_BUF_LENGTH];
+	/* Write buffer. We do not update fwd_cnt until we drain the
+	 * _whole_ buffer
+	 */
+	uint8_t *write_buf; /* allocated with malloc */
 	unsigned int write_buf_head, write_buf_tail;
 };
 
@@ -291,6 +315,7 @@ struct pci_vtsock_softc {
 	struct virtio_softc vssc_vs;
 	pthread_mutex_t vssc_mtx;
 	char *path;
+	int next_sock_id;
 	struct vqueue_info vssc_vqs[VTSOCK_QUEUES];
 	struct vtsock_config vssc_cfg;
 
@@ -432,6 +457,30 @@ static size_t iovec_clip(struct iovec **iov, int *iov_len, size_t bytes)
 	}
 	*iov_len = i;
 	return ret;
+}
+
+/*
+ * Removes the first byte in the provided iovec and shifts the data in
+ * the rest of the iovec down (left, toward zero) by a single
+ * byte. The iovec metadata and its length remained unchanged.
+ */
+static size_t iovec_shift_left1(struct iovec **iov, int *iov_len)
+{
+	char *base;
+	size_t len, total = 0;
+	int i;
+	for (i = 0; i < *iov_len; i++) {
+		base = (*iov)[i].iov_base;
+		len = (*iov)[i].iov_len - 1;
+		memmove(base, base + 1, len);
+		if (i < *iov_len - 1) {
+			memcpy(base + len, (*iov)[i+1].iov_base, 1);
+		} else {
+			(*iov)[*iov_len - 1].iov_len--;
+		}
+		total += (*iov)[i].iov_len;
+	}
+	return total;
 }
 
 /* Pulls @bytes from @iov into @buf. @buf can be NULL, in which case this just discards @bytes */
@@ -602,13 +651,18 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 		LIST_REMOVE(s, list);
 		LIST_INSERT_HEAD(&sc->inuse_list, s, list);
 		s->state = SOCK_CONNECTING;
+		s->id = sc->next_sock_id++;
 	}
 	pthread_rwlock_unlock(&sc->list_rwlock);
 
 	if (!s) return NULL;
 
-	s->buf_alloc = WRITE_BUF_LENGTH;
+	s->configurable = true;
+
+	s->buf_alloc = DEFAULT_WRITE_BUF_LENGTH;
 	s->fwd_cnt = 0;
+	s->credit_limit = 0;
+	s->credit_cnt = 0;
 
 	s->peer_buf_alloc = 0;
 	s->peer_fwd_cnt = 0;
@@ -618,6 +672,14 @@ static struct pci_vtsock_sock *alloc_sock(struct pci_vtsock_softc *sc)
 	s->local_shutdown = 0;
 	s->peer_shutdown = 0;
 
+	snprintf(s->name, MAX_SOCK_NAME_LENGTH, "vsock:%d", s->id);
+
+	s->write_buf = malloc(s->buf_alloc);
+	if (s->write_buf == NULL) {
+		fprintf(stderr, "Could not allocate memory for write buf: "
+			"%s\n", strerror(errno));
+		return NULL;
+	}
 	s->write_buf_head = s->write_buf_tail = 0;
 
 	return s;
@@ -630,6 +692,7 @@ static void free_sock(struct pci_vtsock_softc *sc, struct pci_vtsock_sock *s)
 {
 	LIST_REMOVE(s, list);
 	s->state = SOCK_FREE;
+	free(s->write_buf);
 
 	LIST_INSERT_HEAD(&sc->free_list, s, list);
 
@@ -957,12 +1020,13 @@ static void send_response_common(struct pci_vtsock_softc *sc,
 }
 
 static void send_response_sock(struct pci_vtsock_softc *sc,
-				 uint16_t op, uint32_t flags,
-				 const struct pci_vtsock_sock *sock)
+			       uint16_t op, uint32_t flags,
+			       struct pci_vtsock_sock *sock)
 {
 	send_response_common(sc, sock->local_addr, sock->peer_addr,
 			     op, VIRTIO_VSOCK_TYPE_STREAM, flags,
 			     sock->buf_alloc, sock->fwd_cnt);
+	sock->credit_cnt = sock->fwd_cnt;
 }
 
 static void send_response_nosock(struct pci_vtsock_softc *sc, uint16_t op,
@@ -983,12 +1047,12 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 			uint32_t len, struct iovec *iov, int iov_len)
 {
 	size_t nr;
-	if (sock->write_buf_tail + len > WRITE_BUF_LENGTH) {
-		DPRINTF(("TX: fd %d unable to buffer write of 0x%"PRIx32" bytes,"
-			 " buffer use 0x%x/0x%x, 0x%x remaining\n",
-			 sock->fd, len, sock->write_buf_tail,
-			 WRITE_BUF_LENGTH,
-			 WRITE_BUF_LENGTH < sock->write_buf_tail));
+	if (sock->write_buf_tail + len > sock->buf_alloc) {
+		DPRINTF(("TX: fd %d unable to buffer write of 0x%"PRIx32
+			 " bytes, buffer use 0x%x/0x%x, 0x%x remaining\n",
+			 sock->fd, len,
+			 sock->write_buf_tail, sock->buf_alloc,
+			 sock->buf_alloc - sock->write_buf_tail));
 		return -1;
 	}
 
@@ -999,7 +1063,7 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 
 	sock->write_buf_tail += nr;
 	DPRINTF(("TX: fd %d buffered 0x%"PRIx32" bytes (0x%x/0x%x)\n",
-		 sock->fd, len, sock->write_buf_tail, WRITE_BUF_LENGTH));
+		 sock->fd, len, sock->write_buf_tail, sock->buf_alloc));
 
 	return 0;
 }
@@ -1011,7 +1075,7 @@ static void buffer_drain(struct pci_vtsock_softc *sc,
 
 	DPRINTF(("TX: buffer drain on fd %d 0x%x-0x%x/0x%x\n",
 		 sock->fd, sock->write_buf_head, sock->write_buf_tail,
-		 WRITE_BUF_LENGTH));
+		 sock->buf_alloc));
 
 	assert(sock_is_buffering(sock));
 	assert(sock->write_buf_head < sock->write_buf_tail);
@@ -1318,6 +1382,7 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 			goto do_rst;
 		}
 		vq_relchain(vq, idx, 0);
+		sock->credit_cnt = sock->fwd_cnt - sock->credit_limit;
 		set_credit_update_required(sc, sock);
 		break;
 	}
@@ -1346,12 +1411,50 @@ do_rst:
 	return;
 }
 
-static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64_t cid, uint32_t port)
+static int handle_connect_request(int fd, struct vsock_addr *addr)
 {
-	int fd, rc;
+	int rc;
 	char buf[8 + 1 + 8 + 1 + 1]; /* %08x.%08x\n\0 */
 	ssize_t bytes;
+
+	do {
+		bytes = read(fd, buf, sizeof(buf)-1);
+	} while (bytes == -1 && errno == EAGAIN);
+
+	if (bytes != sizeof(buf) - 1) {
+		DPRINTF(("TX: Short read on connect %zd/%zd\n",
+			 bytes, sizeof(buf)-1));
+		if (bytes == -1)
+			DPRINTF(("TX: errno: %s\n", strerror(errno)));
+		return 1;
+	}
+	buf[sizeof(buf)-1] = '\0';
+
+	if (buf[sizeof(buf)-2] != '\n') {
+		DPRINTF(("TX: No newline on connect %s\n", buf));
+		return 1;
+	}
+
+	DPRINTF(("TX: Connect to %s", buf));
+
+	rc = sscanf(buf, SCNaddr"\n", &addr->cid, &addr->port);
+	if (rc != 2) {
+		DPRINTF(("TX: Failed to parse connect attempt\n"));
+		return 1;
+	}
+
+	return 0;
+}
+
+static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd,
+			      uint64_t cid, uint32_t port)
+{
+	int fd, rc;
 	struct pci_vtsock_sock *sock = NULL;
+	struct vsock_addr addr = {
+		.cid  = cid,
+		.port = port,
+	};
 
 	fd = accept(accept_fd, NULL, NULL);
 	if (fd < 0) {
@@ -1370,40 +1473,21 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 
 	DPRINTF(("TX: Connect attempt on connect fd => %d\n", fd));
 
-	if (cid == VMADDR_CID_ANY) {
-		do {
-			bytes = read(fd, buf, sizeof(buf)-1);
-		} while (bytes == -1 && errno == EAGAIN);
-
-		if (bytes != sizeof(buf) - 1) {
-			DPRINTF(("TX: Short read on connect %zd/%zd\n", bytes, sizeof(buf)-1));
-			if (bytes == -1) DPRINTF(("TX: errno: %s\n", strerror(errno)));
+	if (addr.cid == VMADDR_CID_ANY) {
+		if (handle_connect_request(fd, &addr))
 			goto err;
-		}
-		buf[sizeof(buf)-1] = '\0';
-
-		if (buf[sizeof(buf)-2] != '\n') {
-			DPRINTF(("TX: No newline on connect %s\n", buf));
-			goto err;
-		}
-
-		DPRINTF(("TX: Connect to %s", buf));
-
-		rc = sscanf(buf, SCNaddr"\n", &cid, &port);
-		if (rc != 2) {
-			DPRINTF(("TX: Failed to parse connect attempt\n"));
-			goto err;
-		}
-		DPRINTF(("TX: Connection requested to "PRIaddr"\n", cid, port));
+		DPRINTF(("TX: Connection requested to "PRIaddr"\n",
+			 addr.cid, addr.port));
 	} else {
-		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n", cid, port));
+		DPRINTF(("TX: Forwarding connection to "PRIaddr"\n",
+			 addr.cid, addr.port));
 	}
 
-	if (cid >= VMADDR_CID_MAX) {
+	if (addr.cid >= VMADDR_CID_MAX) {
 		DPRINTF(("TX: Attempt to connect to CID over 32-bit\n"));
 		goto err;
 	}
-	if (cid != sc->vssc_cfg.guest_cid) {
+	if (addr.cid != sc->vssc_cfg.guest_cid) {
 		DPRINTF(("TX: Attempt to connect to non-guest CID\n"));
 		goto err;
 	}
@@ -1419,13 +1503,12 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 		 sock - &sc->socks[0], (void *)sock));
 
 	sock->fd = fd;
-	sock->peer_addr.cid = cid;
-	sock->peer_addr.port = port;
+	sock->peer_addr = addr;
 	sock->local_addr.cid = VMADDR_CID_HOST;
 	/* Start at 2^16 to be larger than a TCP port, add a
 	 * generation counter to reduce port reuse.
 	 * XXX Allocate properly.
-         */
+	 */
 	sock->local_addr.port = ((uint32_t)(sock - &sc->socks[0] + 1) << 16)
 		+ (++sock->port_generation);
 
@@ -1497,7 +1580,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 				if (sock_is_buffering(s))
 					break;
 
-			        /* Close down */
+				/* Close down */
 				assert(s->local_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL ||
 				       s->peer_shutdown == VIRTIO_VSOCK_FLAG_SHUTDOWN_ALL);
 
@@ -1626,6 +1709,239 @@ static void pci_vtsock_notify_tx(void *vsc, struct vqueue_info *vq)
 	kick_tx(sc, "notify");
 }
 
+static void apply_socket_config_set_buf_alloc(struct pci_vtsock_sock *s,
+					      uint32_t buf_alloc)
+{
+	uint8_t *buf;
+
+	buf = realloc(s->write_buf, buf_alloc);
+	if (buf == NULL) {
+		fprintf(stderr, "config: ERROR "
+			"could not realloc buffer to %d\n",
+			buf_alloc);
+		return;
+	}
+	s->write_buf = buf;
+	s->buf_alloc = buf_alloc;
+	fprintf(stderr, "config: %s buf_alloc = %d\n", s->name, buf_alloc);
+}
+
+static void apply_socket_config_set_name(struct pci_vtsock_sock *s,
+					 struct vtsock_config_hdr *hdr)
+{
+	char new_name[MAX_SOCK_NAME_LENGTH];
+	char *msg_name = (char *)(hdr + 1);
+	size_t name_len = hdr->len - sizeof(struct vtsock_config_hdr);
+
+	name_len = strnlen(msg_name, name_len);
+
+	if (name_len > MAX_SOCK_NAME_LENGTH) {
+		fprintf(stderr, "config: ERROR "
+			"name too long (%zu bytes but max=%d)\n",
+			name_len, MAX_SOCK_NAME_LENGTH);
+		return;
+	}
+	strncpy(new_name, msg_name, name_len);
+	snprintf(new_name + name_len, MAX_SOCK_NAME_LENGTH - name_len,
+		 ":%d", s->id);
+
+	fprintf(stderr, "config: %s renamed to %s\n", s->name, new_name);
+
+	memcpy(s->name, new_name, MAX_SOCK_NAME_LENGTH);
+}
+
+static int is_socket_config_malformed(struct vtsock_config_hdr *hdr)
+{
+	int rc = 0;
+	size_t hdr_sz = sizeof(struct vtsock_config_hdr);
+
+#define CHECK_SIZE(TYPE, CTYPE)						\
+	case TYPE: if (hdr->len < hdr_sz + sizeof(CTYPE)) {		\
+		fprintf(stderr, "config: ERROR "			\
+			#TYPE " message too short for " #CTYPE		\
+			" (%d < %zu)\n",				\
+			hdr->len, hdr_sz + sizeof(CTYPE));		\
+		return 1;						\
+	} else break;
+
+	switch (hdr->type) {
+		CHECK_SIZE(VSOCK_CONFIG_SET_BUF_ALLOC, uint32_t);
+		CHECK_SIZE(VSOCK_CONFIG_SET_CREDIT_LIMIT, uint32_t);
+		CHECK_SIZE(VSOCK_CONFIG_SET_NAME, char);
+	default:
+		fprintf(stderr, "config: ERROR "
+			"unknown configuration type %d\n", hdr->type);
+		rc = 1;
+	}
+	return rc;
+#undef CHECK_SIZE
+}
+
+static void apply_socket_config(struct pci_vtsock_sock *s, void *buf)
+{
+	struct vtsock_config_hdr *hdr = (struct vtsock_config_hdr *)buf;
+
+	if (hdr->version != 1) {
+		fprintf(stderr, "config: ERROR "
+			"could not apply unknown config version %d!\n",
+			hdr->version);
+		return;
+	}
+
+	if (is_socket_config_malformed(hdr))
+		return;
+
+	switch (hdr->type) {
+	case VSOCK_CONFIG_SET_BUF_ALLOC:
+		apply_socket_config_set_buf_alloc(s, *(uint32_t *)(hdr + 1));
+		break;
+	case VSOCK_CONFIG_SET_CREDIT_LIMIT:
+		s->credit_limit = *(uint32_t *)(hdr + 1);
+		fprintf(stderr, "config: %s credit limit = %d\n", s->name,
+			*(uint32_t *)(hdr + 1));
+		break;
+	case VSOCK_CONFIG_SET_NAME:
+		apply_socket_config_set_name(s, hdr);
+		break;
+	default:
+		fprintf(stderr, "config: ERROR "
+			"unknown configuration type %d\n", hdr->type);
+	}
+}
+
+static void handle_socket_config(struct pci_vtsock_sock *s, int fd)
+{
+	ssize_t len;
+	uint32_t sz;
+	char *szp = (char *)&sz;
+	uint32_t read_upto;
+	void *buf;
+
+ next_message:
+	read_upto = 0;
+
+	do {
+		len = read(fd, szp + read_upto, sizeof(uint32_t) - read_upto);
+		if (len == -1) {
+			if (errno == EAGAIN)
+				continue;
+			fprintf(stderr, "config: ERROR "
+				"%s while reading config message length\n",
+				strerror(errno));
+			return;
+		}
+		if (len == 0) {
+			if (read_upto)
+				fprintf(stderr, "config: ERROR "
+					"EOF during "
+					"config message length read\n");
+			return;
+		}
+		read_upto += len;
+	} while (read_upto < sizeof(uint32_t));
+
+	if (sz < sizeof(struct vtsock_config_hdr)) {
+		fprintf(stderr, "config: ERROR "
+			"message length %d is less than header size %zu\n",
+			sz, sizeof(struct vtsock_config_hdr));
+		return;
+	}
+
+	buf = malloc(sz);
+	if (buf == NULL) {
+		fprintf(stderr, "config: ERROR "
+			"%s from config message buffer malloc\n",
+			strerror(errno));
+		return;
+	}
+	((struct vtsock_config_hdr *)buf)->len = sz;
+
+	do {
+		len = read(fd, ((char *)buf) + read_upto, sz - read_upto);
+		if (len == -1) {
+			if (errno == EAGAIN)
+				continue;
+			fprintf(stderr, "config: ERROR "
+				"%s while reading config message\n",
+				strerror(errno));
+			goto err;
+		}
+		if (len == 0) {
+			fprintf(stderr, "config: ERROR "
+				"EOF during config message body read\n");
+			goto err;
+		}
+		read_upto += len;
+	} while (read_upto < sz);
+
+	apply_socket_config(s, buf);
+
+	free(buf);
+	goto next_message;
+
+ err:
+	free(buf);
+	return;
+}
+
+/*
+ * Check for an attached socket configuration fd, s->mtx must be held
+ *
+ * If a configuration fd is attached, this will block until the
+ * configuration request is handled! A configuration fd may only be
+ * attached at the beginning of the data stream and must be
+ * accompanied by a single byte written.
+ *
+ * Returns > 0 for regular messages, 0 for EOF, -1 for error, and -2
+ * for configuration messages.
+ */
+static ssize_t readrx(struct pci_vtsock_sock *s,
+		      struct iovec *iov, int iov_len)
+{
+	ssize_t len;
+	char control[CMSG_SPACE(sizeof(int /* fd */))];
+	struct msghdr msghdr = {
+		.msg_name = NULL,
+		.msg_namelen = 0,
+		.msg_iov = iov,
+		.msg_iovlen = iov_len,
+		.msg_control = control,
+		.msg_controllen = CMSG_SPACE(sizeof(int /* fd */)),
+	};
+	struct cmsghdr *cmsg;
+	int fd;
+
+	len = recvmsg(s->fd, &msghdr, 0);
+	if (s->configurable && len > 0 && msghdr.msg_controllen > 0) {
+		fprintf(stderr, "config: %s received configuration request\n",
+			s->name);
+		cmsg = CMSG_FIRSTHDR(&msghdr);
+		if (cmsg->cmsg_level == SOL_SOCKET
+		    && cmsg->cmsg_type == SCM_RIGHTS) {
+			memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+			handle_socket_config(s, fd);
+			close(fd);
+			if (len > 1) {
+				/* If recvmsg has coalesced messages,
+				 * we must discard the configuration
+				 * fd carrier byte. Because the iovec
+				 * points to guest-shared vring
+				 * memory, we must shift the data in
+				 * the iovec rather than adjusting the
+				 * iovec metadata.
+				 */
+				iovec_shift_left1(&iov, &iov_len);
+				len--;
+			} else {
+				len = -2;
+			}
+		}
+		s->configurable = false;
+	}
+
+	return len;
+}
+
 /*
  * Returns:
  *  -1 == no descriptors available, nothing sent, s->credit_update_required untouched
@@ -1685,7 +2001,11 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 
 	iovec_clip(&iov, &iovec_len, peer_free);
 
-	len = readv(s->fd, iov, iovec_len);
+	len = readrx(s, iov, iovec_len);
+	if (len == -2) {
+		/* Configuration request only */
+		goto credit_update;
+	}
 	if (len == -1) {
 		if (errno == EAGAIN) { /* Nothing to read/would block */
 			DPRINTF(("RX: readv fd=%d EAGAIN\n", s->fd));
@@ -1699,6 +2019,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 		close_sock(sc, s, "RX");
 		return 0;
 	}
@@ -1712,6 +2033,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 		return 0;
 	}
 	hdr->len = (uint32_t)len;
@@ -1721,6 +2043,7 @@ static ssize_t pci_vtsock_proc_rx(struct pci_vtsock_softc *sc,
 	dprint_header(hdr, 0, "RX");
 	s->credit_update_required = false;
 	vq_relchain(vq, idx, sizeof(*hdr) + (uint32_t)len);
+	s->credit_cnt = hdr->fwd_cnt;
 
 	return len;
 
@@ -1732,6 +2055,7 @@ credit_update:
 		dprint_header(hdr, 0, "RX");
 		s->credit_update_required = false;
 		vq_relchain(vq, idx, sizeof(*hdr));
+		s->credit_cnt = hdr->fwd_cnt;
 	} else {
 		vq_retchain(vq);
 	}
@@ -1787,6 +2111,9 @@ static bool send_credit_update(struct vqueue_info *vq,
 
 	assert(s->fd >= 0);
 
+	if (s->fwd_cnt - s->credit_cnt < s->credit_limit)
+		return true;
+
 	if (!vq_has_descs(vq)) {
 		DPRINTF(("RX: no queues for credit update!\n"));
 		return false;
@@ -1814,6 +2141,8 @@ static bool send_credit_update(struct vqueue_info *vq,
 	dprint_header(hdr, 0, "RX");
 
 	vq_relchain(vq, idx, sizeof(*hdr));
+
+	s->credit_cnt = hdr->fwd_cnt;
 
 	return true;
 }
