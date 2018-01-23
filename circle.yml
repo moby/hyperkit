@@ -2,6 +2,7 @@ general:
   artifacts:
     - build/hyperkit
     - build/hyperkit.sym
+    - build/COMMIT
     - build/LICENSE
 machine:
   xcode:
@@ -33,7 +34,4 @@ test:
     - ln -s $(pwd) "$PROJECT_ROOT"
     - brew install golang
     - (cd go; make ci)
-    # LICENSE related steps
-    - find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > build/LICENSE
-    - opam config exec -- make -C repo list-licenses
-    - cat repo/OCAML-LICENSES >> build/LICENSE
+    - make artifacts

@@ -192,3 +192,25 @@ test: $(TARGET) test/vmlinuz test/initrd.gz
 
 test-qcow: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./test_linux_qcow.exp)
+
+
+## ----------- ##
+## Artifacts.  ##
+## ----------- ##
+
+.PHONY: artifacts
+artifacts: build/LICENSE build/COMMIT
+
+.PHONY: build/LICENSE
+build/LICENSE:
+	@echo "  GEN     " $@
+	@find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > $@.tmp
+	@opam config exec -- make -C repo list-licenses
+	@cat repo/OCAML-LICENSES >> $@.tmp
+	@mv $@.tmp $@
+
+.PHONY: build/COMMIT
+build/COMMIT:
+	@echo "  GEN     " $@
+	@git rev-parse HEAD > $@.tmp
+	@mv $@.tmp $@
