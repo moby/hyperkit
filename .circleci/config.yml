@@ -1,0 +1,51 @@
+version: 2
+jobs:
+  build:
+    macos:
+      xcode: "9.0"
+    environment:
+      # OPAM seems to be quite unhappy without $TERM and Circle doesn't seem to set one.
+      TERM: vt100
+      MACOSX_DEPLOYMENT_TARGET: "10.10"
+      OPAM_REPO: repo/darwin
+      OPAM_COMP: 4.03.0
+      OPAMVERBOSE: 1
+      OPAMYES: 1
+    steps:
+      - checkout
+      - run:
+          name: Configure environment
+          command: |
+            echo 'export GOPATH=${HOME}/go' >> $BASH_ENV
+            echo 'export PROJECT_ROOT=${GOPATH}/src/github.com/moby/hyperkit' >> $BASH_ENV
+            echo 'export PATH=${PATH}:${GOPATH}/bin' >> $BASH_ENV
+      - run: env
+      - run: make clean
+      - run: make all
+      - run: test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
+      - run: make test
+      - run: brew install opam
+      - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+      - run: opam config exec -- opam depext -i hyperkit
+      - run: opam config exec -- make clean
+      - run: opam config exec -- make all
+      - run: opam config exec -- make test
+      - run: opam config exec -- make test-qcow
+      # Go related steps
+      - run: mkdir -p $(dirname "$PROJECT_ROOT")
+      - run: ln -s $(pwd) "$PROJECT_ROOT"
+      - run: brew install golang
+      - run: (cd go; make ci)
+      - run: make artifacts
+      - store_artifacts:
+          path: build/hyperkit
+          destination: hyperkit
+      - store_artifacts:
+          path: build/hyperkit.sym
+          destination: hyperkit.sym
+      - store_artifacts:
+          path: build/COMMIT
+          destination: COMMIT
+      - store_artifacts:
+          path: build/LICENSE
+          destination: LICENSE
