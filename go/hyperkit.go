@@ -163,12 +163,6 @@ func New(hyperkit, vpnkitsock, statedir string) (*HyperKit, error) {
 	return &h, nil
 }
 
-// SetLogger sets the log instance to use for the output of the hyperkit process itself (not the console of the VM).
-// This is only relevant when Console is set to ConsoleFile
-func (h *HyperKit) SetLogger(l Logger) {
-	SetLogger(l)
-}
-
 // Run the VM with a given command line until it exits.
 func (h *HyperKit) Run(cmdline string) error {
 	errCh, err := h.Start(cmdline)
