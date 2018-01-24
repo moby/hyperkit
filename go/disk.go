@@ -62,7 +62,7 @@ func GetDiskFormat(path string) DiskFormat {
 	switch ext := filepath.Ext(path); ext {
 	case ".qcow2":
 		return DiskFormatQcow
-	case ".raw":
+	case ".raw", ".img":
 		return DiskFormatRaw
 	default:
 		log.Debugf("Unknown disk extension %q, will use raw format", path)
