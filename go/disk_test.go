@@ -16,7 +16,7 @@ func checkEqual(t *testing.T, expected, effective interface{}) {
 
 func TestQcowDisk(t *testing.T) {
 	if _, err := exec.LookPath("qcow-tool"); err != nil {
-		t.Skip("cannot find qcow-tool: %v", err)
+		t.Skipf("cannot find qcow-tool: %v", err)
 	}
 	disk := QcowDisk{
 		Path: "test.qcow",
