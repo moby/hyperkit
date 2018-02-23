@@ -500,7 +500,6 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 		stream(stdout, stdoutChan)
 		stream(stderr, stderrChan)
 
-		done := make(chan struct{})
 		go func() {
 			for {
 				select {
@@ -508,8 +507,6 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 					log.Infof("%s", stderrl)
 				case stdoutl := <-stdoutChan:
 					log.Infof("%s", stdoutl)
-				case <-done:
-					return
 				}
 			}
 		}()
