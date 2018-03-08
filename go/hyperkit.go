@@ -487,8 +487,6 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 		}
 	} else if log != nil {
 		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
-		stdoutChan := make(chan string)
-		stderrChan := make(chan string)
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			return nil, err
@@ -497,22 +495,8 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 		if err != nil {
 			return nil, err
 		}
-		stream(stdout, stdoutChan)
-		stream(stderr, stderrChan)
-
-		done := make(chan struct{})
-		go func() {
-			for {
-				select {
-				case stderrl := <-stderrChan:
-					log.Infof("%s", stderrl)
-				case stdoutl := <-stdoutChan:
-					log.Infof("%s", stdoutl)
-				case <-done:
-					return
-				}
-			}
-		}()
+		go logStream(stdout, "stdout")
+		go logStream(stderr, "stderr")
 	}
 
 	log.Debugf("hyperkit: Starting %#v", cmd)
@@ -546,18 +530,18 @@ func (h *HyperKit) writeState() error {
 	return ioutil.WriteFile(filepath.Join(h.StateDir, jsonFile), []byte(s), 0644)
 }
 
-func stream(r io.ReadCloser, dest chan<- string) {
-	go func() {
-		defer r.Close()
-		reader := bufio.NewReader(r)
-		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				return
-			}
-			dest <- line
+// logStream redirects a file to the logs.
+func logStream(r io.ReadCloser, name string) {
+	defer r.Close()
+	reader := bufio.NewReader(r)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			log.Warnf("hyperkit: failed to read %v: %v", name, err)
+			break
 		}
-	}()
+		log.Infof("hyperkit: %v: %v", name, line)
+	}
 }
 
 // checkHyperKit tries to find and/or validate the path of hyperkit
