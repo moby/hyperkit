@@ -6,7 +6,7 @@ import (
 
 // log receives stdout/stderr of the hyperkit process itself, if set.
 // It defaults to the go standard logger.
-var log = logrus.StandardLogger()
+var log = InsinuateSystemLogger(logrus.StandardLogger())
 
 // SetLogger sets the logger to use.
 func SetLogger(l *logrus.Logger) {
