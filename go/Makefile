@@ -64,8 +64,8 @@ vendor:
 
 vendor-local:
 	@echo "+ $@"
-	@go get github.com/LK4D4/vndr
-	@vndr init
+	@go get -u github.com/golang/dep/cmd/dep
+	@dep init
 
 .PHONY: ci setup
 setup:

@@ -1,0 +1,11 @@
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
+# for detailed Gopkg.toml documentation.
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/go-ps"
+
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
