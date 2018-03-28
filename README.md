@@ -53,6 +53,8 @@ Notes:
   $ opam pin remove qcow
   ```
 
+- Go vendoring relies on [`dep`](https://github.com/golang/dep).  To install it, run `go get -u github.com/golang/dep/cmd/dep`.
+
 ## Tracing
 
 HyperKit defines a number of static DTrace probes to simplify investigation of
