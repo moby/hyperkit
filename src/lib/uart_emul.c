@@ -41,6 +41,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <xhyve/log.h>
 #include <xhyve/support/ns16550.h>
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
@@ -121,6 +122,7 @@ struct uart_softc {
 
 	struct ttyfd tty;
 	struct log log;
+	bool	asl;		/* Output to Apple logger. */
 	bool	thre_int_pending;	/* THRE interrupt pending */
 
 	void	*arg;
@@ -436,6 +438,8 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 			ttywrite(&sc->tty, value);
 			if (sc->log.ring)
 				ringwrite(&sc->log, value);
+			if (sc->asl)
+				log_put(value);
 		} /* else drop on floor */
 		sc->thre_int_pending = true;
 		break;
@@ -773,6 +777,10 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 			if (uart_mapring(sc, logname) == -1) {
 				goto err;
 			}
+		} else if (strcmp("asl", backend) == 0) {
+			sc->asl = true;
+			log_init();
+			retval = 0;
 		} else if (uart_tty_backend(sc, backend) == 0) {
 			retval = 0;
 		} else {
