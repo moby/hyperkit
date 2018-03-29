@@ -36,6 +36,7 @@ VMM_LIB_SRC := \
 
 HYPERKIT_LIB_SRC := \
 	src/lib/acpitbl.c \
+	src/lib/asl.c \
 	src/lib/atkbdc.c \
 	src/lib/block_if.c \
 	src/lib/consport.c \
