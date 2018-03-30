@@ -422,7 +422,7 @@ func (h *HyperKit) buildArgs(cmdline string) {
 
 	if h.Console == ConsoleStdio && isTerminal(os.Stdout) {
 		a = append(a, "-l", "com1,stdio")
-	} else if h.StateDir != "" {
+	} else {
 		a = append(a, "-l", fmt.Sprintf("com1,autopty=%s/tty,log=%s/console-ring", h.StateDir, h.StateDir))
 	}
 
