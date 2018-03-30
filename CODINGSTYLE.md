@@ -5,7 +5,7 @@ coding style should follow the
 
 You may use tools like
 [uncrustify](http://uncrustify.sourceforge.net/) with this
-[config file](https://github.com/freebsd/pkg/blob/master/freebsd.cfg)
+[config file](https://raw.githubusercontent.com/freebsd/pkg/master/freebsd.cfg)
 for *new* code, though the result may not be perfect.
 
 Keep in mind that, especially for most of the `bhyve` derived code, it
