@@ -440,6 +440,22 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	log.Debugf("hyperkit: CmdLine: %#v", h.CmdLine)
 }
 
+// openTTY opens the tty files for reading, and returns it.
+func (h *HyperKit) openTTY() *os.File {
+	path := fmt.Sprintf("%s/tty", h.StateDir)
+	for {
+		if res, err := os.OpenFile(path, os.O_RDONLY, 0); err != nil {
+			log.Infof("hyperkit: openTTY: %v, retrying", err)
+			time.Sleep(10 * time.Millisecond)
+		} else {
+			log.Infof("hyperkit: openTTY: got %v", path)
+			saneTerminal(res)
+			setRaw(res)
+			return res
+		}
+	}
+}
+
 // execute forges the command to run hyperkit, runs and returns it.
 // It also plumbs stdin/stdout/stderr.
 func (h *HyperKit) execute() (*exec.Cmd, error) {
@@ -469,20 +485,9 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 			cmd.Stderr = os.Stderr
 		} else {
 			go func() {
-				ttyPath := fmt.Sprintf("%s/tty", h.StateDir)
-				var tty *os.File
-				for {
-					var err error
-					tty, err = os.OpenFile(ttyPath, os.O_RDONLY, 0)
-					if err == nil {
-						break
-					}
-					time.Sleep(10 * time.Millisecond)
-				}
-				saneTerminal(tty)
-				setRaw(tty)
+				tty := h.openTTY()
+				defer tty.Close()
 				io.Copy(os.Stdout, tty)
-				tty.Close()
 			}()
 		}
 	} else if log != nil {
