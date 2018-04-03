@@ -12,7 +12,8 @@ static aslclient asl = NULL;
 static aslmsg log_msg = NULL;
 
 static unsigned char buf[4096];
-static size_t buf_size = 0;
+/* Index of the _next_ character to insert in the buffer. */
+static size_t buf_idx = 0;
 
 /* asl is deprecated in favor of os_log starting with macOS 10.12.  */
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -29,15 +30,15 @@ void asl_init(void)
 void asl_put(uint8_t c)
 {
 	if ((c == '\n') || (c == 0)) {
-		buf[buf_size] = 0;
+		buf[buf_idx] = 0;
 		asl_log(asl, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
-		buf_size = 0;
+		buf_idx = 0;
 	} else {
-		if (buf_size + 2 >= sizeof buf) {
+		if (buf_idx + 2 >= sizeof buf) {
 			/* Running out of space, flush.  */
 			asl_put('\n');
 		}
-		buf[buf_size] = c;
-		++buf_size;
+		buf[buf_idx] = c;
+		++buf_idx;
 	}
 }
