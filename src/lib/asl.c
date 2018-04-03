@@ -28,7 +28,7 @@ void asl_init(void)
 /* Send one character to the logger: wait for full lines before actually sending. */
 void asl_put(uint8_t c)
 {
-	if (c == '\n') {
+	if ((c == '\n') || (c == 0)) {
 		buf[buf_size] = 0;
 		asl_log(asl, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
 		buf_size = 0;
