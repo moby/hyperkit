@@ -44,6 +44,8 @@ const (
 	ConsoleStdio = iota
 	// ConsoleFile configures console to a tty and output to a file
 	ConsoleFile
+	// ConsoleLog configures console to a tty and sends its contents to the logs
+	ConsoleLog
 
 	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
 
@@ -117,8 +119,7 @@ type HyperKit struct {
 	// Memory is the amount of megabytes of memory for the VM.
 	Memory int `json:"memory"`
 
-	// Console defines where the console of the VM should be
-	// connected to. ConsoleStdio and ConsoleFile are supported.
+	// Console defines where the console of the VM should be connected to.
 	Console int `json:"console"`
 
 	// Below here are internal members, but they are exported so
@@ -199,11 +200,15 @@ func (h *HyperKit) check() error {
 	log.Debugf("hyperkit: check %#v", h)
 	var err error
 	// Sanity checks on configuration
-	if h.Console == ConsoleFile && h.StateDir == "" {
-		return fmt.Errorf("If ConsoleFile is set, StateDir must be specified")
-	}
-	if h.Console == ConsoleStdio && !isTerminal(os.Stdout) && h.StateDir == "" {
-		return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
+	switch h.Console {
+	case ConsoleFile, ConsoleLog:
+		if h.StateDir == "" {
+			return fmt.Errorf("If ConsoleFile or ConsoleLog is set, StateDir must be specified")
+		}
+	case ConsoleStdio:
+		if !isTerminal(os.Stdout) && h.StateDir == "" {
+			return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
+		}
 	}
 	for _, image := range h.ISOImages {
 		if _, err = os.Stat(image); os.IsNotExist(err) {
@@ -420,10 +425,20 @@ func (h *HyperKit) buildArgs(cmdline string) {
 		nextSlot++
 	}
 
-	if h.Console == ConsoleStdio && isTerminal(os.Stdout) {
-		a = append(a, "-l", "com1,stdio")
-	} else {
-		a = append(a, "-l", fmt.Sprintf("com1,autopty=%s/tty,log=%s/console-ring", h.StateDir, h.StateDir))
+	// -l: LPC device configuration.
+	{
+		cfg := "com1"
+		if h.Console == ConsoleStdio && isTerminal(os.Stdout) {
+			cfg += fmt.Sprintf(",stdio")
+		} else {
+			cfg += fmt.Sprintf(",autopty=%s/tty", h.StateDir)
+		}
+		if h.Console == ConsoleLog {
+			cfg += fmt.Sprintf(",asl")
+		} else {
+			cfg += fmt.Sprintf(",log=%s/console-ring", h.StateDir)
+		}
+		a = append(a, "-l", cfg)
 	}
 
 	if h.Bootrom == "" {
