@@ -45,9 +45,9 @@
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
 
-#define	COM1_BASE      	0x3F8
+#define	COM1_BASE	0x3F8
 #define COM1_IRQ	4
-#define	COM2_BASE      	0x2F8
+#define	COM2_BASE	0x2F8
 #define COM2_IRQ	3
 
 #define	DEFAULT_RCLK	1843200
@@ -91,7 +91,7 @@ struct fifo {
 struct ttyfd {
 	bool	opened;
 	int	fd;		/* tty device file descriptor */
-	int 	sfd;
+	int	sfd;
 	char *name; /* slave pty name when using autopty*/
 	struct termios tio_orig, tio_new;    /* I/O Terminals */
 };
@@ -427,7 +427,7 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 		}
 	}
 
-        switch (offset) {
+	switch (offset) {
 	case REG_DATA:
 		if (sc->mcr & MCR_LOOPBACK) {
 			if (rxfifo_putchar(sc, value) != 0)
@@ -681,15 +681,15 @@ uart_tty_backend(struct uart_softc *sc, const char *backend)
 static char *
 copy_up_to_comma(const char *from)
 {
-        char *comma = strchr(from, ',');
-        char *tmp = NULL;
-        if (comma == NULL) {
-                tmp = strdup(from); /* rest of string */
-        } else {
-                ptrdiff_t length = comma - from;
-                tmp = strndup(from, (size_t)length);
-        }
-        return tmp;
+	char *comma = strchr(from, ',');
+	char *tmp = NULL;
+	if (comma == NULL) {
+		tmp = strdup(from); /* rest of string */
+	} else {
+		ptrdiff_t length = comma - from;
+		tmp = strndup(from, (size_t)length);
+	}
+	return tmp;
 }
 
 int
