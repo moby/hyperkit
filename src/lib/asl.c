@@ -34,7 +34,7 @@ void asl_put(uint8_t c)
 		asl_log(asl, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
 		buf_idx = 0;
 	} else {
-		if (buf_idx + 2 >= sizeof buf) {
+		if (buf_idx + 2 >= sizeof(buf)) {
 			/* Running out of space, flush.  */
 			asl_put('\n');
 		}
