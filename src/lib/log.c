@@ -26,17 +26,23 @@ void log_init(void)
 }
 
 
+/* Send the content of the buffer to the logger. */
+static void log_flush(void)
+{
+	buf[buf_idx] = 0;
+	asl_log(log_client, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
+	buf_idx = 0;
+}
+
+
 /* Send one character to the logger: wait for full lines before actually sending. */
 void log_put(uint8_t c)
 {
 	if ((c == '\n') || (c == 0)) {
-		buf[buf_idx] = 0;
-		asl_log(log_client, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
-		buf_idx = 0;
+		log_flush();
 	} else {
 		if (buf_idx + 2 >= sizeof(buf)) {
-			/* Running out of space, flush.  */
-			log_put('\n');
+			log_flush();
 		}
 		buf[buf_idx] = c;
 		++buf_idx;
