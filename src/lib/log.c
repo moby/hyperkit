@@ -6,9 +6,9 @@
 
 #include <SystemConfiguration/SystemConfiguration.h>
 
-#include <xhyve/asl.h>
+#include <xhyve/log.h>
 
-static aslclient asl = NULL;
+static aslclient log_client = NULL;
 static aslmsg log_msg = NULL;
 
 static unsigned char buf[4096];
@@ -19,24 +19,24 @@ static size_t buf_idx = 0;
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 /* Initialize ASL logger and local buffer. */
-void asl_init(void)
+void log_init(void)
 {
-	asl = asl_open(NULL, NULL, 0);
+	log_client = asl_open(NULL, NULL, 0);
 	log_msg = asl_new(ASL_TYPE_MSG);
 }
 
 
 /* Send one character to the logger: wait for full lines before actually sending. */
-void asl_put(uint8_t c)
+void log_put(uint8_t c)
 {
 	if ((c == '\n') || (c == 0)) {
 		buf[buf_idx] = 0;
-		asl_log(asl, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
+		asl_log(log_client, log_msg, ASL_LEVEL_NOTICE, "%s", buf);
 		buf_idx = 0;
 	} else {
 		if (buf_idx + 2 >= sizeof(buf)) {
 			/* Running out of space, flush.  */
-			asl_put('\n');
+			log_put('\n');
 		}
 		buf[buf_idx] = c;
 		++buf_idx;

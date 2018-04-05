@@ -36,7 +36,6 @@ VMM_LIB_SRC := \
 
 HYPERKIT_LIB_SRC := \
 	src/lib/acpitbl.c \
-	src/lib/asl.c \
 	src/lib/atkbdc.c \
 	src/lib/block_if.c \
 	src/lib/consport.c \
@@ -44,6 +43,7 @@ HYPERKIT_LIB_SRC := \
 	src/lib/fwctl.c \
 	src/lib/inout.c \
 	src/lib/ioapic.c \
+	src/lib/log.c \
 	src/lib/md5c.c \
 	src/lib/mem.c \
 	src/lib/mevent.c \

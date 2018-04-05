@@ -41,7 +41,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/mman.h>
-#include <xhyve/asl.h>
+#include <xhyve/log.h>
 #include <xhyve/support/ns16550.h>
 #include <xhyve/mevent.h>
 #include <xhyve/uart_emul.h>
@@ -439,7 +439,7 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 			if (sc->log.ring)
 				ringwrite(&sc->log, value);
 			if (sc->asl)
-				asl_put(value);
+				log_put(value);
 		} /* else drop on floor */
 		sc->thre_int_pending = true;
 		break;
@@ -779,7 +779,7 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 			}
 		} else if (strcmp("asl", backend) == 0) {
 			sc->asl = true;
-			asl_init();
+			log_init();
 			retval = 0;
 		} else if (uart_tty_backend(sc, backend) == 0) {
 			retval = 0;
