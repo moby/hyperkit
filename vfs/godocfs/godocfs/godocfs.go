@@ -34,4 +34,6 @@ func (v *godocFS) ReadDir(path string) ([]os.FileInfo, error) {
 	return vfsutil.ReadDir(v.fs, path)
 }
 
-func (v *godocFS) String() string { return "godocfs" }
+func (*godocFS) RootType(string) vfs.RootType { return "" }
+
+func (*godocFS) String() string { return "godocfs" }
