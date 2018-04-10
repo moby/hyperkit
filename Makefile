@@ -43,6 +43,7 @@ HYPERKIT_LIB_SRC := \
 	src/lib/fwctl.c \
 	src/lib/inout.c \
 	src/lib/ioapic.c \
+	src/lib/log.c \
 	src/lib/md5c.c \
 	src/lib/mem.c \
 	src/lib/mevent.c \
