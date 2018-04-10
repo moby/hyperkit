@@ -5,9 +5,7 @@ set -e
 #  http://tinycorelinux.net
 # with the following patch applied:
 # Upstream source is available http://www.tinycorelinux.net/8.x/x86/release/src/
-#BASE_URL="http://www.tinycorelinux.net/"
-
-BASE_URL="http://distro.ibiblio.org/tinycorelinux/"
+BASE_URL="http://www.tinycorelinux.net/"
 
 TMP_DIR=$(mktemp -d -t hyperkit)
 INITRD_DIR="${TMP_DIR}"/initrd
