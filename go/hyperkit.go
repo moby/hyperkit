@@ -231,8 +231,10 @@ func (h *HyperKit) check() error {
 		if _, err = os.Stat(h.Kernel); os.IsNotExist(err) {
 			return fmt.Errorf("Kernel %s does not exist", h.Kernel)
 		}
-		if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
-			return fmt.Errorf("initrd %s does not exist", h.Initrd)
+		if h.Initrd != "" {
+			if _, err = os.Stat(h.Initrd); os.IsNotExist(err) {
+				return fmt.Errorf("initrd %s does not exist", h.Initrd)
+			}
 		}
 	} else {
 		if _, err = os.Stat(h.Bootrom); os.IsNotExist(err) {
