@@ -2,11 +2,11 @@ version: 2
 jobs:
   build:
     macos:
-      xcode: "9.0"
+      xcode: "9.3.0"
     environment:
       # OPAM seems to be quite unhappy without $TERM and Circle doesn't seem to set one.
       TERM: vt100
-      MACOSX_DEPLOYMENT_TARGET: "10.10"
+      MACOSX_DEPLOYMENT_TARGET: "10.11"
       OPAM_REPO: repo/darwin
       OPAM_COMP: 4.03.0
       OPAMVERBOSE: 1
