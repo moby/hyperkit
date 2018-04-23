@@ -2,16 +2,19 @@
 package openutil
 
 import (
+	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/shurcooL/github_flavored_markdown/gfmstyle"
 	"github.com/shurcooL/go/gfmutil"
 	"github.com/shurcooL/go/open"
 )
+
+// TODO: This code is extremely hacky and ridden with race conditions. :(
+//       Ideally, it should be rewritten in a clean way, or deleted.
+//       At this time, it's needed by goimporters and goimportgraph commands.
 
 // DisplayMarkdownInBrowser displays given Markdown in a new browser window/tab.
 func DisplayMarkdownInBrowser(markdown []byte) {
@@ -32,79 +35,43 @@ func DisplayMarkdownInBrowser(markdown []byte) {
 	http.Handle("/assets/gfm/", http.StripPrefix("/assets/gfm", http.FileServer(gfmstyle.Assets))) // Serve the "/assets/gfm/gfm.css" file.
 	http.Handle("/favicon.ico", http.NotFoundHandler())
 
+	// TODO: Start TCP listener before launching the browser to navigate to the page (else it's a race).
 	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
 	// TODO: Consider using httptest.NewServer.
 	open.Open("http://localhost:7044/index")
 
-	err := httpstoppable۰ListenAndServe("localhost:7044", nil, stopServerChan)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// DisplayHTMLInBrowser displays given html page in a new browser window/tab.
-// query can be empty, otherwise it should begin with "?" like "?key=value".
-func DisplayHTMLInBrowser(mux *http.ServeMux, stopServerChan <-chan struct{}, query string) {
-	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
-	open.Open("http://localhost:7044/index" + query)
-
-	err := httpstoppable۰ListenAndServe("localhost:7044", mux, stopServerChan)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// ListenAndServe listens on the TCP network address addr
-// and then calls Serve with handler to handle requests
-// on incoming connections.
-// Accepted connections are configured to enable TCP keep-alives.
-// Handler is typically nil, in which case the http.DefaultServeMux is
-// used.
-//
-// When receiving from stop unblocks (because it's closed or a value is sent),
-// listener is closed and ListenAndServe returns with nil error.
-// Otherise, it always returns a non-nil error.
-//
-// Deprecated: Go 1.8 added native support for stopping a server in net/http.
-// net/http should be used instead. This copied function will be removed soon.
-func httpstoppable۰ListenAndServe(addr string, handler http.Handler, stop <-chan struct{}) error {
-	srv := &http.Server{Addr: addr, Handler: handler}
-	if addr == "" {
-		addr = ":http"
-	}
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		return err
-	}
+	server := &http.Server{Addr: "localhost:7044"}
 	go func() {
-		<-stop
-		err := ln.Close()
+		<-stopServerChan
+		err := server.Close()
 		if err != nil {
-			log.Println("httpstoppable.ListenAndServe: error closing listener:", err)
+			log.Println("server.Close:", err)
 		}
 	}()
-	err = srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
-	switch { // Serve always returns a non-nil error.
-	case strings.Contains(err.Error(), "use of closed network connection"):
-		return nil
-	default:
-		return err
+	err := server.ListenAndServe()
+	if err != http.ErrServerClosed {
+		panic(fmt.Errorf("server.ListenAndServe: %v", err))
 	}
 }
 
-// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
-// connections. It's used by ListenAndServe so dead TCP connections
-// (e.g. closing laptop mid-download) eventually go away.
-type tcpKeepAliveListener struct {
-	*net.TCPListener
-}
+// DisplayHTMLInBrowser displays the /index HTML page of given mux in a new browser window/tab.
+// query can be empty, otherwise it should begin with "?", like "?key=value".
+func DisplayHTMLInBrowser(mux *http.ServeMux, stopServerChan <-chan struct{}, query string) {
+	// TODO: Start TCP listener before launching the browser to navigate to the page (else it's a race).
+	// TODO: Aquire a free port similarly to using ioutil.TempFile() for files.
+	// TODO: Consider using httptest.NewServer.
+	open.Open("http://localhost:7044/index" + query)
 
-func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	tc, err := ln.AcceptTCP()
-	if err != nil {
-		return
+	server := &http.Server{Addr: "localhost:7044", Handler: mux}
+	go func() {
+		<-stopServerChan
+		err := server.Close()
+		if err != nil {
+			log.Println("server.Close:", err)
+		}
+	}()
+	err := server.ListenAndServe()
+	if err != http.ErrServerClosed {
+		panic(fmt.Errorf("server.ListenAndServe: %v", err))
 	}
-	tc.SetKeepAlive(true)
-	tc.SetKeepAlivePeriod(3 * time.Minute)
-	return tc, nil
 }
