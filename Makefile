@@ -1,3 +1,4 @@
+# TEST
 GIT_VERSION := $(shell git describe --abbrev=6 --dirty --always --tags)
 GIT_VERSION_SHA1 := $(shell git rev-parse HEAD)
 
