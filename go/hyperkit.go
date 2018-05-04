@@ -121,6 +121,10 @@ type HyperKit struct {
 
 	// Console defines where the console of the VM should be connected to.
 	Console int `json:"console"`
+	// LogDestination specifies where the logs go: `stderr` or
+	// `log` (denoting the platform's log system).  Empty denotes
+	// `stderr`.
+	LogDestination string `json:"log_destination"`
 
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
@@ -209,6 +213,11 @@ func (h *HyperKit) check() error {
 		if !isTerminal(os.Stdout) && h.StateDir == "" {
 			return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
 		}
+	}
+	switch h.LogDestination {
+	case "", "stderr", "log":
+	default:
+		return fmt.Errorf("invalid LogDestination: %v", h.LogDestination)
 	}
 	for _, image := range h.ISOImages {
 		if _, err = os.Stat(image); os.IsNotExist(err) {
@@ -441,6 +450,10 @@ func (h *HyperKit) buildArgs(cmdline string) {
 			cfg += fmt.Sprintf(",log=%s/console-ring", h.StateDir)
 		}
 		a = append(a, "-l", cfg)
+	}
+
+	if h.LogDestination == "log" {
+		a = append(a, "-L", "log")
 	}
 
 	if h.Bootrom == "" {
