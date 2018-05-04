@@ -145,6 +145,7 @@ usage(int code)
 		    "       -h: help\n"
 		    "       -H: vmexit from the guest on hlt\n"
 		    "       -l: LPC device configuration. Ex: -l com1,stdio -l com2,autopty -l com2,/dev/myownpty\n"
+		    "       -L: destination for logs: 'stderr' (default), or 'log'\n"
 		    "       -m: memory size in MB, may be suffixed with one of K, M, G or T\n"
 		    "       -P: vmexit from the guest on pause\n"
 		    "       -s: <slot,driver,configinfo> PCI slot config\n"
@@ -869,7 +870,7 @@ main(int argc, char *argv[])
 	rtc_localtime = 1;
 	fw = 0;
 
-	while ((c = getopt(argc, argv, "behvuwxMACHPWY:f:F:g:c:s:m:l:U:")) != -1) {
+	while ((c = getopt(argc, argv, "behvuwxMACHPWY:f:F:g:c:s:m:l:L:U:")) != -1) {
 		switch (c) {
 		case 'A':
 			acpi = 1;
@@ -901,6 +902,9 @@ main(int argc, char *argv[])
 				errx(EX_USAGE, "invalid lpc device "
 				    "configuration '%s'", optarg);
 			}
+			break;
+                case 'L':
+			log_set_destination(optarg);
 			break;
 		case 's':
 			if (pci_parse_slot(optarg) != 0)

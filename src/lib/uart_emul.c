@@ -439,7 +439,7 @@ uart_write(struct uart_softc *sc, int offset, uint8_t value)
 			if (sc->log.ring)
 				ringwrite(&sc->log, value);
 			if (sc->asl)
-				log_put(value);
+				log_console_put((char)value);
 		} /* else drop on floor */
 		sc->thre_int_pending = true;
 		break;
