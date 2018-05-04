@@ -132,42 +132,45 @@ static uint64_t (*fw_func)(void);
 __attribute__ ((noreturn)) static void
 usage(int code)
 {
-
-        fprintf(stderr,
-                "Usage: %s [-behuwxMACHPWY] [-c vcpus] [-F <pidfile>] [-g <gdb port>] [-l <lpc>]\n"
-		"       %*s [-m mem] [-p vcpu:hostcpu] [-s <pci>] [-U uuid] -f <fw>\n"
-		"       -A: create ACPI tables\n"
-		"       -c: # cpus (default 1)\n"
-		"       -C: include guest memory in core file\n"
-		"       -e: exit on unhandled I/O access\n"
-		"       -f: firmware\n"
-		"       -F: pidfile\n"
-		"       -g: gdb port\n"
-		"       -h: help\n"
-		"       -H: vmexit from the guest on hlt\n"
-		"       -l: LPC device configuration. Ex: -l com1,stdio -l com2,autopty -l com2,/dev/myownpty\n"
-		"       -m: memory size in MB, may be suffixed with one of K, M, G or T\n"
-		"       -P: vmexit from the guest on pause\n"
-		"       -s: <slot,driver,configinfo> PCI slot config\n"
-		"       -u: RTC keeps UTC time\n"
-		"       -U: uuid\n"
-		"       -v: show build version\n"
-		"       -w: ignore unimplemented MSRs\n"
-		"       -W: force virtio to use single-vector MSI\n"
-		"       -x: local apic is in x2APIC mode\n"
-		"       -Y: disable MPtable generation\n",
-		progname, (int)strlen(progname), "");
-
+	if (code) {
+		printf("Usage: %s [-behuwxMACHPWY] [-c vcpus] [-F <pidfile>] [-g <gdb port>] [-l <lpc>]\n"
+		    "       %*s [-m mem] [-p vcpu:hostcpu] [-s <pci>] [-U uuid] -f <fw>\n"
+		    "       -A: create ACPI tables\n"
+		    "       -c: # cpus (default 1)\n"
+		    "       -C: include guest memory in core file\n"
+		    "       -e: exit on unhandled I/O access\n"
+		    "       -f: firmware\n"
+		    "       -F: pidfile\n"
+		    "       -g: gdb port\n"
+		    "       -h: help\n"
+		    "       -H: vmexit from the guest on hlt\n"
+		    "       -l: LPC device configuration. Ex: -l com1,stdio -l com2,autopty -l com2,/dev/myownpty\n"
+		    "       -m: memory size in MB, may be suffixed with one of K, M, G or T\n"
+		    "       -P: vmexit from the guest on pause\n"
+		    "       -s: <slot,driver,configinfo> PCI slot config\n"
+		    "       -u: RTC keeps UTC time\n"
+		    "       -U: uuid\n"
+		    "       -v: show build version\n"
+		    "       -w: ignore unimplemented MSRs\n"
+		    "       -W: force virtio to use single-vector MSI\n"
+		    "       -x: local apic is in x2APIC mode\n"
+		    "       -Y: disable MPtable generation\n",
+		    progname, (int)strlen(
+			    progname), "");
+	} else {
+		fprintf(stderr,
+		    "Try '%s --help' for more information.\n", progname);
+	}
 	exit(code);
 }
 
 __attribute__ ((noreturn)) static void
 show_version()
 {
-        fprintf(stderr, "%s: %s\n\n%s\n",progname, VERSION,
+        printf("%s: %s\n\n%s\n", progname, VERSION,
 		"Homepage: https://github.com/docker/hyperkit\n"
 		"License: BSD\n");
-		exit(0);
+	exit(0);
 }
 
 void
