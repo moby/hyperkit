@@ -31,7 +31,13 @@ expect {
   timeout {puts "FAIL shutdown"; exec kill -9 $pid; exit 1}
   "reboot: System halted"
 }
-close
+
+expect {
+  timeout {puts "FAIL process-exit"; exec kill -9 $pid; exit 1}
+  eof
+}
+set status [wait]
+puts "EXIT status:  $status"
 
 spawn qcow-tool read --sector=0 $PWD/disk.qcow2
 set pid [exp_pid]
