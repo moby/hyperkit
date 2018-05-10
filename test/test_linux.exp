@@ -33,6 +33,7 @@ expect {
 }
 set status [wait]
 puts "EXIT status:  $status"
+exec sync
 
 exec hdiutil mount -mountpoint ./test-vol ${DISK}s1
 exec cat ./test-vol/test

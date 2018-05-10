@@ -38,6 +38,7 @@ expect {
 }
 set status [wait]
 puts "EXIT status:  $status"
+exec sync
 
 spawn qcow-tool read --sector=0 $PWD/disk.qcow2
 set pid [exp_pid]
