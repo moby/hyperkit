@@ -67,3 +67,9 @@ jobs:
       - store_artifacts:
           path: build/LICENSE
           destination: LICENSE
+      - store_artifacts:
+          path: test/disk.dmg
+          destination: test/disk.dmg
+      - store_artifacts:
+          path: test/disk.qcow2
+          destination: test/disk.qcow2
