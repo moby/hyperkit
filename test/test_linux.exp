@@ -20,6 +20,7 @@ expect {
 send "sudo mount /dev/sda1 /mnt/sda1\r\n"
 send "sudo touch /mnt/sda1/test\r\n"
 send "sudo umount /mnt/sda1\r\n"
+send "sync\r\n"
 send "sudo halt\r\n";
 expect {
   timeout {puts "FAIL shutdown"; exec kill -9 $pid; exit 1}
