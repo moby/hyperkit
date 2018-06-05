@@ -712,9 +712,11 @@ blockif_open(const char *optstr, const char *ident)
 		}
 		/* Lock the file to prevent concurrent write+write or read+write as this
 		   would usually lead to corruption */
-		if (flock(fd, LOCK_NB | (ro ? LOCK_SH : LOCK_EX)) < 0) {
-			perror("Could not lock backing file");
-			goto err;
+		if (!ro) {
+			if (flock(fd, LOCK_NB | (ro ? LOCK_SH : LOCK_EX)) < 0) {
+				perror("Could not lock backing file");
+				goto err;
+			}
 		}
 		if (fstat(fd, &sbuf) < 0) {
 			perror("Could not stat backing file");
