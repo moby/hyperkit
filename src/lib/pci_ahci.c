@@ -2402,7 +2402,17 @@ pci_ahci_hd_init(struct pci_devinst *pi, char *opts)
 static int
 pci_ahci_atapi_init(struct pci_devinst *pi, char *opts)
 {
-	return (pci_ahci_init(pi, opts, 1));
+	char nopts[MAXPATHLEN + 3];
+	int ret;
+
+	/* atapi is only used for CDROMs. Add 'ro' to the options. */
+	ret = snprintf(nopts, sizeof(nopts), "%s,ro", opts);
+	if (ret < 0) {
+		WPRINTF("Path to ISO too long (%d)\n", ret);
+		return (ret);
+	}
+	
+	return (pci_ahci_init(pi, nopts, 1));
 }
 
 /*
