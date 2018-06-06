@@ -50,7 +50,7 @@ struct blockif_req {
 };
 
 struct blockif_ctxt;
-struct blockif_ctxt *blockif_open(const char *optstr, const char *ident);
+struct blockif_ctxt *blockif_open(const char *optstr, const char *ident, int ro);
 off_t blockif_size(struct blockif_ctxt *bc);
 void blockif_chs(struct blockif_ctxt *bc, uint16_t *c, uint8_t *h, uint8_t *s);
 int blockif_sectsz(struct blockif_ctxt *bc);
