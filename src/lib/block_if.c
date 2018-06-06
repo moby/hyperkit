@@ -603,7 +603,7 @@ blockif_init(void)
 }
 
 struct blockif_ctxt *
-blockif_open(const char *optstr, const char *ident)
+blockif_open(const char *optstr, const char *ident, int ro)
 {
 	// char name[MAXPATHLEN];
 	char *nopt, *xopts, *cp;
@@ -615,7 +615,7 @@ blockif_open(const char *optstr, const char *ident)
 	int extra, fd, i, sectsz;
 	size_t delete_alignment;
 	void *delete_zero_buf;
-	int nocache, sync, ro, candelete, geom, ssopt, pssopt;
+	int nocache, sync, candelete, geom, ssopt, pssopt;
 	mirage_block_handle mbh;
 	int use_mirage = 0;
 
@@ -632,7 +632,6 @@ blockif_open(const char *optstr, const char *ident)
 	ssopt = 0;
 	nocache = 0;
 	sync = 0;
-	ro = 0;
 
 	pssopt = 0;
 

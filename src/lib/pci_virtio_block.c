@@ -318,7 +318,7 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 	 * The supplied backing file has to exist
 	 */
 	snprintf(bident, sizeof(bident), "%d:%d", pi->pi_slot, pi->pi_func);
-	bctxt = blockif_open(opts, bident);
+	bctxt = blockif_open(opts, bident, 0);
 	if (bctxt == NULL) {
 		perror("Could not open backing file");
 		return (1);

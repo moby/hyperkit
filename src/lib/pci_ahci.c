@@ -2328,7 +2328,8 @@ pci_ahci_init(struct pci_devinst *pi, char *opts, int atapi)
 	 * slot/func for the identifier string.
 	 */
 	snprintf(bident, sizeof(bident), "%d:%d", pi->pi_slot, pi->pi_func);
-	bctxt = blockif_open(opts, bident);
+	/* ATAPI devices are only used for CDs, assume its a synonym for read-only */
+	bctxt = blockif_open(opts, bident, atapi);
 	if (bctxt == NULL) {
 		ret = 1;
 		goto open_fail;
