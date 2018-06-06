@@ -211,6 +211,10 @@ func (h *HyperKit) check() error {
 		}
 	}
 	for _, image := range h.ISOImages {
+		// Strip possible options.
+		if end := strings.LastIndexByte(image, ','); end != -1 {
+			image = image[0:end]
+		}
 		if _, err = os.Stat(image); os.IsNotExist(err) {
 			return fmt.Errorf("ISO %s does not exist", image)
 		}
