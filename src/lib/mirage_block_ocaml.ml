@@ -124,7 +124,7 @@ module Protocol = struct
       (fun () ->
         in_flight_requests := t :: !in_flight_requests;
       );
-    let n = Unix.write request_writer "X" 0 1 in
+    let n = Unix.write request_writer (Bytes.unsafe_of_string "X") 0 1 in
     if n = 0 then begin
       Printf.fprintf stderr "Got EOF while writing signal to the pipe\n%!";
       exit 1;
@@ -413,7 +413,7 @@ let process_one t =
 (* An Lwt thread which receives the signals from the pipe, grabs the in-flight
    requests and forks background threads to process all the requests. *)
 let serve_forever () =
-  let buf = String.make 1 '\000' in
+  let buf = Bytes.make 1 '\000' in
   let request_reader = Lwt_unix.of_unix_file_descr Protocol.request_reader in
 
   let rec loop () =
