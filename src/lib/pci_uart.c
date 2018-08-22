@@ -83,7 +83,7 @@ pci_uart_read(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 }
 
 static int
-pci_uart_init(struct pci_devinst *pi, char *opts)
+pci_uart_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	struct uart_softc *sc;
 	char *name;

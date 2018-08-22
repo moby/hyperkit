@@ -130,7 +130,7 @@ pci_vtrnd_notify(void *vsc, struct vqueue_info *vq)
 
 
 static int
-pci_vtrnd_init(struct pci_devinst *pi, UNUSED char *opts)
+pci_vtrnd_init(struct pci_devinst *pi, UNUSED char *opts, UNUSED void *arg)
 {
 	struct pci_vtrnd_softc *sc;
 	int fd;

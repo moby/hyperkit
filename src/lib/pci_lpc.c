@@ -354,7 +354,7 @@ pci_lpc_read(UNUSED int vcpu, UNUSED struct pci_devinst *pi, UNUSED int baridx,
 #define	LPC_VENDOR	0x8086
 
 static int
-pci_lpc_init(struct pci_devinst *pi, UNUSED char *opts)
+pci_lpc_init(struct pci_devinst *pi, UNUSED char *opts, UNUSED void *arg)
 {
 
 	/*

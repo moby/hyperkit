@@ -437,7 +437,7 @@ copy_up_to_comma(const char *from)
 }
 
 static int
-pci_vt9p_init(struct pci_devinst *pi, char *opts)
+pci_vt9p_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	struct pci_vt9p_softc *sc;
 

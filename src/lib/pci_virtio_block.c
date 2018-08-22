@@ -299,7 +299,7 @@ pci_vtblk_notify(void *vsc, struct vqueue_info *vq)
 }
 
 static int
-pci_vtblk_init(struct pci_devinst *pi, char *opts)
+pci_vtblk_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	char bident[sizeof("XX:X:X")];
 	struct blockif_ctxt *bctxt;

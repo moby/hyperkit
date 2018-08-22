@@ -2290,7 +2290,7 @@ copy_up_to_comma(const char *from)
 }
 
 static int
-pci_vtsock_init(struct pci_devinst *pi, char *opts)
+pci_vtsock_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	uint64_t guest_cid = VMADDR_CID_ANY;
 	const char *path = NULL;

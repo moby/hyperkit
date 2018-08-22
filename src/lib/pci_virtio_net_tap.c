@@ -571,7 +571,7 @@ pci_vtnet_parsemac(char *mac_str, uint8_t *mac_addr)
 
 
 static int
-pci_vtnet_init(struct pci_devinst *pi, char *opts)
+pci_vtnet_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	MD5_CTX mdctx;
 	unsigned char digest[16];

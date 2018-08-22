@@ -43,8 +43,10 @@ struct memory_region;
 struct pci_devemu {
 	/* name of device emulation */
 	char *pe_emu;
+	/* optional pre-initialisation (before privilege dropping) */
+	void* (*pe_preinit)(char *opts);
 	/* instance creation */
-	int (*pe_init)(struct pci_devinst *, char *opts);
+	int (*pe_init)(struct pci_devinst *, char *opts, void *);
 	/* ACPI DSDT enumeration */
 	void (*pe_write_dsdt)(struct pci_devinst *);
 	/* config space read/write callbacks */
@@ -192,6 +194,7 @@ struct pciecap {
 typedef void (*pci_lintr_cb)(int b, int s, int pin, int pirq_pin,
 	int ioapic_irq, void *arg);
 
+int preinit_pci(void);
 int init_pci(void);
 void msicap_cfgwrite(struct pci_devinst *pi, int capoff, int offset,
 	int bytes, uint32_t val);

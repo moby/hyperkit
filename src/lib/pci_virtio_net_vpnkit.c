@@ -1030,7 +1030,7 @@ pci_vtnet_ping_ctlq(void *vsc, struct vqueue_info *vq)
 #endif
 
 static int
-pci_vtnet_init(struct pci_devinst *pi, char *opts)
+pci_vtnet_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	struct pci_vtnet_softc *sc;
 	int mac_provided;

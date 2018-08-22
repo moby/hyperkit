@@ -2395,13 +2395,13 @@ open_fail:
 }
 
 static int
-pci_ahci_hd_init(struct pci_devinst *pi, char *opts)
+pci_ahci_hd_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	return (pci_ahci_init(pi, opts, 0));
 }
 
 static int
-pci_ahci_atapi_init(struct pci_devinst *pi, char *opts)
+pci_ahci_atapi_init(struct pci_devinst *pi, char *opts, UNUSED void *arg)
 {
 	return (pci_ahci_init(pi, opts, 1));
 }

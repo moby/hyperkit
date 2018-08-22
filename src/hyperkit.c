@@ -960,6 +960,19 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/*
+	 * Exit if a device emulation finds an error in its pre-initialization
+	 */
+	if (preinit_pci() != 0)
+		exit(1);
+
+	if (geteuid() != getuid() || getegid() != getgid()) {
+		if (setgid(getgid()) != 0)
+			err(1, "setgid");
+		if (setuid(getuid()) != 0)
+			err(1, "setuid");
+	}
+
 #ifdef HAVE_OCAML
 	caml_startup(argv) ;
 	caml_release_runtime_system();

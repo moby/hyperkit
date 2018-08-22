@@ -59,6 +59,7 @@
 struct funcinfo {
 	char	*fi_name;
 	char	*fi_param;
+	void	*fi_arg;
 	struct pci_devinst *fi_devi;
 };
 
@@ -711,6 +712,21 @@ pci_emul_finddev(char *name)
 }
 
 static int
+pci_emul_preinit(struct pci_devemu *pde, struct funcinfo *fi)
+{
+	if (pde->pe_preinit == NULL) {
+		fi->fi_arg = NULL;
+		return (0);
+	}
+
+	fi->fi_arg = (*pde->pe_preinit)(fi->fi_param);
+
+	if (fi->fi_arg == NULL)
+		return (1);
+	return (0);
+}
+
+static int
 pci_emul_init(struct pci_devemu *pde, int bus, int slot,
     int func, struct funcinfo *fi)
 {
@@ -737,7 +753,7 @@ pci_emul_init(struct pci_devemu *pde, int bus, int slot,
 	pci_set_cfgdata8(pdi, PCIR_COMMAND,
 		    PCIM_CMD_PORTEN | PCIM_CMD_MEMEN | PCIM_CMD_BUSMASTEREN);
 
-	err = (*pde->pe_init)(pdi, fi->fi_param);
+	err = (*pde->pe_init)(pdi, fi->fi_param, fi->fi_arg);
 	if (err == 0)
 		fi->fi_devi = pdi;
 	else
@@ -1057,6 +1073,37 @@ pci_ecfg_base(void)
 
 #define	BUSIO_ROUNDUP		32
 #define	BUSMEM_ROUNDUP		(1024 * 1024)
+
+int
+preinit_pci(void)
+{
+	struct pci_devemu *pde;
+	struct businfo *bi;
+	struct slotinfo *si;
+	struct funcinfo *fi;
+	int bus, slot, func;
+	int error;
+
+	for (bus = 0; bus < MAXBUSES; bus++) {
+		if ((bi = pci_businfo[bus]) == NULL)
+			continue;
+		for (slot = 0; slot < MAXSLOTS; slot++) {
+			si = &bi->slotinfo[slot];
+			for (func = 0; func < MAXFUNCS; func++) {
+				fi = &si->si_funcs[func];
+				if (fi->fi_name == NULL)
+					continue;
+				pde = pci_emul_finddev(fi->fi_name);
+				assert(pde != NULL);
+				error = pci_emul_preinit(pde, fi);
+				if (error)
+					return (error);
+			}
+		}
+	}
+
+	return (0);
+}
 
 int
 init_pci(void)
@@ -1971,7 +2018,7 @@ struct pci_emul_dsoftc {
 #define	PCI_EMUL_MSI_MSGS 4
 
 static int
-pci_emul_dinit(struct pci_devinst *pi, UNUSED char *opts)
+pci_emul_dinit(struct pci_devinst *pi, UNUSED char *opts, UNUSED void *arg)
 {
 	int error;
 	struct pci_emul_dsoftc *sc;
