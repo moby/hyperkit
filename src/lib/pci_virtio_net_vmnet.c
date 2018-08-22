@@ -53,6 +53,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <err.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -696,13 +697,32 @@ pci_vtnet_ping_ctlq(void *vsc, struct vqueue_info *vq)
 }
 #endif
 
-static int
-pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts, UNUSED void *arg)
+static void *
+pci_vtnet_preinit(UNUSED char *opts)
 {
 	struct pci_vtnet_softc *sc;
-	int mac_provided;
 
 	sc = calloc(1, sizeof(struct pci_vtnet_softc));
+
+	if (sc == NULL) {
+		warn("calloc");
+		return (NULL);
+	}
+
+	if (vmn_create(sc) == -1) {
+		free(sc);
+		return (NULL);
+	}
+
+	return ((void *)sc);
+}
+
+static int
+pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts, void *arg)
+{
+	struct pci_vtnet_softc *sc;
+
+	sc = (struct pci_vtnet_softc *)arg;
 
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
 
@@ -717,16 +737,6 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts, UNUSED void *arg)
 	sc->vsc_queues[VTNET_CTLQ].vq_qsize = VTNET_RINGSZ;
         sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
 #endif
-
-	/*
-	 * Attempt to open the tap device and read the MAC address
-	 * if specified
-	 */
-	mac_provided = 0;
-
-	if (vmn_create(sc) == -1) {
-		return (-1);
-	}
 
 	sc->vsc_config.mac[0] = sc->vms->mac[0];
 	sc->vsc_config.mac[1] = sc->vms->mac[1];
@@ -819,6 +829,7 @@ pci_vtnet_neg_features(void *vsc, uint64_t negotiated_features)
 
 static struct pci_devemu pci_de_vnet_vmnet = {
 	.pe_emu = 	"virtio-net",
+	.pe_preinit =	pci_vtnet_preinit,
 	.pe_init =	pci_vtnet_init,
 	.pe_barwrite =	vi_pci_write,
 	.pe_barread =	vi_pci_read
