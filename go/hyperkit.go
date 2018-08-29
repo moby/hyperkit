@@ -353,6 +353,12 @@ func (h *HyperKit) String() string {
 	return string(s)
 }
 
+// Command builds and returns a single string of the command line
+func (h *HyperKit) Command(cmdline string) string {
+	h.buildArgs(cmdline)
+	return h.CmdLine
+}
+
 func intArrayToString(i []int, sep string) string {
 	if len(i) == 0 {
 		return ""
