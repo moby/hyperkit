@@ -6,10 +6,12 @@
 
 // Package ctxhttp provides helper functions for performing context-aware HTTP requests.
 //
-// It's a copy of "golang.org/x/net/context/ctxhttp" with pre-1.7 support dropped,
-// and "golang.org/x/net/context" import replaced with "context".
-// It exists temporarily until "golang.org/x/net/context/ctxhttp" is updated,
-// which will happen "in a couple releases" according to https://golang.org/cl/24620.
+// It's a copy of golang.org/x/net/context/ctxhttp with Go 1.6 support dropped
+// and golang.org/x/net/context import replaced with context from standard library.
+// It existed temporarily until golang.org/x/net/context/ctxhttp was updated in the same way,
+// which has happenened on 2018-11-13 in https://golang.org/cl/149277.
+//
+// Deprecated: Use package golang.org/x/net/context/ctxhttp instead. This package will be deleted on 2018-12-01.
 package ctxhttp
 
 import (
@@ -19,6 +21,11 @@ import (
 	"net/url"
 	"strings"
 )
+
+func init() {
+	println("The github.com/shurcooL/go/ctxhttp package is deprecated, and will be deleted on 2018-12-01. " +
+		"Use golang.org/x/net/context/ctxhttp package instead.")
+}
 
 // Do sends an HTTP request with the provided http.Client and returns
 // an HTTP response.
