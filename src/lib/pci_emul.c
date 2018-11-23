@@ -1223,15 +1223,8 @@ pci_bus_write_dsdt(int bus)
 	/*
 	 * If there are no devices on this 'bus' then just return.
 	 */
-	if ((bi = pci_businfo[bus]) == NULL) {
-		/*
-		 * Bus 0 is special because it decodes the I/O ports used
-		 * for PCI config space access even if there are no devices
-		 * on it.
-		 */
-		if (bus != 0)
-			return;
-	}
+	if ((bi = pci_businfo[bus]) == NULL)
+		return;
 
 	dsdt_fixup(bus, bi->iobase, bi->iolimit, bi->membase32, bi->memlimit32,
 		bi->membase64, bi->memlimit64);
