@@ -44,6 +44,7 @@ jobs:
       - run: brew upgrade python
       - run: brew install opam
       - run: opam init --disable-sandboxing -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+      - run: opam install depext -y
       - run: opam config exec -- opam depext -i hyperkit
       - run: opam config exec -- make clean
       - run: opam config exec -- make all
