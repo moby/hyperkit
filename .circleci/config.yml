@@ -43,7 +43,7 @@ jobs:
       # until the base image is updated.
       - run: brew upgrade python
       - run: brew install opam
-      - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+      - run: opam init --disable-sandboxing -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
       - run: opam config exec -- opam depext -i hyperkit
       - run: opam config exec -- make clean
       - run: opam config exec -- make all
