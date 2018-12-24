@@ -42,7 +42,8 @@ jobs:
       # Manually upgrading the python bottle allows us to avoid this
       # until the base image is updated.
       - run: brew upgrade python
-      - run: brew install opam
+      # Install opam 1 until we become opam 2 compatible
+      - run: brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/72ce8812eaa33abe23533dfa021b51351a6b9c3e/Formula/opam.rb
       - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
       - run: opam config exec -- opam depext -i hyperkit
       - run: opam config exec -- make clean
