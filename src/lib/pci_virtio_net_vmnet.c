@@ -715,7 +715,7 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 	sc->vsc_queues[VTNET_TXQ].vq_notify = pci_vtnet_ping_txq;
 #ifdef notyet
 	sc->vsc_queues[VTNET_CTLQ].vq_qsize = VTNET_RINGSZ;
-        sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
+		sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
 #endif
 
 	/*
@@ -726,6 +726,14 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 
 	if (vmn_create(sc) == -1) {
 		return (-1);
+	}
+
+	if (print_mac == 1)
+	{
+		printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n",
+			sc->vms->mac[0], sc->vms->mac[1], sc->vms->mac[2],
+			sc->vms->mac[3], sc->vms->mac[4], sc->vms->mac[5]);
+		exit(0);
 	}
 
 	sc->vsc_config.mac[0] = sc->vms->mac[0];
