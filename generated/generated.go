@@ -28,11 +28,11 @@ import (
 // 	Generated files are marked by a line of text that matches
 // 	the regular expression, in Go syntax:
 //
-// 		`^// Code generated .* DO NOT EDIT\.$`
+// 		^// Code generated .* DO NOT EDIT\.$
 //
 // 	The .* means the tool can put whatever folderol it wants in there,
-// 	but the comment must be a single line and must start with `Code generated`
-// 	and end with `DO NOT EDIT.`, with a period.
+// 	but the comment must be a single line and must start with Code generated
+// 	and end with DO NOT EDIT., with a period.
 //
 // 	The text may appear anywhere in the file.
 func Parse(src io.Reader) (hasGeneratedComment bool, err error) {
