@@ -4,7 +4,7 @@
 
 *HyperKit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on [xhyve](https://github.com/mist64/xhyve)/[bhyve](http://bhyve.org), which is optimized for lightweight virtual machines and container deployment.  It is designed to be interfaced with higher-level components such as the [VPNKit](https://github.com/moby/vpnkit) and [DataKit](https://github.com/moby/datakit).
 
-HyperKit currently only supports macOS using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
+HyperKit currently only supports macOS using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker Desktop For Mac.
 
 
 ## Requirements
@@ -14,7 +14,7 @@ HyperKit currently only supports macOS using the [Hypervisor.framework](https://
 
 ## Reporting Bugs
 
-If you are using a version of Hyperkit which is embedded into a higher level application (e.g. [Docker for Mac](https://github.com/docker/for-mac)) then please report any issues against that higher level application in the first instance. That way the relevant team can triage and determine if the issue lies in Hyperkit and assign as necessary.
+If you are using a version of Hyperkit which is embedded into a higher level application (e.g. [Docker Desktop for Mac](https://github.com/docker/for-mac)) then please report any issues against that higher level application in the first instance. That way the relevant team can triage and determine if the issue lies in Hyperkit and assign as necessary.
 
 If you are using Hyperkit directly then please report issues against this repository.
 
