@@ -1,6 +1,0 @@
-Base set of ppx rewriters
-
-ppx_base is the set of ppx rewriters used for Base.
-
-Note that Base doesn't need ppx to build, it is only used as a
-verification tool.

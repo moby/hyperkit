@@ -25,4 +25,4 @@ conflicts: [
   "base-ocamlbuild"
   "ocamlfind" {< "1.6.2"}
 ]
-available: [ocaml-version >= "4.03"]
+available: [ocaml-version >= "4.03" & ocaml-version < "4.08.0"]

@@ -1,0 +1,20 @@
+opam-version: "1.2"
+maintainer: "Simon Cruanes <simon.cruanes.2007@m4x.org"
+authors: [
+  "Vincent Hugot <vincent.hugot@gmail.com>"
+  "Simon Cruanes <simon.cruanes.2007@m4x.org"
+]
+homepage: "https://github.com/vincent-hugot/qtest"
+bug-reports: "https://github.com/vincent-hugot/qtest/issues"
+doc:
+  "https://github.com/vincent-hugot/qtest/blob/master/README.adoc#introduction"
+tags: ["test" "property" "quickcheck"]
+dev-repo: "git@github.com:vincent-hugot/qtest.git"
+build: ["jbuilder" "build" "-j" jobs "-p" name]
+depends: [
+  "base-bytes"
+  "ounit" {>= "2.0.0"}
+  "jbuilder" {build & >= "1.0+beta19"}
+  "qcheck" {>= "0.5"}
+]
+available: [ocaml-version >= "4.02.0"]

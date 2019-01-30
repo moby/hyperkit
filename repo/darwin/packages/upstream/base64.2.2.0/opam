@@ -13,10 +13,10 @@ depends: [
   "jbuilder" {build & >= "1.0+beta10"}
   "bos" {test}
   "rresult" {test}
-  "alcotest" {test}
+  "alcotest" {test & >= "0.4.0"}
 ]
 build: [
-  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "subst" "-p" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 build-test: [

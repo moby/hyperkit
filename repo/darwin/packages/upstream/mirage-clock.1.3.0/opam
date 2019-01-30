@@ -12,6 +12,6 @@ depends: [
   "mirage-device" {>= "1.0.0"}
 ]
 build: [
-  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "subst" "-p" name ] {pinned}
   [ "jbuilder" "build" "-p" name "-j" jobs ]
 ]

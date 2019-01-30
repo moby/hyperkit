@@ -1,3 +1,0 @@
-opam-version: "1"
-maintainer: "Xavier Leroy <xavier.leroy@inria.fr>"
-available: [ ocaml-version < "4.06.0" ]

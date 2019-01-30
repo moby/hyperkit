@@ -9,13 +9,13 @@ bug-reports:  "https://github.com/mirage/mirage-protocols/issues"
 tags:         ["org:mirage"]
 
 build: [
-  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "subst" "-p" name ] {pinned}
   [ "jbuilder" "build" "-p" name "-j" jobs ]
 ]
 
 depends: [
   "jbuilder" {build & >= "1.0+beta9" }
-  "mirage-protocols" { >= "1.1.0" }
+  "mirage-protocols" {= "1.2.0" }
   "ipaddr" {>= "2.0.0"}
   "lwt"
   "cstruct" {>= "1.9.0"}

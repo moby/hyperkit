@@ -9,14 +9,14 @@ bug-reports:  "https://github.com/mirage/mirage-stack/issues"
 tags:         ["org:mirage"]
 
 build: [
-  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "subst" "-p" name ] {pinned}
   [ "jbuilder" "build" "-p" name "-j" jobs ]
 ]
 
 depends: [
   "jbuilder" {build & >="1.0+beta9"}
   "mirage-device" {>= "1.0.0"}
-  "mirage-protocols" {>= "1.0.0"}
+  "mirage-protocols" {>= "1.0.0" & < "1.3.0"}
   "fmt"
 ]
 

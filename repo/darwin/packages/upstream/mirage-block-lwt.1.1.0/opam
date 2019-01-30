@@ -8,7 +8,7 @@ bug-reports: "https://github.com/mirage/mirage-block/issues"
 doc: "https://mirage.gitub.io/mirage-block/"
 
 build: [
-  [ "jbuilder" "subst"] {pinned}
+  [ "jbuilder" "subst" "-p" name] {pinned}
   [ "jbuilder" "build" "-p" name "-j" jobs ]
 ]
 

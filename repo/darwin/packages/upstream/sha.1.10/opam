@@ -1,0 +1,19 @@
+opam-version: "1.2"
+maintainer:   "dave@recoil.org"
+authors:      [
+"Vincent Hanquez" "Thomas Gazagnaire" "Goswin von Brederlow"
+  "Eric Cooper" "Florent Monnier" "Forrest L Norvell"
+  "Vincent Bernadoff" "David Scott"
+]
+homepage:     "https://github.com/djs55/ocaml-sha"
+bug-reports:  "https://github.com/djs55/ocaml-sha/issues"
+dev-repo:     "https://github.com/djs55/ocaml-sha.git"
+license:      "LGPL"
+
+build: make
+install: [make "install"]
+remove: [["ocamlfind" "remove" "sha"]]
+
+depends: ["ocamlfind"]
+
+available: [ ocaml-version >= "4.02.0" ]

@@ -9,13 +9,13 @@ bug-reports:  "https://github.com/mirage/mirage-stack/issues"
 tags:         ["org:mirage"]
 
 build: [
-  [ "jbuilder" "subst" ] {pinned}
+  [ "jbuilder" "subst" "-p" name ] {pinned}
   [ "jbuilder" "build" "-p" name "-j" jobs ]
 ]
 
 depends: [
   "jbuilder" {build & >="1.0+beta9"}
-  "mirage-stack" {>= "1.0.0"}
+  "mirage-stack" {= "1.1.0"}
   "ipaddr"
   "lwt"
   "cstruct" {>= "2.4.0"}
