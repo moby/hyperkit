@@ -22,8 +22,7 @@ cleanup() {
 ## Fetch the opam-repository
 
 cd "${WORK_DIR}"
-git clone --depth=1 ${OPAM_REPO} ${REPO_DIR_NAME}
-cd ${REPO_DIR_NAME}
+git clone --depth=1 --branch=1.2 ${OPAM_REPO} ${REPO_DIR_NAME}
 
 ## copy the dev/ and local/ packages in the repo
 [ -d  "${TARGET_DIR}/packages/dev" ] && \
