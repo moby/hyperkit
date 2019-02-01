@@ -1,4 +1,0 @@
-Write OCaml AST fragment using OCaml syntax
-
-Ppx_metaquot is a ppx rewriter allowing you to write values
-representing the OCaml AST in the OCaml syntax.

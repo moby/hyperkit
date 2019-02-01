@@ -1,9 +1,0 @@
-OCaml AST used by Jane Street ppx rewriters
-
-Ppx_ast selects a specific version of the OCaml Abstract Syntax Tree
-from the migrate-parsetree project that is not necessarily the same
-one as the one being used by the compiler.
-
-It also snapshots the corresponding parser and pretty-printer from the
-OCaml compiler, to create a full frontend independent of the version
-of OCaml.

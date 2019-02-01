@@ -1,0 +1,22 @@
+opam-version: "1.2"
+maintainer:   "anil@recoil.org"
+authors:      "The MirageOS team"
+homepage:     "https://github.com/mirage/mirage-unix"
+bug-reports:  "https://github.com/mirage/mirage-unix/issues/"
+dev-repo:     "https://github.com/mirage/mirage-unix.git"
+doc:          "https://mirage.github.io/mirage-unix/doc"
+license:      "ISC"
+build: [
+  [ "ocaml" "pkg/pkg.ml" "build" "--pinned" "%{pinned}%" "--tests" "false" ]
+]
+
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build & >= "0.7.6"}
+  "lwt" {>= "2.4.3"}
+  "logs"
+  "io-page-unix" {>= "2.0.0"}
+]
+available: [ocaml-version >= "4.04.2"]
+tags: "org:mirage"

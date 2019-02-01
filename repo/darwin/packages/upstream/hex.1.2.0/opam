@@ -6,7 +6,7 @@ bug-reports:  "https://github.com/mirage/ocaml-hex/issues"
 dev-repo:     "https://github.com/mirage/ocaml-hex.git"
 license:      "ISC"
 build: [
-  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "subst" "-p" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 build-test: [ [ "jbuilder" "runtest" ] ]

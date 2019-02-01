@@ -1,6 +1,0 @@
-iTeML / qtest : Inline (Unit) Tests for OCaml.
-
-qtest extracts inline unit tests written using a special
-syntax in comments. Those tests are then run using the oUnit framework
-and the qcheck library.  The possibilities range from trivial tests --
-extremely simple to use -- to sophisticated random generation of test cases.

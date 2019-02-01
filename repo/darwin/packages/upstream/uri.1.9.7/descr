@@ -1,0 +1,4 @@
+An RFC3986 URI/URL parsing library
+
+This is an OCaml implementation of the [RFC3986](http://tools.ietf.org/html/rfc3986) specification 
+for parsing URI or URLs.

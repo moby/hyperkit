@@ -1,0 +1,18 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/base"
+bug-reports: "https://github.com/janestreet/base/issues"
+dev-repo: "git+https://github.com/janestreet/base.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "sexplib0"          {>= "v0.11" & < "v0.12"}
+  "jbuilder"          {build & >= "1.0+beta18.1"}
+]
+depopts: [
+  "base-native-int63"
+]
+available: [ ocaml-version >= "4.04.1" ]

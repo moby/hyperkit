@@ -10,7 +10,7 @@ authors:       ["Thomas Gazagnaire" "Anil Madhavapeddy" "Gabriel Radanne"
 tags:          [ "org:mirage"]
 license:       "ISC"
 build: [
-  ["jbuilder" "subst"] {pinned}
+  ["jbuilder" "subst" "-p" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
 depends: [

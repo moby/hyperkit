@@ -2,9 +2,9 @@ opam-version: "1.2"
 
 depends: [
   "uri"
-  "qcow"              {= "0.10.3"}
+  "qcow"              {= "0.10.4"}
   "qcow-tool"
-  "sha"               {= "1.9"}
+  "sha"               {= "1.10"}
   "conduit"           {= "1.0.0"}
   "lwt"               {= "3.1.0"}
   "mirage-block-unix" {= "2.9.0"}

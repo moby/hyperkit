@@ -1,0 +1,16 @@
+opam-version: "1.2"
+authors: [ "Maas-Maarten Zeeman" "Sylvain Le Gall" ]
+maintainer: "https://github.com/ocaml/opam-repository/issues"
+homepage: "http://ounit.forge.ocamlcore.org"
+bug-reports: "https://forge.ocamlcore.org/tracker/?func=browse&group_id=162&atid=730"
+dev-repo: "https://github.com/gildor478/ounit.git"
+doc: ["http://ounit.forge.ocamlcore.org/api-ounit/index.html"]
+build: [make "build"]
+remove: [["ocamlfind" "remove" "oUnit"]]
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "base-bytes"
+]
+install: [make "install"]
+available: [ ocaml-version >= "3.11.0" ]

@@ -29,7 +29,7 @@ depends: [
   # We are only using ocamlfind during configuration of the Unix binding.
   "ocamlfind" {build & >= "1.5.0"}
   "ocaml-migrate-parsetree"
-  "ppx_tools_versioned"
+  "ppx_tools_versioned" {>= "5.0.1"}
   # result is needed as long as Lwt still supports OCaml 4.02.
   "result"
 ]
@@ -50,8 +50,4 @@ messages: [
   {lablgtk:installed & !lwt_glib:installed}
   "For module Lwt_react, please install package lwt_react"
   {react:installed & !lwt_react:installed}
-]
-post-messages: [
-  "Lwt 4.0.0 will make some breaking changes to packaging in late 2017. See
-  https://github.com/ocsigen/lwt/issues/453"
 ]
