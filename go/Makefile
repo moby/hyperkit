@@ -69,7 +69,7 @@ vendor-local:
 
 .PHONY: ci setup
 setup:
-	go get github.com/golang/lint/golint
+	go get golang.org/x/lint/golint
 
 ci: setup build/hyperkitgo build/hyperkitgo_linux build/hyperkitgo.exe test
 	test -z "$$(gofmt -s -l . 2>&1 | grep -v ^vendor/ | tee /dev/stderr)"
