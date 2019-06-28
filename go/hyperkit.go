@@ -47,7 +47,8 @@ const (
 	// ConsoleLog configures console to a tty and sends its contents to the logs
 	ConsoleLog
 
-	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/s50"
+	legacyVPNKitSock  = "Library/Containers/com.docker.docker/Data/s50"
+	defaultVPNKitSock = "Library/Containers/com.docker.docker/Data/vpnkit.eth.sock"
 
 	defaultCPUs   = 1
 	defaultMemory = 1024 // 1G
@@ -591,6 +592,9 @@ func checkHyperKit(hyperkit string) (string, error) {
 func checkVPNKitSock(vpnkitsock string) (string, error) {
 	if vpnkitsock == "auto" {
 		vpnkitsock = filepath.Join(getHome(), defaultVPNKitSock)
+		if _, err := os.Stat(vpnkitsock); err != nil {
+			vpnkitsock = filepath.Join(getHome(), legacyVPNKitSock)
+		}
 	}
 	if vpnkitsock == "" {
 		return "", nil
