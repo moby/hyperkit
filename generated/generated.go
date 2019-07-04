@@ -11,13 +11,15 @@
 // primitives and allocating less. That can be explored later. A lot of the time
 // is spent on reading the entire file without being able to stop early,
 // since the specification allows the comment to appear anywhere in the file.
+//
+// Deprecated: This package has moved to dmitri.shuralyov.com/go/generated.
+// Use that package instead.
 package generated
 
 import (
-	"bufio"
-	"bytes"
 	"io"
-	"os"
+
+	"dmitri.shuralyov.com/go/generated"
 )
 
 // Parse parses the source code of a single Go source file
@@ -36,45 +38,11 @@ import (
 //
 // 	The text may appear anywhere in the file.
 func Parse(src io.Reader) (hasGeneratedComment bool, err error) {
-	br := bufio.NewReader(src)
-	for {
-		s, err := br.ReadBytes('\n')
-		if err == io.EOF {
-			return containsComment(s), nil
-		} else if err != nil {
-			return false, err
-		}
-		if len(s) >= 2 && s[len(s)-2] == '\r' {
-			s = s[:len(s)-2] // Trim "\r\n".
-		} else {
-			s = s[:len(s)-1] // Trim "\n".
-		}
-		if containsComment(s) {
-			return true, nil
-		}
-	}
+	return generated.Parse(src)
 }
-
-// containsComment reports whether a line of Go source code s (without newline character)
-// contains the generated comment.
-func containsComment(s []byte) bool {
-	return len(s) >= len(prefix)+len(suffix) &&
-		bytes.HasPrefix(s, prefix) &&
-		bytes.HasSuffix(s, suffix)
-}
-
-var (
-	prefix = []byte("// Code generated ")
-	suffix = []byte(" DO NOT EDIT.")
-)
 
 // ParseFile opens the file specified by filename and uses Parse to parse it.
 // If the source couldn't be read, the error indicates the specific failure.
 func ParseFile(filename string) (hasGeneratedComment bool, err error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return false, err
-	}
-	defer f.Close()
-	return Parse(f)
+	return generated.ParseFile(filename)
 }
