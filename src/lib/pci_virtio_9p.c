@@ -362,9 +362,12 @@ pci_vt9p_thread(void *vsc)
 			ptr += ret;
 		}
 		DPRINTF(("[thread]got complete response for tag %d len %d\r\n", (int)tag, (int)len));
-		if (command == 107) {
+		if (command == 107) { /* Rerror */
 			char msg[128];
 			uint16_t slen = (uint16_t)((uint16_t)buf[7] | ((uint16_t)buf[8] << 8));
+			if (slen > 128) {
+				slen = 128; /* truncate overlong error message if required */
+			}
 			memcpy(msg, &buf[9], slen);
 			msg[slen] = 0;
 			DPRINTF(("[thread]Rerror: %s\r\n", msg));
