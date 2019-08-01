@@ -983,12 +983,12 @@ static int buffer_write(struct pci_vtsock_sock *sock,
 			uint32_t len, struct iovec *iov, int iov_len)
 {
 	size_t nr;
-	if (sock->write_buf_tail + len > WRITE_BUF_LENGTH) {
+	if (len > WRITE_BUF_LENGTH - sock->write_buf_tail) {
 		DPRINTF(("TX: fd %d unable to buffer write of 0x%"PRIx32" bytes,"
 			 " buffer use 0x%x/0x%x, 0x%x remaining\n",
 			 sock->fd, len, sock->write_buf_tail,
 			 WRITE_BUF_LENGTH,
-			 WRITE_BUF_LENGTH < sock->write_buf_tail));
+			 WRITE_BUF_LENGTH - sock->write_buf_tail));
 		return -1;
 	}
 
