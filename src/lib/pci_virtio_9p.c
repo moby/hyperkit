@@ -348,10 +348,19 @@ pci_vt9p_thread(void *vsc)
 		command = buf[4];
 		tag = (uint16_t)((uint16_t)buf[5] | ((uint16_t)buf[6] << 8));
 		DPRINTF(("[thread]Got response for tag %d command %d len %d\r\n", (int)tag, (int)command, (int)len));
+		if (len > BUFSIZE) {
+			fprintf(stderr, "virtio-9p: command too long, maximum is %d\n", BUFSIZE);
+			/* Fatal error, crash VM, let us be restarted */
+			_exit(1);
+		}
+		if (len < minlen) {
+			fprintf(stderr, "virtio-9p: command too short, must be over 7 bytes\n");
+			/* Fatal error, crash VM, let us be restarted */
+			_exit(1);
+		}
 		n = (size_t)(len - minlen);
 		ptr = buf + minlen;
 		while (n) {
-			assert(len <= BUFSIZE);
 			ret = read(sc->v9sc_sock, ptr, n);
 			if (ret <= 0) {
 				fprintf(stderr, "virtio-9p: unexpected EOF reading-- did the 9P server crash?\n");
@@ -362,9 +371,12 @@ pci_vt9p_thread(void *vsc)
 			ptr += ret;
 		}
 		DPRINTF(("[thread]got complete response for tag %d len %d\r\n", (int)tag, (int)len));
-		if (command == 107) {
+		if (command == 107) { /* Rerror */
 			char msg[128];
 			uint16_t slen = (uint16_t)((uint16_t)buf[7] | ((uint16_t)buf[8] << 8));
+			if (slen > 128) {
+				slen = 128; /* truncate overlong error message if required */
+			}
 			memcpy(msg, &buf[9], slen);
 			msg[slen] = 0;
 			DPRINTF(("[thread]Rerror: %s\r\n", msg));
