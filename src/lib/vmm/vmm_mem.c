@@ -33,7 +33,7 @@
 #include <Hypervisor/hv_vmx.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/vmm/vmm_mem.h>
-
+#include <sys/mman.h>
 int
 vmm_mem_init(void)
 {
@@ -46,10 +46,9 @@ vmm_mem_alloc(uint64_t gpa, size_t size)
 {
 	void *object;
 
-	object = valloc(size);
-
-	if (!object) {
-		xhyve_abort("vmm_mem_alloc failed\n");
+	object = mmap(0, size, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	if (object == MAP_FAILED) {
+		xhyve_abort("vmm_mem_alloc failed in mmap\n");
 	}
 
 	if (hv_vm_map(object, gpa, size,
