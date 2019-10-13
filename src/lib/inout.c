@@ -102,7 +102,7 @@ update_register(int vcpuid, enum vm_reg_name reg,
 	switch (size) {
 	case 1:
 	case 2:
-		error = xh_vm_get_register(vcpuid, reg, &origval);
+		error = xh_vm_get_register(vcpuid, (int)reg, &origval);
 		if (error)
 			return (error);
 		val &= vie_size2mask(size);
@@ -117,7 +117,7 @@ update_register(int vcpuid, enum vm_reg_name reg,
 		return (EINVAL);
 	}
 
-	return xh_vm_set_register(vcpuid, reg, val);
+	return xh_vm_set_register(vcpuid, (int)reg, val);
 }
 
 int

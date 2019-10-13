@@ -1370,7 +1370,7 @@ static void handle_connect_fd(struct pci_vtsock_softc *sc, int accept_fd, uint64
 
 	DPRINTF(("TX: Connect attempt on connect fd => %d\n", fd));
 
-	if (cid == VMADDR_CID_ANY) {
+	if ((uint32_t)cid == VMADDR_CID_ANY) {
 		do {
 			bytes = read(fd, buf, sizeof(buf)-1);
 		} while (bytes == -1 && errno == EAGAIN);
@@ -1580,7 +1580,7 @@ static void *pci_vtsock_tx_thread(void *vsc)
 
 		if (FD_ISSET(sc->connect_fd, &rfd)) {
 			DPRINTF(("TX: Handling connect fd\n"));
-			handle_connect_fd(sc, sc->connect_fd, VMADDR_CID_ANY, 0);
+			handle_connect_fd(sc, sc->connect_fd, (uint32_t)VMADDR_CID_ANY, 0);
 		}
 
 		for (i = 0; i < sc->nr_fwds; i++) {
@@ -2292,7 +2292,7 @@ copy_up_to_comma(const char *from)
 static int
 pci_vtsock_init(struct pci_devinst *pi, char *opts)
 {
-	uint64_t guest_cid = VMADDR_CID_ANY;
+	uint32_t guest_cid = VMADDR_CID_ANY;
 	const char *path = NULL;
 	char *guest_forwards = NULL;
 	struct pci_vtsock_softc *sc;
@@ -2337,7 +2337,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	}
 
 	if (guest_cid <= VMADDR_CID_HOST || guest_cid >= VMADDR_CID_MAX) {
-		fprintf(stderr, "invalid guest_cid "PRIcid"\n", guest_cid);
+		fprintf(stderr, "invalid guest_cid "PRIcid"\n", (uint64_t)guest_cid);
 		return 1;
 	}
 
@@ -2353,7 +2353,7 @@ pci_vtsock_init(struct pci_devinst *pi, char *opts)
 	/* XXX confirm path exists and is a directory */
 
 	fprintf(stderr, "vsock init %d:%d = %s, guest_cid = "PRIcid"\n\r",
-		pi->pi_slot, pi->pi_func, path, guest_cid);
+		pi->pi_slot, pi->pi_func, path, (uint64_t)guest_cid);
 
 	sc = calloc(1, sizeof(struct pci_vtsock_softc));
 

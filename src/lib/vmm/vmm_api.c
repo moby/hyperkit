@@ -526,7 +526,7 @@ xh_vm_get_capability(int vcpu, enum vm_cap_type cap, int *retval)
 	int error;
 
 	vcpu_freeze(vcpu, true);
-	error = vm_get_capability(vm, vcpu, cap, retval);
+	error = vm_get_capability(vm, vcpu, (int)cap, retval);
 	vcpu_freeze(vcpu, false);
 
 	return (error);
@@ -538,7 +538,7 @@ xh_vm_set_capability(int vcpu, enum vm_cap_type cap, int val)
 	int error;
 
 	vcpu_freeze(vcpu, true);
-	error = vm_set_capability(vm, vcpu, cap, val);
+	error = vm_set_capability(vm, vcpu, (int)cap, val);
 	vcpu_freeze(vcpu, false);
 
 	return (error);
