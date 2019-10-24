@@ -24,28 +24,12 @@ jobs:
       - run: make all
       - run: test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
       - run: make test
-      # brew has moved the python bottle from python2 to python3. The
-      # circleci base image currently predates this (so python==python
-      # 2.7.3). opam depends (somewhere in the dependency tree) on
-      # python@2 which is the explicit Python 2 but brew seems not to
-      # be able to properly sequence the upgrade of python from 2 to 3
-      # while also installing the explicit python@2 which results in
-      # file conflicts:
-      #
-      #     ==> Pouring python@2-2.7.14_3.sierra.bottle.1.tar.gz
-      #     Error: The `brew link` step did not complete successfully
-      #     The formula built, but is not symlinked into /usr/local
-      #     Could not symlink bin/2to3-2
-      #     Target /usr/local/bin/2to3-2
-      #     is a symlink belonging to python. You can unlink it:
-      #
-      # Manually upgrading the python bottle allows us to avoid this
-      # until the base image is updated.
-      - run: brew upgrade python
-      # Install opam 1 until we become opam 2 compatible
-      - run: brew install https://gist.githubusercontent.com/djs55/7a94ee5aeb882ef5399c0485d2affdda/raw/bc04ff96e0082d7ee07642337dbb77c51b93d678/opam.rb
-      - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
-      - run: opam config exec -- opam depext -i hyperkit
+      - run: brew install opam
+      - run: opam init
+      - run: opam switch create hyperkit "${OPAM_COMP}"
+      - run: opam install depext
+      - run: opam pin add lock . -n
+      - run: opam config exec -- opam depext -i lock
       - run: opam config exec -- make clean
       - run: opam config exec -- make all
       - run: opam config exec -- make test
