@@ -1,13 +1,17 @@
-opam-version: "1.2"
-
+opam-version: "2.0"
+maintainer: "see https://github.com/moby/hyperkit"
+authors: ["see https://github.com/moby/hyperkit"]
+homepage: "https://github.com/moby/hyperkit"
+bug-reports: "https://github.com/moby/hyperkit"
+synopsis: "A lightweight hypervisor for macOS"
 depends: [
   "uri"
-  "qcow"              {= "0.10.4"}
+  "qcow"
   "qcow-tool"
-  "sha"               {= "1.10"}
-  "conduit"           {= "1.0.0"}
-  "lwt"               {= "3.1.0"}
-  "mirage-block-unix" {= "2.9.0"}
+  "sha"
+  "conduit"
+  "lwt"
+  "mirage-block-unix"
   "conf-libev"
   "logs"
   "fmt"
