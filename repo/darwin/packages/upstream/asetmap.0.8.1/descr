@@ -1,8 +1,0 @@
-Alternative, compatible, OCaml standard library Sets and Maps
-
-asetmap provides slightly tweaked OCaml standard library Set and Map
-functors. asetmap tries to maximize compatibility with the standard
-library. It essentially gets rid of `Not_found` exceptions and provide
-pretty-printers for the data types.
-
-asetmap has no dependency is distributed under the ISC license.

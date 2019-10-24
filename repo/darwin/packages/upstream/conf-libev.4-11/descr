@@ -1,5 +1,0 @@
-High-performance event loop/event model with lots of features
-
-Libev is modelled (very loosely) after libevent and the Event perl
-module, but is faster, scales better and is more correct, and also more
-featureful. And also smaller. Yay.

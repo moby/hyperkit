@@ -1,4 +1,0 @@
-Convert OCaml parsetrees between different versions 
-
-This library converts parsetrees, outcometree and ast mappers between different OCaml versions.
-High-level functions help making PPX rewriters independent of a compiler version.

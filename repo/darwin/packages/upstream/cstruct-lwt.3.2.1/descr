@@ -1,5 +1,0 @@
-Access C-like structures directly from OCaml
-
-Cstruct is a library and syntax extension to make it easier to access C-like
-structures directly from OCaml.  It supports both reading and writing to these
-structures, and they are accessed via the `Bigarray` module.
