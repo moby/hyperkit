@@ -337,7 +337,7 @@ struct pci_vtsock_softc {
 /* Protocol stuff */
 
 /* Reserved CIDs */
-#define VMADDR_CID_ANY -1U
+#define VMADDR_CID_ANY (uint64_t) -1U
 //#define VMADDR_CID_HYPERVISOR 0
 //#define VMADDR_CID_RESERVED 1
 #define VMADDR_CID_HOST 2
