@@ -1,4 +1,4 @@
-# Hyperkit maintainers file
+# HyperKit maintainers file
 #
 # This file describes who runs the docker/hyperkit project and how.
 # This is a living document - if you see something out of date or missing, speak up!
@@ -16,10 +16,10 @@
 			"djs55",
 			"dsheets",
 			"gdevillele",
-			"ijc25",
+			"ijc",
 			"justincormack",
 			"MagnusS",
-			"rneugeba",
+			"rn",
 			"samoht",
 		]
 
@@ -51,10 +51,10 @@
 	Email = "gdevillele@gmail.com"
 	GitHub = "gdevillele"
 
-	[people.ijc25]
+	[people.ijc]
 	Name = "Ian Campbell"
 	Email = "ian.campbell@docker.com"
-	GitHub = "ijc25"
+	GitHub = "ijc"
 
 	[people.justincormack]
 	Name = "Justin Cormack"
@@ -66,10 +66,10 @@
 	Email = "magnus@skjegstad.com"
 	GitHub = "MagnusS"
 
-	[people.rneugeba]
+	[people.rn]
 	Name = "Rolf Neugebauer"
-	Email = "rolf.neugebauer@docker.com"
-	GitHub = "rneugeba"
+	Email = "rn@rneugeba.io"
+	GitHub = "rn"
 
 	[people.samoht]
 	Name = "Thomas Gazagnaire"

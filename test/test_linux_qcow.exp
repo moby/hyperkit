@@ -1,0 +1,53 @@
+#!/usr/bin/env expect
+
+set KERNEL "./vmlinuz"
+set INITRD "./initrd.gz"
+set CMDLINE "earlyprintk=serial console=ttyS0"
+
+spawn qcow-tool create --size 1GiB disk.qcow2
+set pid [exp_pid]
+set timeout 20
+
+expect {
+  timeout {puts "FAIL qcow-tool"; exec kill -9 $pid; exit 1}
+  -re {Resized file to [0-9]+ clusters \([0-9]+ sectors\)} { }
+  default {puts "\n\nFAIL failed to create disk"; exit 1 }
+}
+
+set PWD [ exec pwd ]
+
+spawn ../build/hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -s 1:0,ahci-hd,file:///$PWD/disk.qcow2,format=qcow -f kexec,$KERNEL,$INITRD,$CMDLINE
+set pid [exp_pid]
+set timeout 20
+
+expect {
+  timeout {puts "FAIL boot"; exec kill -9 $pid; exit 1}
+  "\r\ntc@box:~$ "
+}
+send "echo 'This is a block device' > /dev/sda\r\n"
+send "sync\r\n"
+send "sudo halt\r\n";
+expect {
+  timeout {puts "FAIL shutdown"; exec kill -9 $pid; exit 1}
+  "reboot: System halted"
+}
+
+expect {
+  timeout {puts "FAIL process-exit"; exec kill -9 $pid; exit 1}
+  eof
+}
+set status [wait]
+puts "EXIT status:  $status"
+exec sync
+
+spawn qcow-tool read --sector=0 $PWD/disk.qcow2
+set pid [exp_pid]
+set timeout 20
+
+expect {
+  timeout {puts "FAIL qcow-tool"; exec kill -9 $pid; exit 1}
+  "This is a block device" { puts "\n\nPASS"; exit 0}
+}
+
+puts "\n\nFAIL failed to read data from qcow"
+exit 1

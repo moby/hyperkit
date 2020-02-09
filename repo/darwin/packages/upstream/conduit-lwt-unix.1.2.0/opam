@@ -1,0 +1,31 @@
+opam-version: "1.2"
+maintainer:   "anil@recoil.org"
+authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire" "Rudi Grinberg"]
+homepage:     "https://github.com/mirage/ocaml-conduit"
+dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
+bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
+tags:         "org:mirage"
+license:      "ISC"
+
+build: [
+  ["jbuilder" "subst" "-n" name] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "base-unix"
+  "jbuilder" {build & >="1.0+beta9"}
+  "ppx_sexp_conv"
+  "conduit-lwt"
+  "lwt" {>= "3.0.0"}
+  "uri" {>="1.9.4"}
+  "ipaddr" {>="2.8.0"}
+]
+depopts: [
+  "tls"
+  "lwt_ssl"
+  "launchd"
+]
+conflicts: [
+  "tls" {<"0.8.0" }
+]
+available: [ocaml-version >= "4.03.0"]

@@ -1,1 +1,7 @@
+/.opam
 /build/
+/src/include/xhyve/dtrace.h
+/test/vmlinuz
+/test/initrd
+/test/initrd.gz
+/test/disk.qcow2

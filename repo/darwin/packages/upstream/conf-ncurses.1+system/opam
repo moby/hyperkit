@@ -1,0 +1,9 @@
+opam-version: "1.2"
+maintainer: "tim@gfxmonk.net"
+homepage: "https://www.gnu.org/software/ncurses/"
+bug-reports: "https://github.com/ocaml/opam-repository/issues"
+license: "MIT"
+build: [
+  ## Preinstalled...
+]
+available: [ os = "darwin" | os = "freebsd" | os = "netbsd" | os = "openbsd" ]

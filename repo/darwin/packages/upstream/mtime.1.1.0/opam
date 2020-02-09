@@ -1,0 +1,21 @@
+opam-version: "1.2"
+maintainer: "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
+authors: [ "Daniel Bünzli <daniel.buenzl i@erratique.ch>" ]
+homepage: "http://erratique.ch/software/mtime"
+doc: "http://erratique.ch/software/mtime"
+dev-repo: "http://erratique.ch/repos/mtime.git"
+bug-reports: "https://github.com/dbuenzli/mtime/issues"
+tags: [ "time" "monotonic" "system" "org:erratique" ]
+license: "ISC"
+available: [ ocaml-version >= "4.03.0"]
+depends:
+[
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "topkg" {build}
+]
+depopts: [ "js_of_ocaml" ]
+build: [[
+   "ocaml" "pkg/pkg.ml" "build"
+   "--pinned" "%{pinned}%"
+   "--with-js_of_ocaml" "%{js_of_ocaml:installed}%" ]]

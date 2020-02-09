@@ -1,0 +1,15 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/ppx_type_conv"
+bug-reports: "https://github.com/janestreet/ppx_type_conv/issues"
+dev-repo: "git+https://github.com/janestreet/ppx_type_conv.git"
+license: "Apache-2.0"
+build: [
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "jbuilder" {build & >= "1.0+beta18.1"}
+  "ppxlib"   {>= "0.1.0" & < "0.3.0"}
+]
+available: [ ocaml-version >= "4.04.1" ]

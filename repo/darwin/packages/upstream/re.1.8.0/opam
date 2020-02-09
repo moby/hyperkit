@@ -1,0 +1,28 @@
+opam-version: "1.2"
+
+maintainer: "rudi.grinberg@gmail.com"
+authors: [
+  "Jerome Vouillon"
+  "Thomas Gazagnaire"
+  "Anil Madhavapeddy"
+  "Rudi Grinberg"
+  "Gabriel Radanne"
+]
+license: "LGPL-2.0 with OCaml linking exception"
+homepage: "https://github.com/ocaml/ocaml-re"
+bug-reports: "https://github.com/ocaml/ocaml-re/issues"
+dev-repo: "https://github.com/ocaml/ocaml-re.git"
+
+build: [
+  ["jbuilder" "subst" "-n" name] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
+
+depends: [
+  "jbuilder" {build & >= "1.0+beta10"}
+  "ounit" {test}
+  "seq"
+]
+
+available: [ocaml-version >= "4.02.3"]

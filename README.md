@@ -1,10 +1,10 @@
-## [Hyperkit](http://github.com/docker/hyperkit)
+## [HyperKit](http://github.com/moby/hyperkit)
 
-![Build Status OSX](https://circleci.com/gh/docker/hyperkit.svg?style=shield&circle-token=cf8379b302eab2bbf33821cafe164dbefb71982d)
+![Build Status macOS](https://circleci.com/gh/moby/hyperkit.svg?style=shield&circle-token=cf8379b302eab2bbf33821cafe164dbefb71982d)
 
-*Hyperkit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on [xhyve](https://github.com/mist64/xhyve)/[bhyve](http://bhyve.org), which is optimized for lightweight virtual machines and container deployment.  It is designed to be interfaced with higher-level components such as the [VPNKit](https://github.com/docker/vpnkit) and [DataKit](https://github.com/docker/datakit).
+*HyperKit* is a toolkit for embedding hypervisor capabilities in your application. It includes a complete hypervisor, based on [xhyve](https://github.com/mist64/xhyve)/[bhyve](http://bhyve.org), which is optimized for lightweight virtual machines and container deployment.  It is designed to be interfaced with higher-level components such as the [VPNKit](https://github.com/moby/vpnkit) and [DataKit](https://github.com/moby/datakit).
 
-Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker For Mac.
+HyperKit currently only supports macOS using the [Hypervisor.framework](https://developer.apple.com/library/mac/documentation/DriversKernelHardware/Reference/Hypervisor/index.html). It is a core component of Docker Desktop For Mac.
 
 
 ## Requirements
@@ -12,40 +12,61 @@ Hyperkit currently only supports Mac OS X using the [Hypervisor.framework](https
 * OS X 10.10.3 Yosemite or later
 * a 2010 or later Mac (i.e. a CPU that supports EPT)
 
+## Reporting Bugs
+
+If you are using a version of Hyperkit which is embedded into a higher level application (e.g. [Docker Desktop for Mac](https://github.com/docker/for-mac)) then please report any issues against that higher level application in the first instance. That way the relevant team can triage and determine if the issue lies in Hyperkit and assign as necessary.
+
+If you are using Hyperkit directly then please report issues against this repository.
+
 ## Usage
 
-    $ com.docker.hyperkit -h
+    $ hyperkit -h
 
 ## Building
 
-    $ git clone https://github.com/docker/hyperkit
+    $ git clone https://github.com/moby/hyperkit
     $ cd hyperkit
     $ make
 
-The resulting binary will be in `build/com.docker.hyperkit`
+The resulting binary will be in `build/hyperkit`
 
 To enable qcow support in the block backend an OCaml [OPAM](https://opam.ocaml.org) development
-environment is required with the qcow-format module available. A
-suitable environment can be setup by installing `opam` via `brew` and
-using that to install the appropriate libraries:
+environment is required with the qcow module available. A
+suitable environment can be setup by installing `opam` and `libev`
+via `brew` and using `opam` to install the appropriate libraries:
 
-    $ brew install opam
+    $ brew install opam libev
     $ opam init
     $ eval `opam config env`
-    $ opam pin add qcow-format git://github.com/mirage/ocaml-qcow#master
-    $ opam install uri qcow-format
+    $ opam install uri qcow.0.10.4 conduit.1.0.0 lwt.3.1.0 qcow-tool mirage-block-unix.2.9.0 conf-libev logs fmt mirage-unix prometheus-app
 
 Notes:
 
 - `opam config env` must be evaluated each time prior to building
   hyperkit so the build will find the ocaml environment.
-- An explicit older version of sexplib is currently required to build
-  qcow format 0.2
+- Any previous pin of `mirage-block-unix` or `qcow`
+  should be removed with the commands:
+  
+  ```sh
+  $ opam update
+  $ opam pin remove mirage-block-unix
+  $ opam pin remove qcow
+  ```
 
+## Tracing
+
+HyperKit defines a number of static DTrace probes to simplify investigation of
+performance problems. To list the probes supported by your version of HyperKit,
+type the following command while HyperKit VM is running:
+
+     $ sudo dtrace -l -P 'hyperkit$target' -p $(pgrep hyperkit)
+
+Refer to scripts in dtrace/ directory for examples of possible usage and
+available probes.
 
 ### Relationship to xhyve and bhyve
 
-Hyperkit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
+HyperKit includes a hypervisor derived from [xhyve](http://www.xhyve.org), which in turn
 was derived from [bhyve](http://www.bhyve.org). See the [original xhyve
 README](README.xhyve.md) which incorporates the bhyve README.
 

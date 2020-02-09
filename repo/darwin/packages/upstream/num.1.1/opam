@@ -1,0 +1,27 @@
+opam-version: "1.2"
+name: "num"
+version: "1.1"
+maintainer: "Xavier Leroy <xavier.leroy@inria.fr>"
+authors: [
+  "Valérie Ménissier-Morain"
+  "Pierre Weis"
+  "Xavier Leroy"
+]
+license: "LGPL 2.1 with OCaml linking exception"
+
+homepage: "https://github.com/ocaml/num/"
+bug-reports: "https://github.com/ocaml/num/issues"
+dev-repo: "https://github.com/ocaml/num.git"
+
+build: [
+  [make]
+]
+install: [make "install" {!preinstalled} "findlib-install" {preinstalled} ]
+remove: [make "uninstall" {!preinstalled} "findlib-uninstall" {preinstalled} ]
+
+depends: [
+  "ocamlfind" {build & >= "1.7.3"}
+]
+conflicts: [ "base-num" ]
+available: [ ocaml-version >= "4.06.0" ]
+patches: [ "findlib-install.patch" "installation-warning.patch" ]

@@ -18,6 +18,7 @@ AS := clang
 LD := clang
 STRIP := strip
 DSYM := dsymutil
+DTRACE := dtrace
 
 ENV := \
   LANG=en_US.US-ASCII
@@ -31,12 +32,19 @@ CFLAGS_OPT := \
   -flto \
   -fstrict-aliasing
 
+# enable everything and then selectively disable some warnings
 CFLAGS_WARN := \
   -Weverything \
   -Werror \
-  -Wno-unknown-warning-option \
+  -pedantic \
+  \
+  -Wno-dollar-in-identifier-extension \
+  -Wno-gnu-statement-expression \
+  -Wno-packed \
+  -Wno-padded \
   -Wno-reserved-id-macro \
-  -pedantic
+  -Wno-unknown-warning-option \
+  -Wno-unused-macros
 
 CFLAGS_DIAG := \
   -fmessage-length=152 \

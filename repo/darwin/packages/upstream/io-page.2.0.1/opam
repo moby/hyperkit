@@ -1,0 +1,24 @@
+opam-version: "1.2"
+maintainer:   "anil@recoil.org"
+homepage:     "https://github.com/mirage/io-page"
+dev-repo:     "https://github.com/mirage/io-page.git"
+bug-reports:  "https://github.com/mirage/io-page/issues"
+license:      "ISC"
+authors: [
+  "Anil Madhavapeddy"
+  "Dave Scott"
+  "Thomas Gazagnaire"
+]
+tags: ["org:mirage"]
+build: [
+  [ "jbuilder" "subst" "-p" name] {pinned}
+  [ "jbuilder" "build" "-p" name "-j" jobs ]
+]
+
+depends: [
+  "jbuilder"  {build & >="1.0+beta9"}
+  "configurator" {build}
+  "base-bytes"
+  "cstruct" {>= "2.0.0"}
+]
+available: [ocaml-version >= "4.03.0"]

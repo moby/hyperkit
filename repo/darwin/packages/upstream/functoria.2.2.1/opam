@@ -1,0 +1,34 @@
+opam-version: "1.2"
+maintainer:   "Gabriel Radanne <drupyog@zoho.com>"
+authors:      [ "Thomas Gazagnaire"
+                "Anil Madhavapeddy"
+                "Dave Scott"
+                "Thomas Leonard"
+                "Gabriel Radanne" ]
+homepage:     "https://github.com/mirage/functoria"
+bug-reports:  "https://github.com/mirage/functoria/issues"
+dev-repo:     "https://github.com/mirage/functoria.git"
+doc:          "https://mirage.github.io/functoria/"
+license:      "ISC"
+tags:         ["org:mirage"]
+
+build: [
+  ["jbuilder" "subst" "-p" name] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
+build-test: ["jbuilder" "runtest" "-p" name "-j" jobs]
+
+depends: [
+  "jbuilder" {build & >="1.0+beta20"}
+  "base-unix"
+  "cmdliner" {>= "0.9.8"}
+  "rresult"
+  "astring"
+  "fmt"
+  "ocamlgraph"
+  "logs"
+  "bos"
+  "fpath"
+  "alcotest" {test}
+]
+available: [ocaml-version >= "4.03"]

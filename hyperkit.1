@@ -100,6 +100,8 @@ The size argument may be suffixed with one of K, M, G or T (either upper
 or lower case) to indicate a multiple of kilobytes, megabytes, gigabytes,
 or terabytes.
 If no suffix is given, the value is assumed to be in megabytes.
+.It Fl M
+Print MAC address and exit if using vmnet.
 .It Fl p Ar vcpu:hostcpu
 Pin guest's virtual CPU
 .Em vcpu
@@ -146,8 +148,6 @@ The
 .Li amd_hostbridge
 emulation is identical but uses a PCI vendor ID of
 .Li AMD .
-.It Li passthru
-PCI pass-through device.
 .It Li virtio-net
 Virtio network interface.
 .It Li virtio-blk
@@ -255,23 +255,6 @@ are:
 .It Pa log=/path/to/ring-log
 Also log output to a ring buffer
 .El
-.Pp
-Pass-through devices:
-.Bl -tag -width 10n
-.It Ns Ar slot Ns / Ns Ar bus Ns / Ns Ar function
-Connect to a PCI device on the host at the selector described by
-.Ar slot ,
-.Ar bus ,
-and
-.Ar function
-numbers.
-.El
-.Pp
-The host device must have been reserved at boot-time using the
-.Va pptdev
-loader variable as described in
-.Xr vmm 4 .
-.El
 .It Fl u
 RTC keeps UTC time.
 .It Fl U Ar uuid
@@ -294,21 +277,22 @@ Disable MPtable generation.
 .Pp
 Firmware/bootrom configuration.
 .Bl -tag -width 10n
-.It kexec , Ns Pa kernel , Ns Oo Pa ramdisk Ns Oc , Ns Oo Pa cmdline Oc
+.It kexec , Ns Pa kernel Ns Oo , Ns Pa ramdisk Ns Oc Ns Oo , Ns Pa cmdline Oc
 Launch
 .Ar kernel
 using the Linux kexec protocol.
-.It fbsd , Ns Pa userboot , Ns Pa bootvolume , Ns Pa kernelenv
-Boot using the fbsd protocol
-.It bootrom , Ns Pa path , Ns ,
+.It fbsd , Ns Pa userboot , Ns Pa bootvolume Ns Oo , Ns Pa kernelenv Ns Oc
+Boot using the fbsd protocol.
+.It bootrom , Ns Pa path
 Boot using
 .Ar path
 as a firmware image. Allows booting a UEFI/tianocore binary, such as
 the one from bhyve (source: <https://github.com/freebsd/uefi-edk2.git>; binary <https://people.freebsd.org/~grehan/bhyve_uefi/>).
+.It multiboot , Ns Pa kernel Ns Oo , Ns Pa module Ns Oo ;cmdline Ns Oc Ns Oo :module Ns Oo ;cmdline Ns Oc Ns Oc Ns ... Oc Ns Oo , Ns Pa cmdline Ns Oc
+Boot using the multiboot protocol.
 .El
 .Pp
-Note that all the commas are required in each case, even if the
-options are empty.
+Note that commas are required even for empty options with the exception that they may be omitted for any trailing empty options.
 .El
 .Sh EXAMPLES
 To run a virtual machine with 1GB of memory, two virtual CPUs, a virtio
@@ -328,12 +312,12 @@ hyperkit -s 0,hostbridge -s 1,lpc -s 2:0,virtio-net,tap0 \\
   -s 2:1,virtio-net,tap1 \\
   -s 2:2,virtio-net,tap2,mac=00:be:fa:76:45:00 \\
   -s 3,virtio-blk,/my/image -l com1,stdio \\
-  -A -H -P -m 24G -f fbsd,userboot.so,bootvolume.img,"" \\
+  -A -H -P -m 24G -f fbsd,userboot.so,bootvolume.img \\
 .Ed
 .Pp
-Run an 8GB quad-CPU virtual machine with 8 AHCI SATA disks, an AHCI ATAPI
-CD-ROM, a single virtio network port, an AMD hostbridge, and the console
-port connected to an
+Run an 8GB quad-CPU virtual machine with 8 AHCI SATA disks, a raw AHCI SATA volume,
+an AHCI ATAPI CD-ROM, a single virtio network port, an AMD hostbridge,
+and the console port connected to an
 .Xr nmdm 4
 null-modem device.
 .Bd -literal -offset indent
@@ -347,6 +331,7 @@ hyperkit -c 4 \\
   -s 1:5,ahci-hd,/images/disk.6 \\
   -s 1:6,ahci-hd,/images/disk.7 \\
   -s 1:7,ahci-hd,/images/disk.8 \\
+  -s 1:8,ahci-hd,/dev/rdisk2 \\
   -s 2,ahci-cd,/images/install.iso \\
   -s 3,virtio-net,tap0 \\
   -l com1,/dev/nmdm0A \\
@@ -354,6 +339,24 @@ hyperkit -c 4 \\
   -f kexec,vmlinuz,initrd.gz,"earlyprintk=serial console=ttyS0"
 
 .Ed
+
+.Sh EXIT STATUS
+The
+.Nm hyperkit
+process exits with one of the following values:
+.Pp
+.Bl -tag -width flag -compact
+.It Li 0
+The guest either powered down or halted cleanly.
+.It Li 1
+An error occurred.
+.It Li 2
+The guest rebooted/reset. The caller is responsible for starting a new hyperkit process in this case.
+.It Li 3
+A triple fault occurred.
+.It Li 100
+An invalid/unknown VM exit occurred.
+.El
 
 .Sh SIGNALS
 .Bl -tag -width 10n
