@@ -44,7 +44,8 @@ CFLAGS_WARN := \
   -Wno-padded \
   -Wno-reserved-id-macro \
   -Wno-unknown-warning-option \
-  -Wno-unused-macros
+  -Wno-unused-macros \
+  -Wno-switch-enum
 
 CFLAGS_DIAG := \
   -fmessage-length=152 \

@@ -145,8 +145,8 @@ static int cap_monitor_trap;
  */
 // #define	APIC_ACCESS_ADDRESS	0xFFFFF000
 
-static int vmx_getdesc(void *arg, int vcpu, int reg, struct seg_desc *desc);
-static int vmx_getreg(void *arg, int vcpu, int reg, uint64_t *retval);
+static int vmx_getdesc(void *arg, int vcpu, enum vm_reg_name reg, struct seg_desc *desc);
+static int vmx_getreg(void *arg, int vcpu, enum vm_reg_name reg, uint64_t *retval);
 
 static __inline uint64_t
 reg_read(int vcpuid, hv_x86_reg_t reg) {
@@ -2309,7 +2309,7 @@ done:
 }
 
 static int
-vmx_shadow_reg(int reg)
+vmx_shadow_reg(enum vm_reg_name reg)
 {
 	int shreg;
 
@@ -2372,7 +2372,7 @@ static const hv_x86_reg_t hvregs[] = {
 };
 
 static int
-vmx_getreg(UNUSED void *arg, int vcpu, int reg, uint64_t *retval)
+vmx_getreg(UNUSED void *arg, int vcpu, enum vm_reg_name reg, uint64_t *retval)
 {
 	hv_x86_reg_t hvreg;
 
@@ -2385,11 +2385,11 @@ vmx_getreg(UNUSED void *arg, int vcpu, int reg, uint64_t *retval)
 		return (0);
 	}
 
-	return (vmcs_getreg(vcpu, reg, retval));
+	return (vmcs_getreg(vcpu, (int) reg, retval));
 }
 
 static int
-vmx_setreg(void *arg, int vcpu, int reg, uint64_t val)
+vmx_setreg(void *arg, int vcpu, enum vm_reg_name reg, uint64_t val)
 {
 	int error, shadow;
 	uint64_t ctls;
@@ -2405,7 +2405,7 @@ vmx_setreg(void *arg, int vcpu, int reg, uint64_t val)
 		return (0);
 	}
 
-	error = vmcs_setreg(vcpu, reg, val);
+	error = vmcs_setreg(vcpu, (int) reg, val);
 
 	if (error == 0) {
 		/*
@@ -2444,19 +2444,19 @@ vmx_setreg(void *arg, int vcpu, int reg, uint64_t val)
 }
 
 static int
-vmx_getdesc(UNUSED void *arg, int vcpu, int reg, struct seg_desc *desc)
+vmx_getdesc(UNUSED void *arg, int vcpu, enum vm_reg_name reg, struct seg_desc *desc)
 {
-	return (vmcs_getdesc(vcpu, reg, desc));
+	return (vmcs_getdesc(vcpu, (int) reg, desc));
 }
 
 static int
-vmx_setdesc(UNUSED void *arg, int vcpu, int reg, struct seg_desc *desc)
+vmx_setdesc(UNUSED void *arg, int vcpu, enum vm_reg_name reg, struct seg_desc *desc)
 {
-	return (vmcs_setdesc(vcpu, reg, desc));
+	return (vmcs_setdesc(vcpu, (int) reg, desc));
 }
 
 static int
-vmx_getcap(void *arg, int vcpu, int type, int *retval)
+vmx_getcap(void *arg, int vcpu, enum vm_cap_type type, int *retval)
 {
 	struct vmx *vmx = arg;
 	int vcap;
@@ -2490,7 +2490,7 @@ vmx_getcap(void *arg, int vcpu, int type, int *retval)
 }
 
 static int
-vmx_setcap(void *arg, int vcpu, int type, int val)
+vmx_setcap(void *arg, int vcpu, enum vm_cap_type type, int val)
 {
 	struct vmx *vmx = arg;
 	uint32_t baseval;

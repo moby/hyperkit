@@ -69,16 +69,16 @@ typedef int (*vmi_run_func_t)(void *vmi, int vcpu, register_t rip,
 	void *rendezvous_cookie, void *suspend_cookie);
 typedef void (*vmi_vm_cleanup_func_t)(void *vmi);
 typedef void (*vmi_vcpu_cleanup_func_t)(void *vmi, int vcpu);
-typedef int (*vmi_get_register_t)(void *vmi, int vcpu, int num,
+typedef int (*vmi_get_register_t)(void *vmi, int vcpu, enum vm_reg_name num,
 	uint64_t *retval);
-typedef int (*vmi_set_register_t)(void *vmi, int vcpu, int num,
+typedef int (*vmi_set_register_t)(void *vmi, int vcpu, enum vm_reg_name num,
 	uint64_t val);
-typedef int (*vmi_get_desc_t)(void *vmi, int vcpu, int num,
+typedef int (*vmi_get_desc_t)(void *vmi, int vcpu, enum vm_reg_name num,
 	struct seg_desc *desc);
-typedef int (*vmi_set_desc_t)(void *vmi, int vcpu, int num,
+typedef int (*vmi_set_desc_t)(void *vmi, int vcpu, enum vm_reg_name num,
 	struct seg_desc *desc);
-typedef int (*vmi_get_cap_t)(void *vmi, int vcpu, int num, int *retval);
-typedef int (*vmi_set_cap_t)(void *vmi, int vcpu, int num, int val);
+typedef int (*vmi_get_cap_t)(void *vmi, int vcpu, enum vm_cap_type num, int *retval);
+typedef int (*vmi_set_cap_t)(void *vmi, int vcpu, enum vm_cap_type num, int val);
 typedef struct vlapic * (*vmi_vlapic_init)(void *vmi, int vcpu);
 typedef void (*vmi_vlapic_cleanup)(void *vmi, struct vlapic *vlapic);
 typedef void (*vmi_interrupt)(int vcpu);
@@ -122,11 +122,11 @@ int vm_gpabase2memseg(struct vm *vm, uint64_t gpabase,
 int vm_get_memobj(struct vm *vm, uint64_t gpa, size_t len, uint64_t *offset,
 	void **object);
 bool vm_mem_allocated(struct vm *vm, uint64_t gpa);
-int vm_get_register(struct vm *vm, int vcpu, int reg, uint64_t *retval);
-int vm_set_register(struct vm *vm, int vcpu, int reg, uint64_t val);
-int vm_get_seg_desc(struct vm *vm, int vcpu, int reg,
+int vm_get_register(struct vm *vm, int vcpu, enum vm_reg_name reg, uint64_t *retval);
+int vm_set_register(struct vm *vm, int vcpu, enum vm_reg_name reg, uint64_t val);
+int vm_get_seg_desc(struct vm *vm, int vcpu, enum vm_reg_name reg,
 	struct seg_desc *ret_desc);
-int vm_set_seg_desc(struct vm *vm, int vcpu, int reg, struct seg_desc *desc);
+int vm_set_seg_desc(struct vm *vm, int vcpu, enum vm_reg_name reg, struct seg_desc *desc);
 int vm_run(struct vm *vm, int vcpu, struct vm_exit *vm_exit);
 int vm_suspend(struct vm *vm, enum vm_suspend_how how);
 int vm_inject_nmi(struct vm *vm, int vcpu);
@@ -138,8 +138,8 @@ void vm_extint_clear(struct vm *vm, int vcpuid);
 struct vlapic *vm_lapic(struct vm *vm, int cpu);
 struct vioapic *vm_ioapic(struct vm *vm);
 struct vhpet *vm_hpet(struct vm *vm);
-int vm_get_capability(struct vm *vm, int vcpu, int type, int *val);
-int vm_set_capability(struct vm *vm, int vcpu, int type, int val);
+int vm_get_capability(struct vm *vm, int vcpu, enum vm_cap_type type, int *val);
+int vm_set_capability(struct vm *vm, int vcpu, enum vm_cap_type type, int val);
 int vm_get_x2apic_state(struct vm *vm, int vcpu, enum x2apic_state *state);
 int vm_set_x2apic_state(struct vm *vm, int vcpu, enum x2apic_state state);
 int vm_apicid2vcpuid(struct vm *vm, int apicid);

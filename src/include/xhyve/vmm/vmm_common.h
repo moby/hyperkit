@@ -211,8 +211,8 @@ struct vie {
 	uint8_t disp_bytes;
 	uint8_t imm_bytes;
 	uint8_t scale;
-	int base_register; /* VM_REG_GUEST_xyz */
-	int index_register; /* VM_REG_GUEST_xyz */
+	enum vm_reg_name base_register; /* VM_REG_GUEST_xyz */
+	enum vm_reg_name index_register; /* VM_REG_GUEST_xyz */
 	int segment_register; /* VM_REG_GUEST_xyz */
 	int64_t displacement; /* optional addr displacement */
 	int64_t immediate; /* optional immediate operand */

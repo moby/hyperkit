@@ -91,7 +91,7 @@ CTASSERT(sizeof(struct tss32) == 104);
 #define	TSS_BUSY(type)	(((type) & 0x2) != 0)
 
 static uint64_t
-GETREG(int vcpu, int reg)
+GETREG(int vcpu, enum vm_reg_name reg)
 {
 	uint64_t val;
 	int error;
@@ -102,7 +102,7 @@ GETREG(int vcpu, int reg)
 }
 
 static void
-SETREG(int vcpu, int reg, uint64_t val)
+SETREG(int vcpu, enum vm_reg_name reg, uint64_t val)
 {
 	int error;
 
@@ -168,7 +168,8 @@ desc_table_limit_check(int vcpu, uint16_t sel)
 {
 	uint64_t base;
 	uint32_t limit, access;
-	int error, reg;
+	int error;
+	enum vm_reg_name reg;
 
 	reg = ISLDT(sel) ? VM_REG_GUEST_LDTR : VM_REG_GUEST_GDTR;
 	error = xh_vm_get_desc(vcpu, reg, &base, &limit, &access);
@@ -201,7 +202,8 @@ desc_table_rw(int vcpu, struct vm_guest_paging *paging,
 	struct iovec iov[2];
 	uint64_t base;
 	uint32_t limit, access;
-	int error, reg;
+	int error;
+	enum vm_reg_name reg;
 
 	reg = ISLDT(sel) ? VM_REG_GUEST_LDTR : VM_REG_GUEST_GDTR;
 	error = xh_vm_get_desc(vcpu, reg, &base, &limit, &access);
@@ -300,7 +302,7 @@ CTASSERT(sizeof(struct user_segment_descriptor) == 8);
  * Validate the descriptor 'seg_desc' associated with 'segment'.
  */
 static int
-validate_seg_desc(int vcpu, struct vm_task_switch *ts, int segment,
+validate_seg_desc(int vcpu, struct vm_task_switch *ts, enum vm_reg_name segment,
 	struct seg_desc *seg_desc, int *faultptr)
 {
 	struct vm_guest_paging sup_paging;
@@ -459,7 +461,7 @@ tss32_save(int vcpu, struct vm_task_switch *task_switch,
 }
 
 static void
-update_seg_desc(int vcpu, int reg, struct seg_desc *sd)
+update_seg_desc(int vcpu, enum vm_reg_name reg, struct seg_desc *sd)
 {
 	int error;
 
