@@ -35,8 +35,8 @@ set status [wait]
 puts "EXIT status:  $status"
 exec sync
 
-exec hdiutil mount -mountpoint ./test-vol ${DISK}s1
-exec cat ./test-vol/test
+exec diskutil mountDisk ${RDISK}s1
+exec cat "/Volumes/NO NAME/test"
 exec hdiutil detach $DISK
 
 puts "\n\nPASS"
