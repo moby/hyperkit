@@ -352,6 +352,7 @@ let process_one t =
               >>= function
               | Error `Disconnected -> Lwt.return (Error `Disconnected)
               | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Error _ -> Lwt.return (Error `Unimplemented)
               | Ok () ->
               let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
               return (Response.Read len)
@@ -394,6 +395,7 @@ let process_one t =
               | Error `Disconnected -> Lwt.return (Error `Disconnected)
               | Error `Is_read_only -> Lwt.return (Error `Is_read_only)
               | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Error _ -> Lwt.return (Error `Unimplemented)
               | Ok () ->
                 return Response.Flush
             end
