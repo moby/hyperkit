@@ -16,7 +16,7 @@ expect {
 
 set PWD [ exec pwd ]
 
-spawn ../build/hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -s 1:0,ahci-hd,file:///$PWD/disk.qcow2,format=qcow -f kexec,$KERNEL,$INITRD,$CMDLINE
+spawn ../build/hyperkit -A -m 512M -s 0:0,hostbridge -s 31,lpc -l com1,stdio -s 1:0,ahci-hd,file://$PWD/disk.qcow2,format=qcow -f kexec,$KERNEL,$INITRD,$CMDLINE
 set pid [exp_pid]
 set timeout 20
 
