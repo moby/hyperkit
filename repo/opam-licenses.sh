@@ -18,7 +18,7 @@ fi
 
 for DEP in "$@"; do
   echo "Calculating transitive dependencies required by $DEP"
-  opam list --required-by "$DEP" --recursive | tail -n +2 > "dependency.$DEP.raw"
+  opam list --required-by "$DEP" --recursive | tail -n +3 > "dependency.$DEP.raw"
   awk '{print $1"."$2}' < "dependency.$DEP.raw" > "dependency.$DEP"
   rm "dependency.$DEP.raw"
 done
@@ -28,7 +28,7 @@ rm -f "dependency.*"
 rm -f "*.extracted"
 while read -r PACKAGE; do
   echo "looking for license for ${PACKAGE}"
-  URL=$(opam info --field upstream-url "$PACKAGE")
+  URL=$(opam info --field url.src: "$PACKAGE")
   rm -f "/tmp/opam.out"
   if [ -z "${URL}" ]; then
     echo "$PACKAGE has no source: skipping"

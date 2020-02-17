@@ -25,9 +25,9 @@ jobs:
       - run: make all
       - run: test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
       - run: make test
-      - run: brew install opam
+      - run: brew install opam libev libffi pkg-config
       - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
-      - run: opam config exec -- opam depext -i hyperkit
+      - run: opam pin add hyperkit .
       - run: opam config exec -- make clean
       - run: opam config exec -- make all
       - run: opam config exec -- make test
