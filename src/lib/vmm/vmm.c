@@ -613,7 +613,7 @@ vm_get_memobj(struct vm *vm, uint64_t gpa, size_t len,
 }
 
 int
-vm_get_register(struct vm *vm, int vcpu, int reg, uint64_t *retval)
+vm_get_register(struct vm *vm, int vcpu, enum vm_reg_name reg, uint64_t *retval)
 {
 
 	if (vcpu < 0 || vcpu >= VM_MAXCPU)
@@ -626,7 +626,7 @@ vm_get_register(struct vm *vm, int vcpu, int reg, uint64_t *retval)
 }
 
 int
-vm_set_register(struct vm *vm, int vcpuid, int reg, uint64_t val)
+vm_set_register(struct vm *vm, int vcpuid, enum vm_reg_name reg, uint64_t val)
 {
 	struct vcpu *vcpu;
 	int error;
@@ -649,7 +649,7 @@ vm_set_register(struct vm *vm, int vcpuid, int reg, uint64_t val)
 }
 
 static bool
-is_descriptor_table(int reg)
+is_descriptor_table(enum vm_reg_name reg)
 {
 	switch (reg) {
 	case VM_REG_GUEST_IDTR:
@@ -661,7 +661,7 @@ is_descriptor_table(int reg)
 }
 
 static bool
-is_segment_register(int reg)
+is_segment_register(enum vm_reg_name reg)
 {
 	switch (reg) {
 	case VM_REG_GUEST_ES:
@@ -679,7 +679,7 @@ is_segment_register(int reg)
 }
 
 int
-vm_get_seg_desc(struct vm *vm, int vcpu, int reg,
+vm_get_seg_desc(struct vm *vm, int vcpu, enum vm_reg_name reg,
 		struct seg_desc *desc)
 {
 	if (vcpu < 0 || vcpu >= VM_MAXCPU)
@@ -692,7 +692,7 @@ vm_get_seg_desc(struct vm *vm, int vcpu, int reg,
 }
 
 int
-vm_set_seg_desc(struct vm *vm, int vcpu, int reg,
+vm_set_seg_desc(struct vm *vm, int vcpu, enum vm_reg_name reg,
 		struct seg_desc *desc)
 {
 	if (vcpu < 0 || vcpu >= VM_MAXCPU)
@@ -1628,24 +1628,24 @@ vm_extint_clear(struct vm *vm, int vcpuid)
 }
 
 int
-vm_get_capability(struct vm *vm, int vcpu, int type, int *retval)
+vm_get_capability(struct vm *vm, int vcpu, enum vm_cap_type type, int *retval)
 {
 	if (vcpu < 0 || vcpu >= VM_MAXCPU)
 		return (EINVAL);
 
-	if (type < 0 || type >= VM_CAP_MAX)
+	if (type >= VM_CAP_MAX)
 		return (EINVAL);
 
 	return (VMGETCAP(vm->cookie, vcpu, type, retval));
 }
 
 int
-vm_set_capability(struct vm *vm, int vcpu, int type, int val)
+vm_set_capability(struct vm *vm, int vcpu, enum vm_cap_type type, int val)
 {
 	if (vcpu < 0 || vcpu >= VM_MAXCPU)
 		return (EINVAL);
 
-	if (type < 0 || type >= VM_CAP_MAX)
+	if (type >= VM_CAP_MAX)
 		return (EINVAL);
 
 	return (VMSETCAP(vm->cookie, vcpu, type, val));

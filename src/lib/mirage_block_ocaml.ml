@@ -316,7 +316,7 @@ let process_one t =
         match t.request with
           | Request.Connect (block_config, qcow_config) ->
             let open Lwt.Infix in
-            Block.of_config { block_config with Block.Config.lock = true }
+            Block.of_config block_config
             >>= fun base ->
             Qcow.connect ?config:qcow_config base
             >>= fun block ->
@@ -352,6 +352,7 @@ let process_one t =
               >>= function
               | Error `Disconnected -> Lwt.return (Error `Disconnected)
               | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Error _ -> Lwt.return (Error `Unimplemented)
               | Ok () ->
               let len = List.(fold_left (+) 0 (map Cstruct.len bufs)) in
               return (Response.Read len)
@@ -394,6 +395,7 @@ let process_one t =
               | Error `Disconnected -> Lwt.return (Error `Disconnected)
               | Error `Is_read_only -> Lwt.return (Error `Is_read_only)
               | Error `Unimplemented -> Lwt.return (Error `Unimplemented)
+              | Error _ -> Lwt.return (Error `Unimplemented)
               | Ok () ->
                 return Response.Flush
             end

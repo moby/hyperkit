@@ -267,7 +267,7 @@ xh_vm_get_highmem_size(void)
 }
 
 int
-xh_vm_set_desc(int vcpu, int reg, uint64_t base, uint32_t limit,
+xh_vm_set_desc(int vcpu, enum vm_reg_name reg, uint64_t base, uint32_t limit,
 	uint32_t access)
 {
 	struct seg_desc sd;
@@ -284,7 +284,7 @@ xh_vm_set_desc(int vcpu, int reg, uint64_t base, uint32_t limit,
 }
 
 int
-xh_vm_get_desc(int vcpu, int reg, uint64_t *base, uint32_t *limit,
+xh_vm_get_desc(int vcpu, enum vm_reg_name reg, uint64_t *base, uint32_t *limit,
 	uint32_t *access)
 {
 	struct seg_desc sd;
@@ -303,7 +303,7 @@ xh_vm_get_desc(int vcpu, int reg, uint64_t *base, uint32_t *limit,
 }
 
 int
-xh_vm_get_seg_desc(int vcpu, int reg, struct seg_desc *seg_desc)
+xh_vm_get_seg_desc(int vcpu, enum vm_reg_name reg, struct seg_desc *seg_desc)
 {
 	int error;
 
@@ -314,7 +314,7 @@ xh_vm_get_seg_desc(int vcpu, int reg, struct seg_desc *seg_desc)
 }
 
 int
-xh_vm_set_register(int vcpu, int reg, uint64_t val)
+xh_vm_set_register(int vcpu, enum vm_reg_name reg, uint64_t val)
 {
 	int error;
 
@@ -326,7 +326,7 @@ xh_vm_set_register(int vcpu, int reg, uint64_t val)
 }
 
 int
-xh_vm_get_register(int vcpu, int reg, uint64_t *retval)
+xh_vm_get_register(int vcpu, enum vm_reg_name reg, uint64_t *retval)
 {
 	int error;
 

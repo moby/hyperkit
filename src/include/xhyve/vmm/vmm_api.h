@@ -60,13 +60,13 @@ void xh_vm_set_lowmem_limit(uint32_t limit);
 void xh_vm_set_memflags(int flags);
 size_t xh_vm_get_lowmem_size(void);
 size_t xh_vm_get_highmem_size(void);
-int xh_vm_set_desc(int vcpu, int reg, uint64_t base, uint32_t limit,
+int xh_vm_set_desc(int vcpu, enum vm_reg_name reg, uint64_t base, uint32_t limit,
 	uint32_t access);
-int xh_vm_get_desc(int vcpu, int reg, uint64_t *base, uint32_t *limit,
+int xh_vm_get_desc(int vcpu, enum vm_reg_name reg, uint64_t *base, uint32_t *limit,
 	uint32_t *access);
-int xh_vm_get_seg_desc(int vcpu, int reg, struct seg_desc *seg_desc);
-int xh_vm_set_register(int vcpu, int reg, uint64_t val);
-int xh_vm_get_register(int vcpu, int reg, uint64_t *retval);
+int xh_vm_get_seg_desc(int vcpu, enum vm_reg_name reg, struct seg_desc *seg_desc);
+int xh_vm_set_register(int vcpu, enum vm_reg_name reg, uint64_t val);
+int xh_vm_get_register(int vcpu, enum vm_reg_name reg, uint64_t *retval);
 int xh_vm_run(int vcpu, struct vm_exit *ret_vmexit);
 int xh_vm_suspend(enum vm_suspend_how how);
 int xh_vm_reinit(void);
