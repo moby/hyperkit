@@ -15,6 +15,7 @@ set timeout 20
 
 expect {
   timeout {puts "FAIL boot"; exec kill -9 $pid; exit 1}
+  "Kernel panic - not syncing: IO-APIC + timer doesn't work" {puts "INFRA nested virtualization failed"; exec kill -9 $pid; exit 2}
   "\r\ntc@box:~$ "
 }
 send "sudo mount /dev/sda1 /mnt/sda1\r\n"

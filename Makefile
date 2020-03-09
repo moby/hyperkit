@@ -189,10 +189,10 @@ test/vmlinuz test/initrd.gz:
 	@cd test; ./tinycore.sh
 
 test: $(TARGET) test/vmlinuz test/initrd.gz
-	@(cd test && ./test_linux.exp)
+	@(cd test && ./retry-infra-failure 5 ./test_linux.exp)
 
 test-qcow: $(TARGET) test/vmlinuz test/initrd.gz
-	@(cd test && ./test_linux_qcow.exp)
+	@(cd test && ./retry-infra-failure 5 ./test_linux_qcow.exp)
 
 
 ## ----------- ##

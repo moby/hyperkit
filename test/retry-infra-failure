@@ -1,0 +1,18 @@
+#!/bin/bash
+
+retries=$1
+command=$2
+
+ret=0
+for((i=0;i<$retries;i++))
+do
+	$command
+	ret=$?
+	# Use exit code 2 to mean infra failure, need to retry.
+	if [ "$ret" != 2 ]; then
+		exit $ret
+	fi
+done
+
+echo "Persistent failure after $retries tries."
+exit $ret
