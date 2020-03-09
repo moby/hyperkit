@@ -2,7 +2,7 @@
 
 set KERNEL "./vmlinuz"
 set INITRD "./initrd.gz"
-set CMDLINE "earlyprintk=serial console=ttyS0"
+set CMDLINE "earlyprintk=serial console=ttyS0 noapic nosmp"
 
 spawn qcow-tool create --size 1GiB disk.qcow2
 set pid [exp_pid]

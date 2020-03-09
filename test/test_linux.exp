@@ -2,7 +2,7 @@
 
 set KERNEL "./vmlinuz"
 set INITRD "./initrd.gz"
-set CMDLINE "earlyprintk=serial console=ttyS0"
+set CMDLINE "earlyprintk=serial console=ttyS0 noapic nosmp"
 
 exec rm -f disk.dmg
 exec hdiutil create -megabytes 20 -fs "MS-DOS" disk
