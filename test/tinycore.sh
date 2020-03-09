@@ -11,8 +11,8 @@ TMP_DIR=$(mktemp -d -t hyperkit)
 INITRD_DIR="${TMP_DIR}"/initrd
 
 echo Downloading tinycore linux
-curl -s -o vmlinuz "${BASE_URL}/8.x/x86/release/distribution_files/vmlinuz64"
-curl -s -o "${TMP_DIR}"/initrd.gz "${BASE_URL}/8.x/x86/release/distribution_files/core.gz"
+curl -s -o vmlinuz "${BASE_URL}/11.x/x86/release/distribution_files/vmlinuz64"
+curl -s -o "${TMP_DIR}"/initrd.gz "${BASE_URL}/11.x/x86/release/distribution_files/core.gz"
 
 mkdir "${INITRD_DIR}"
 ( cd "${INITRD_DIR}"; gzip -dc "${TMP_DIR}"/initrd.gz | sudo cpio -idm )
