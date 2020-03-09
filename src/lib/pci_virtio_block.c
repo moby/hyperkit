@@ -63,6 +63,8 @@
 #define	VTBLK_F_BLK_SIZE	(1 << 6)	/* cfg block size valid */
 #define	VTBLK_F_FLUSH		(1 << 9)	/* Cache flush support */
 #define	VTBLK_F_TOPOLOGY	(1 << 10)	/* Optimal I/O alignment */
+#define	VTBLK_F_DISCARD		(1 << 13)	/* Supports DISCARD / TRIM / WRITEZEROES */
+#define	VTBLK_F_WRITE_ZEROES	(1 << 14)
 
 /*
  * Host capabilities
@@ -72,6 +74,7 @@
     VTBLK_F_BLK_SIZE |						    \
     VTBLK_F_FLUSH    |						    \
     VTBLK_F_TOPOLOGY |						    \
+    VTBLK_F_DISCARD  |						    \
     VIRTIO_RING_F_INDIRECT_DESC )	/* indirect descriptors */
 
 /*
@@ -94,6 +97,14 @@ struct vtblk_config {
 		uint32_t opt_io_size;
 	} vbc_topology;
 	uint8_t		vbc_writeback;
+	uint8_t		unused0[3];
+	uint32_t	max_discard_sectors; /* in 512 byte units */
+	uint32_t	max_discard_seg;
+	uint32_t	discard_sector_alignment; /* in 512 byte units */
+	uint32_t	max_write_zeroes_sectors;
+	uint32_t	max_write_zeroes_seg;
+	uint8_t		write_zeroes_may_unmap;
+	uint8_t		unused1[3];
 } __packed;
 
 /*
@@ -105,10 +116,44 @@ struct virtio_blk_hdr {
 #define	VBH_OP_FLUSH		4
 #define	VBH_OP_FLUSH_OUT	5
 #define	VBH_OP_IDENT		8
+#define	VBH_OP_DISCARD		11
+#define	VBH_OP_WRITE_ZEROES	13
 #define	VBH_FLAG_BARRIER	0x80000000	/* OR'ed into vbh_type */
 	uint32_t       	vbh_type;
 	uint32_t	vbh_ioprio;
 	uint64_t	vbh_sector;
+} __packed;
+
+static const char *print_vbh_op(int op) {
+	switch ((unsigned int)op & ~VBH_FLAG_BARRIER){
+	case VBH_OP_READ:
+		return "READ";
+	case VBH_OP_WRITE:
+		return "WRITE";
+	case VBH_OP_FLUSH:
+		return "FLUSH";
+	case VBH_OP_FLUSH_OUT:
+		return "FLUSH_OUT";
+	case VBH_OP_IDENT:
+		return "IDENT";
+	case VBH_OP_DISCARD:
+		return "DISCARD";
+	case VBH_OP_WRITE_ZEROES:
+		return "WRITE_ZEROES";
+	}
+	return "UNKNOWN";
+}
+
+/*
+ * Discard / write-zeroes segments
+ */
+struct virtio_blk_discard_write_zeroes {
+	uint64_t sector; /* starting offset in 512-byte units */
+	uint32_t num_sectors; /* number of 512-byte units */
+	struct {
+		uint32_t unmap:1;
+		uint32_t reserved:31;
+	} flags;
 } __packed;
 
 /*
@@ -142,7 +187,7 @@ static void pci_vtblk_notify(void *, struct vqueue_info *);
 static int pci_vtblk_cfgread(void *, int, int, uint32_t *);
 static int pci_vtblk_cfgwrite(void *, int, int, uint32_t);
 
-static struct virtio_consts vtblk_vi_consts = {
+static struct virtio_consts vtblk_vi_consts_defaults = {
 	"vtblk",		/* our name */
 	1,			/* we support 1 virtqueue */
 	sizeof(struct vtblk_config), /* config reg size */
@@ -205,11 +250,12 @@ static void
 pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 {
 	struct virtio_blk_hdr *vbh;
+	struct virtio_blk_discard_write_zeroes *vbdiscard;
 	struct pci_vtblk_ioreq *io;
 	int i, n;
 	int err;
 	ssize_t iolen;
-	int writeop, type;
+	int expectro, type;
 	struct iovec iov[BLOCKIF_IOV_MAX + 2];
 	uint16_t idx, flags[BLOCKIF_IOV_MAX + 2];
 
@@ -243,23 +289,22 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	 * we don't advertise the capability.
 	 */
 	type = vbh->vbh_type & ~VBH_FLAG_BARRIER;
-	writeop = (type == VBH_OP_WRITE);
-
+	expectro = (type == VBH_OP_WRITE) || (type == VBH_OP_DISCARD);
 	iolen = 0;
 	for (i = 1; i < n; i++) {
 		/*
-		 * - write op implies read-only descriptor,
+		 * - write/discard op implies read-only descriptor,
 		 * - read/ident op implies write-only descriptor,
 		 * therefore test the inverse of the descriptor bit
 		 * to the op.
 		 */
-		assert(((flags[i] & VRING_DESC_F_WRITE) == 0) == writeop);
+		assert(((flags[i] & VRING_DESC_F_WRITE) == 0) == expectro);
 		iolen += iov[i].iov_len;
 	}
 	io->io_req.br_resid = iolen;
 
 	DPRINTF(("virtio-block: %s op, %zd bytes, %d segs\n\r",
-		 writeop ? "write" : "read/ident", iolen, i - 1));
+		 print_vbh_op(type), iolen, i - 1));
 
 	switch (type) {
 	case VBH_OP_READ:
@@ -267,6 +312,16 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 		break;
 	case VBH_OP_WRITE:
 		err = blockif_write(sc->bc, &io->io_req);
+		break;
+	case VBH_OP_DISCARD:
+		/* We currently limit the discard to one segment in the initial negotiation
+		   so expect exactly one correctly-sized payload descriptor. */
+		assert(iov[1].iov_len = sizeof(struct virtio_blk_discard_write_zeroes));
+		assert(n == 2);
+		vbdiscard = iov[1].iov_base;
+		io->io_req.br_offset = (off_t) vbdiscard->sector * DEV_BSIZE;
+		io->io_req.br_resid = vbdiscard->num_sectors * DEV_BSIZE;
+		err = blockif_delete(sc->bc, &io->io_req);
 		break;
 	case VBH_OP_FLUSH:
 	case VBH_OP_FLUSH_OUT:
@@ -308,6 +363,7 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 	struct pci_vtblk_softc *sc;
 	off_t size;
 	int i, sectsz, sts, sto;
+	struct virtio_consts *vi_consts;
 
 	if (opts == NULL) {
 		printf("virtio-block: backing device required\n");
@@ -340,8 +396,20 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 
 	pthread_mutex_init(&sc->vsc_mtx, NULL);
 
+	/* Customise the capabilities per-device */
+	vi_consts = (struct virtio_consts*)malloc(sizeof(struct virtio_consts));
+	if (vi_consts == NULL){
+		perror("Failed to allocate buffer for virtio_consts");
+		return (1);
+	}
+	*vi_consts = vtblk_vi_consts_defaults;
+	if (!blockif_candelete(bctxt)){
+		/* Don't tell the guest we can discard if the backing device doesn't support it */
+		vi_consts->vc_hv_caps &= ~(uint64_t)VTBLK_F_DISCARD;
+	}
+
 	/* init virtio softc and virtqueues */
-	vi_softc_linkup(&sc->vbsc_vs, &vtblk_vi_consts, sc, pi, &sc->vbsc_vq);
+	vi_softc_linkup(&sc->vbsc_vs, vi_consts, sc, pi, &sc->vbsc_vq);
 	sc->vbsc_vs.vs_mtx = &sc->vsc_mtx;
 
 	sc->vbsc_vq.vq_qsize = VTBLK_RINGSZ;
@@ -362,6 +430,9 @@ pci_vtblk_init(struct pci_devinst *pi, char *opts)
 		(uint64_t)(size / DEV_BSIZE); /* 512-byte units */
 	sc->vbsc_cfg.vbc_size_max = 0;	/* not negotiated */
 	sc->vbsc_cfg.vbc_seg_max = BLOCKIF_IOV_MAX;
+	sc->vbsc_cfg.max_discard_sectors = 1024 * 1024 * 1024 / DEV_BSIZE; /* 1 GiB in 512-byte sectors */
+	sc->vbsc_cfg.max_discard_seg = 1; /* one offset, length range per request */
+	sc->vbsc_cfg.discard_sector_alignment = 1; /* 512-byte units */
 	sc->vbsc_cfg.vbc_geometry.cylinders = 0;	/* no geometry */
 	sc->vbsc_cfg.vbc_geometry.heads = 0;
 	sc->vbsc_cfg.vbc_geometry.sectors = 0;

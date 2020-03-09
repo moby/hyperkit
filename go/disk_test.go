@@ -69,7 +69,7 @@ func TestRawDiskTrim(t *testing.T) {
 		Size: 1,
 		Trim: true,
 	}
-	checkEqual(t, "ahci-hd,test.raw", disk.AsArgument())
+	checkEqual(t, "virtio-blk,test.raw", disk.AsArgument())
 }
 
 func newDisk(t *testing.T, p string, s int) Disk {

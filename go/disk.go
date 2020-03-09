@@ -119,38 +119,6 @@ func ensure(d Disk) error {
 	return nil
 }
 
-// diskDriver to use.
-//
-// Dave Scott writes:
-//
-// > Regarding TRIM and raw disks
-// > (https://github.com/docker/pinata/pull/8235/commits/0e2c7c2e21114b4ed61589bd42b720f7d88c0d8e):
-// > it works like this: the `ahci-hd` virtual hardware in hyperkit
-// > exposes the `ATA_SUPPORT_DSM_TRIM` capability
-// > (https://github.com/moby/hyperkit/blob/81fa6279fcb17e8435f3cec0978e9aa3af02e63b/src/lib/pci_ahci.c#L996)
-// > if the `fcntl(F_PUNCHHOLE)`
-// > (https://github.com/moby/hyperkit/blob/81fa6279fcb17e8435f3cec0978e9aa3af02e63b/src/lib/block_if.c#L276)
-// > API works on the raw file (it's dynamically detected so on HFS+ it's
-// > disabled and on APFS it's enabled) -> TRIM on raw doesn't need any
-// > special flags set in the Go code; the special flags are only for the
-// > TRIM on qcow implementation. When images are deleted in the VM the
-// > `trim-after-delete`
-// > (https://github.com/linuxkit/linuxkit/tree/master/pkg/trim-after-delete)
-// > daemon calls `fstrim /var/lib/docker` which causes Linux to emit the
-// > TRIM commands to hyperkit, which calls `fcntl`, which tells macOS to
-// > free the space in the file, visible in `ls -sl`.
-// >
-// > Unfortunately the `virtio-blk` protocol doesn't support `TRIM`
-// > requests at all so we have to use `ahci-hd` (if you try to run
-// > `fstrim /var/lib/docker` with `virtio-blk` it'll give an `ioctl`
-// > error).
-func diskDriver(trim bool) string {
-	if trim {
-		return "ahci-hd"
-	}
-	return "virtio-blk"
-}
-
 /*----------.
 | RawDisk.  |
 `----------*/
@@ -252,7 +220,7 @@ func (d *RawDisk) Stop() error {
 
 // AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
 func (d *RawDisk) AsArgument() string {
-	res := fmt.Sprintf("%s,%s", diskDriver(d.Trim), d.Path)
+	res := fmt.Sprintf("virtio-blk,%s", d.Path)
 	if d.Format != "" {
 		res += ",format=" + d.Format
 	}
@@ -416,7 +384,7 @@ func (d *QcowDisk) Stop() error {
 
 // AsArgument returns the command-line option to pass after `-s <slot>:0,` to hyperkit for this disk.
 func (d *QcowDisk) AsArgument() string {
-	res := fmt.Sprintf("%s,file://%s?sync=%s&buffered=1", diskDriver(d.Trim), d.Path, d.OnFlush)
+	res := fmt.Sprintf("virtio-blk,file://%s?sync=%s&buffered=1", d.Path, d.OnFlush)
 	{
 		format := d.Format
 		if format == "" {
