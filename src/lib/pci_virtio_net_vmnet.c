@@ -105,12 +105,15 @@
 	(VIRTIO_NET_F_MAC | VIRTIO_NET_F_MRG_RXBUF | VIRTIO_NET_F_STATUS | \
 	VIRTIO_F_NOTIFY_ON_EMPTY)
 
+#define ETHER_IS_MULTICAST(addr) (*(addr) & 0x01) /* is address mcast/bcast? */
+
 /*
  * PCI config-space "registers"
  */
 struct virtio_net_config {
 	uint8_t mac[6];
 	uint16_t status;
+	int mac_provided;
 } __packed;
 
 /*
@@ -252,6 +255,16 @@ vmn_create(struct pci_vtnet_softc *sc)
 			dispatch_semaphore_signal(iface_created);
 			return;
 		}
+
+        if (sc->vsc_config.mac_provided) {
+            char mac_str[18];
+
+            sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x",
+                sc->vsc_config.mac[0], sc->vsc_config.mac[1], sc->vsc_config.mac[2],
+                sc->vsc_config.mac[3], sc->vsc_config.mac[4], sc->vsc_config.mac[5]);
+
+            xpc_dictionary_set_string(interface_param, vmnet_mac_address_key, mac_str);
+        }
 
 		if (sscanf(xpc_dictionary_get_string(interface_param,
 			vmnet_mac_address_key),
@@ -697,10 +710,28 @@ pci_vtnet_ping_ctlq(void *vsc, struct vqueue_info *vq)
 #endif
 
 static int
-pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
+pci_vtnet_parsemac(char *mac_str, uint8_t *mac_addr)
+{
+    struct ether_addr *ea;
+    char zero_addr[ETHER_ADDR_LEN] = { 0, 0, 0, 0, 0, 0 };
+
+    ea = ether_aton(mac_str);
+
+    if (ea == NULL || ETHER_IS_MULTICAST(ea->octet) ||
+        memcmp(ea->octet, zero_addr, ETHER_ADDR_LEN) == 0) {
+        fprintf(stderr, "Invalid MAC address: %s\n", mac_str);
+        return (EINVAL);
+    } else {
+        memcpy(mac_addr, ea->octet, ETHER_ADDR_LEN);
+    }
+
+    return (0);
+}
+
+static int
+pci_vtnet_init(struct pci_devinst *pi, char *opts)
 {
 	struct pci_vtnet_softc *sc;
-	int mac_provided;
 
 	sc = calloc(1, sizeof(struct pci_vtnet_softc));
 
@@ -718,11 +749,24 @@ pci_vtnet_init(struct pci_devinst *pi, UNUSED char *opts)
 		sc->vsc_queues[VTNET_CTLQ].vq_notify = pci_vtnet_ping_ctlq;
 #endif
 
-	/*
-	 * Attempt to open the tap device and read the MAC address
-	 * if specified
-	 */
-	mac_provided = 0;
+    if (opts != NULL) {
+        int err;
+        char *mac_str;
+        char *tmp_str;
+
+        mac_str = strdup(opts);
+        (void) strsep(&mac_str, ",");
+
+        tmp_str = strsep(&mac_str, "=");
+
+        if (!strcmp(tmp_str, "mac") && mac_str != NULL) {
+            err = pci_vtnet_parsemac(mac_str, sc->vsc_config.mac);
+            if (err != 0) {
+                return (err);
+            }
+            sc->vsc_config.mac_provided = 1;
+        }
+    }
 
 	if (vmn_create(sc) == -1) {
 		return (-1);
