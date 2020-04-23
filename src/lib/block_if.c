@@ -732,7 +732,7 @@ blockif_open(const char *optstr, const char *ident, int ro)
 				/* Sparse files are supported: enable TRIM */
 				candelete = 1;
 			} else {
-				perror("fcntl(F_PUNCHHOLE) failed: host filesystem does not support sparse files");
+				fprintf(stderr, "%s: fcntl(F_PUNCHHOLE) %s: block device will not support TRIM/DISCARD\n", nopt, strerror(errno));
 				candelete = 0;
 			}
 		}
