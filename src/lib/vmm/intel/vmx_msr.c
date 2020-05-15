@@ -96,17 +96,17 @@ int vmx_set_ctlreg(hv_vmx_capability_t cap_field, uint32_t ones_mask,
 			}
 			*retval |= 1 << i;
 		} else {
-			/* don't care */
+			/* Hypervisor doesn't care */
 			if (zeros_mask & (1 << i)){
 				*retval &= ~(1 << i);
 			} else if (ones_mask & (1 << i)) {
 				*retval |= 1 << i;
 			} else {
-				/* XXX: don't allow unspecified don't cares */
+				/* We don't care either: inherit the system default */
 				fprintf(stderr,
 					"vmx_set_ctlreg: cap_field: %d bit: %d unspecified "
-					"don't care\n", cap_field, i);
-				return (EINVAL);
+					"don't care: bit is %d\n", cap_field, i,
+					(*retval & (1 << i))?1:0);
 			}
 		}
 	}

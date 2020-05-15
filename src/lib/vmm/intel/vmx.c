@@ -596,6 +596,7 @@ vmx_vcpu_init(void *arg, int vcpuid) {
 	vmx_msr_guest_init(vmx, vcpuid);
 
 	/* Check support for primary processor-based VM-execution controls */
+	procbased_ctls = (uint32_t) vmcs_read(vcpuid, HV_VMX_CAP_PROCBASED);
 	error = vmx_set_ctlreg(HV_VMX_CAP_PROCBASED,
 			       PROCBASED_CTLS_ONE_SETTING,
 			       PROCBASED_CTLS_ZERO_SETTING, &procbased_ctls);
@@ -609,6 +610,7 @@ vmx_vcpu_init(void *arg, int vcpuid) {
 	procbased_ctls &= ~PROCBASED_CTLS_WINDOW_SETTING;
 
 	/* Check support for secondary processor-based VM-execution controls */
+	procbased_ctls2 = (uint32_t) vmcs_read(vcpuid, HV_VMX_CAP_PROCBASED2);
 	error = vmx_set_ctlreg(HV_VMX_CAP_PROCBASED2,
 			       PROCBASED_CTLS2_ONE_SETTING,
 			       PROCBASED_CTLS2_ZERO_SETTING, &procbased_ctls2);
@@ -619,6 +621,7 @@ vmx_vcpu_init(void *arg, int vcpuid) {
 	}
 
 	/* Check support for pin-based VM-execution controls */
+	pinbased_ctls = (uint32_t) vmcs_read(vcpuid, HV_VMX_CAP_PINBASED);
 	error = vmx_set_ctlreg(HV_VMX_CAP_PINBASED,
 			       PINBASED_CTLS_ONE_SETTING,
 			       PINBASED_CTLS_ZERO_SETTING, &pinbased_ctls);
@@ -629,6 +632,7 @@ vmx_vcpu_init(void *arg, int vcpuid) {
 	}
 
 	/* Check support for VM-exit controls */
+	exit_ctls = (uint32_t) vmcs_read(vcpuid, HV_VMX_CAP_EXIT);
 	error = vmx_set_ctlreg(HV_VMX_CAP_EXIT,
 			       VM_EXIT_CTLS_ONE_SETTING,
 			       VM_EXIT_CTLS_ZERO_SETTING,
@@ -640,6 +644,7 @@ vmx_vcpu_init(void *arg, int vcpuid) {
 	}
 
 	/* Check support for VM-entry controls */
+	entry_ctls = (uint32_t) vmcs_read(vcpuid, HV_VMX_CAP_ENTRY);
 	error = vmx_set_ctlreg(HV_VMX_CAP_ENTRY,
 	    VM_ENTRY_CTLS_ONE_SETTING, VM_ENTRY_CTLS_ZERO_SETTING,
 	    &entry_ctls);
