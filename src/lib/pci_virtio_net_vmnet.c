@@ -320,7 +320,10 @@ vmn_read(struct vmnet_state *vms, struct iovec *iov, int n) {
 		v.vm_pkt_size += iov[i].iov_len;
 	}
 
-	assert(v.vm_pkt_size >= vms->max_packet_size);
+	if (v.vm_pkt_size < vms->max_packet_size) {
+			fprintf(stderr, "Read buffer too small: %ld bytes. vmnet expected at least %d.\n", v.vm_pkt_size, vms->max_packet_size);
+			return (-2);
+	}
 
 	v.vm_pkt_iov = iov;
 	v.vm_pkt_iovcnt = (uint32_t) n;
@@ -539,14 +542,29 @@ pci_vtnet_tap_rx(struct pci_vtnet_softc *sc)
 
 		len = (int) vmn_read(sc->vms, riov, n);
 
-		if (len < 0 && errno == EWOULDBLOCK) {
-			/*
-			 * No more packets, but still some avail ring
-			 * entries.  Interrupt if needed/appropriate.
-			 */
-			vq_retchain(vq);
-			vq_endchains(vq, 0);
-			return;
+		if (len < 0) {
+			if (len == -2) {
+					/*
+						* Buffer passed is too short. The reason is unclear
+						* to me but it seems that at boot some firmwares pass
+						* buffers of the standard 1514 Ethernet length whereas the
+						* size expected by Mac OS is 1518.
+						*/
+					iov[0].iov_base = dummybuf;
+					iov[0].iov_len = sizeof(dummybuf);
+					(void) vmn_read(sc->vms, iov, 1);
+					vq_endchains(vq, 1);
+					return;
+					
+			} else if (errno == EWOULDBLOCK) {
+					/*
+						* No more packets, but still some avail ring
+						* entries.  Interrupt if needed/appropriate.
+						*/
+					vq_retchain(vq);
+					vq_endchains(vq, 0);
+					return;
+			}
 		}
 
 		/*
