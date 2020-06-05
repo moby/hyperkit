@@ -27,6 +27,9 @@ jobs:
       - run: make test
       - run: brew install opam libev libffi pkg-config
       - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+      # Needed until the packages are released in ocaml/opam-repository
+      - run: opam pin add qcow.0.11.0 git://github.com/mirage/ocaml-qcow -n
+      - run: opam pin add qcow-tool.0.11.0 git://github.com/mirage/ocaml-qcow -n
       - run: opam pin add hyperkit .
       - run: opam config exec -- make clean
       - run: opam config exec -- make all
