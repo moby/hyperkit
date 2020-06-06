@@ -1,9 +1,0 @@
-MirageOS signatures for key/value devices
-
-mirage-kv provides the [Mirage_kv.RO][ro] and [Mirage_kv_lwt.RO][ro-lwt]
-signatures the MirageOS key/value devices should implement.
-
-mirage-kv is distributed under the ISC license.
-
-[ro]: https://mirage.github.io/mirage-kv/Mirage_kv.html
-[ro-lwt]: https://mirage.github.io/mirage-kv/Mirage_kv_lwt.html

@@ -208,8 +208,8 @@ artifacts: build/LICENSE build/COMMIT
 build/LICENSE:
 	@echo "  GEN     " $@
 	@find src -type f | xargs awk '/^\/\*-/{p=1;print FILENAME ":";print;next} p&&/^.*\*\//{print;print "";p=0};p' > $@.tmp
-	@opam config exec -- make -C repo list-licenses
-	@cat repo/OCAML-LICENSES >> $@.tmp
+	@opam config exec -- make -C ocaml list-licenses
+	@cat ocaml/OCAML-LICENSES >> $@.tmp
 	@mv $@.tmp $@
 
 .PHONY: build/COMMIT

@@ -1,8 +1,0 @@
-In-memory block device ("Ramdisk") for Mirage
-
-This is an implementation of the Mirage `V1_LWT.BLOCK` signature
-backed by an in-heap Map. This library supports
-
-- `read`/`write`
-- dynamic `resize` (i.e. device truncation and extension)
-- sparseness querying

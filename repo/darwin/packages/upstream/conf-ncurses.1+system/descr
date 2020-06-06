@@ -1,2 +1,0 @@
-Virtual package relying on ncurses
-This package can only install if the ncurses library is installed on the system.
