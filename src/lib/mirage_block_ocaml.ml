@@ -416,14 +416,25 @@ let process_one t =
    requests and forks background threads to process all the requests. *)
 let serve_forever () =
   let buf = Bytes.make 1 '\000' in
-  let request_reader = Lwt_unix.of_unix_file_descr Protocol.request_reader in
+  Printf.fprintf stderr "Using fd %d for I/O notifications\n%!" (Unix_representations.int_of_file_descr Protocol.request_reader);
+  (* According to https://ocsigen.org/lwt/3.2.1/api/Lwt_unix non-blocking mode
+     is fastest, and used by default with Unix pipes. *)
+  let blocking = false in
+  let request_reader = Lwt_unix.of_unix_file_descr ~blocking Protocol.request_reader in
 
   let rec loop () =
+    Lwt_unix.set_blocking request_reader blocking;
     Lwt_unix.read request_reader buf 0 1
     >>= fun n ->
     if n = 0 then begin
       Printf.fprintf stderr "Got EOF while reading signal from the pipe\n%!";
       exit 1
+    end;
+    if n < 0 then begin
+      (* This should never happen and might indicate a bug elsewhere handling
+         the blocking mode of the fd. *)
+      Printf.fprintf stderr "Got %d while reading signal from the pipe\n%!" n;
+      exit 2
     end;
     let all = Protocol.take_all () in
     let (_: unit Lwt.t list) = List.map process_one all in

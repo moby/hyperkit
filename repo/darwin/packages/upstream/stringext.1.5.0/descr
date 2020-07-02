@@ -1,4 +1,0 @@
-Extra string functions for OCaml
-
-Extra string functions for OCaml. Mainly splitting. All functions are in the
-`Stringext` module.

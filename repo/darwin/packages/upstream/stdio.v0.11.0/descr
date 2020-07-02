@@ -1,6 +1,0 @@
-Standard IO library for OCaml
-
-Stdio implements simple input/output functionalities for OCaml.
-
-It re-exports the input/output functions of the OCaml standard
-libraries using a more consistent API.

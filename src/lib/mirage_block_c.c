@@ -26,7 +26,7 @@ mirage_block_unregister_thread(){
 /* Convenience macro to cache the OCaml callback and immediately abort()
    if it can't be found -- this would indicate a fundamental linking error. */
 #define OCAML_NAMED_FUNCTION(name) \
-static value *fn = NULL; \
+static const value *fn = NULL; \
 if (fn == NULL) { \
 	fn = caml_named_value(name); \
 } \

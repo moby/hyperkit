@@ -1,4 +1,0 @@
-Network Block Device (NBD) protocol implementation
-
-This library allows applications to export and consume block
-devices using the NBD protocol (as used by Linux, qemu etc)

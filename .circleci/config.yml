@@ -7,8 +7,7 @@ jobs:
       # OPAM seems to be quite unhappy without $TERM and Circle doesn't seem to set one.
       TERM: vt100
       MACOSX_DEPLOYMENT_TARGET: "10.11"
-      OPAM_REPO: repo/darwin
-      OPAM_COMP: 4.07.0
+      OPAM_COMP: 4.10.0
       OPAMVERBOSE: 1
       OPAMYES: 1
       HOMEBREW_NO_AUTO_UPDATE: 1
@@ -26,7 +25,10 @@ jobs:
       - run: test ! -s build/lib/mirage_block_ocaml.cmi || (echo "qcow libraries have been pre-installed in CI environment" && exit 1)
       - run: make test
       - run: brew install opam libev libffi pkg-config
-      - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}" local "${OPAM_REPO}"
+      - run: opam init -v -n --comp="${OPAM_COMP}" --switch="${OPAM_COMP}"
+      # Needed until the packages are released in ocaml/opam-repository
+      - run: opam pin add qcow.0.11.0 git://github.com/mirage/ocaml-qcow -n
+      - run: opam pin add qcow-tool.0.11.0 git://github.com/mirage/ocaml-qcow -n
       - run: opam pin add hyperkit .
       - run: opam config exec -- make clean
       - run: opam config exec -- make all

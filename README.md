@@ -37,8 +37,10 @@ via `brew` and using `opam` to install the appropriate libraries:
 
     $ brew install opam libev
     $ opam init
-    $ eval `opam config env`
-    $ opam install uri qcow.0.10.4 conduit.1.0.0 lwt.3.1.0 qcow-tool mirage-block-unix.2.9.0 conf-libev logs fmt mirage-unix prometheus-app
+    $ eval `opam env`
+    $ opam pin add qcow.0.11.0 git://github.com/mirage/ocaml-qcow -n
+    $ opam pin add qcow-tool.0.11.0 git://github.com/mirage/ocaml-qcow -n
+    $ opam install uri qcow.0.11.0 conduit.2.1.0 lwt.5.3.0 qcow-tool mirage-block-unix.2.12.0 conf-libev logs fmt mirage-unix prometheus-app
 
 Notes:
 

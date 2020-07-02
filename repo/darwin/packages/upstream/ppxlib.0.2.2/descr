@@ -1,9 +1,0 @@
-A comprehensive toolbox for ppx development. It features:
-- a OCaml AST / parser / pretty-printer snapshot,to create a full
-   frontend independent of the version of OCaml;
-- a library for library for ppx rewriters in general, and type-driven
-  code generators in particular;
-- a feature-full driver for OCaml AST transformers;
-- a quotation mechanism allowing  to write values representing the
-   OCaml AST in the OCaml syntax;
-- a generator of open recursion classes from type definitions.
