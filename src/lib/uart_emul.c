@@ -758,14 +758,16 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 
 			if (linkname) {
 				if ((unlink(linkname) == -1) && (errno != ENOENT)) {
-					perror("unlinking autopty symlink");
+					perror("unlinking autopty file");
 					goto err;
 				}
-				if (symlink(ptyname, linkname) == -1){
-					perror("creating autopty symlink");
+				int namefd = open(linkname, O_CREAT | O_WRONLY);
+				if (namefd == -1) {
+					perror("creating autopty file");
 					goto err;
 				}
-				fprintf(stdout, "%s linked to %s\n", devname, linkname);
+				(void) write(namefd, ptyname, strlen(ptyname));
+				(void) close(namefd);
 			}
 
 			sc->tty.fd = ptyfd;
