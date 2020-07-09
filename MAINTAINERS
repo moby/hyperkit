@@ -21,6 +21,7 @@
 			"MagnusS",
 			"rn",
 			"samoht",
+			"ebriney",
 		]
 
 [people]
@@ -75,3 +76,8 @@
 	Name = "Thomas Gazagnaire"
 	Email = "thomas@gazagnaire.org"
 	GitHub = "samoht"
+
+	[people.ebriney]
+	Name = "Emmanuel Briney"
+	Email = "emmanuel.briney@docker.com"
+	GitHub = "ebriney"
