@@ -761,7 +761,7 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 					perror("unlinking autopty file");
 					goto err;
 				}
-				int namefd = open(linkname, O_CREAT | O_WRONLY);
+				int namefd = open(linkname, O_CREAT | O_WRONLY, 0644);
 				if (namefd == -1) {
 					perror("creating autopty file");
 					goto err;
