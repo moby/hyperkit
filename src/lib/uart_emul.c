@@ -722,7 +722,15 @@ uart_set_backend(struct uart_softc *sc, const char *backend, const char *devname
 		if (next)
 			next[0] = '\0';
 
-		if (strcmp("stdio", backend) == 0 && !uart_stdio) {
+		if (strcmp("null", backend) == 0) {
+			sc->tty.fd = open("/dev/null", O_RDWR | O_NONBLOCK);
+			if (sc->tty.fd == -1) {
+				fprintf(stderr, "error opening /dev/null\n");
+				goto err;
+			}
+			sc->tty.opened = true;
+			retval = 0;
+		} else if (strcmp("stdio", backend) == 0 && !uart_stdio) {
 			sc->tty.fd = STDIN_FILENO;
 			sc->tty.opened = true;
 			uart_stdio = true;

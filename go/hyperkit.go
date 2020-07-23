@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -237,12 +238,19 @@ func (h *HyperKit) checkLegacyConsole() error {
 }
 
 func (h *HyperKit) checkSerials() error {
-	for _, serial := range h.Serials {
+	stdioConsole := -1
+	for i, serial := range h.Serials {
 		if serial.LogToRingBuffer && h.StateDir == "" {
 			return fmt.Errorf("If VM is to log to a ring buffer, StateDir must be specified")
 		}
-		if serial.InteractiveConsole == StdioInteractiveConsole && !isTerminal(os.Stdout) {
-			return fmt.Errorf("If StdioInteractiveConsole is set, stdio must be a TTY")
+		if serial.InteractiveConsole == StdioInteractiveConsole {
+			if isTerminal(os.Stdout) {
+				return fmt.Errorf("If StdioInteractiveConsole is set, stdio must be a TTY")
+			}
+			if stdioConsole != -1 {
+				return fmt.Errorf("Only one serial port can be nominated as the stdio interactive console")
+			}
+			stdioConsole = i
 		}
 		if serial.InteractiveConsole == TTYInteractiveConsole && h.StateDir == "" {
 			return fmt.Errorf("If TTYInteractiveConsole is set, StateDir must be specified ")
@@ -442,10 +450,12 @@ func (h *HyperKit) serialArgs() []string {
 	for i, serial := range h.Serials {
 		cfg := fmt.Sprintf("com%d", i+1)
 		switch serial.InteractiveConsole {
+		case NoInteractiveConsole:
+			cfg += ",null"
 		case StdioInteractiveConsole:
 			cfg += fmt.Sprintf(",stdio")
 		case TTYInteractiveConsole:
-			cfg += fmt.Sprintf(",autopty=%s/tty", h.StateDir)
+			cfg += fmt.Sprintf(",autopty=%s/tty%d", h.StateDir, i+1)
 		}
 		if serial.LogToASL {
 			cfg += fmt.Sprintf(",asl")
@@ -543,8 +553,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 }
 
 // openTTY opens the tty files for reading, and returns it.
-func (h *HyperKit) openTTY() *os.File {
-	path := fmt.Sprintf("%s/tty", h.StateDir)
+func (h *HyperKit) openTTY(filename string) *os.File {
+	path := path.Join(h.StateDir, filename)
 	for {
 		if res, err := os.OpenFile(path, os.O_RDONLY, 0); err != nil {
 			log.Infof("hyperkit: openTTY: %v, retrying", err)
@@ -556,6 +566,21 @@ func (h *HyperKit) openTTY() *os.File {
 			return res
 		}
 	}
+}
+
+func (h *HyperKit) findStdioTTY() string {
+	if h.Serials != nil {
+		for i, serial := range h.Serials {
+			if serial.InteractiveConsole == StdioInteractiveConsole {
+				return fmt.Sprintf("tty%d", i)
+			}
+		}
+		return ""
+	}
+	if h.Console == ConsoleStdio {
+		return "tty"
+	}
+	return ""
 }
 
 // execute forges the command to run hyperkit, runs and returns it.
@@ -580,19 +605,21 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 	//
 	// If a logger is specified, use it for stdout/stderr
 	// logging. Otherwise use the default /dev/null.
-	if h.Console == ConsoleStdio {
+	filename := h.findStdioTTY()
+	if filename != "" {
 		if isTerminal(os.Stdout) {
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 		} else {
 			go func() {
-				tty := h.openTTY()
+				tty := h.openTTY(filename)
 				defer tty.Close()
 				io.Copy(os.Stdout, tty)
 			}()
 		}
-	} else if log != nil {
+	}
+	if log != nil {
 		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
