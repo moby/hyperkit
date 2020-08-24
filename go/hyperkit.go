@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -40,11 +41,11 @@ import (
 )
 
 const (
-	// ConsoleStdio configures console to use Stdio
+	// ConsoleStdio configures console to use Stdio (deprecated)
 	ConsoleStdio = iota
-	// ConsoleFile configures console to a tty and output to a file
+	// ConsoleFile configures console to a tty and output to a file (deprecated)
 	ConsoleFile
-	// ConsoleLog configures console to a tty and sends its contents to the logs
+	// ConsoleLog configures console to a tty and sends its contents to the logs (deprecated)
 	ConsoleLog
 
 	legacyVPNKitSock  = "Library/Containers/com.docker.docker/Data/s50"
@@ -120,8 +121,12 @@ type HyperKit struct {
 	// Memory is the amount of megabytes of memory for the VM.
 	Memory int `json:"memory"`
 
-	// Console defines where the console of the VM should be connected to.
+	// Console defines where the console of the VM should be connected to. (deprecated)
 	Console int `json:"console"`
+
+	// Serials defines what happens to the I/O on the serial ports. If this is not nil
+	// it overrides the Console setting.
+	Serials []Serial `json:"serials"`
 
 	// Below here are internal members, but they are exported so
 	// that they are written to the state json file, if configured.
@@ -135,6 +140,28 @@ type HyperKit struct {
 
 	process *os.Process
 }
+
+// Serial port.
+type Serial struct {
+	// InteractiveConsole allows a user to connect to a live VM serial console.
+	InteractiveConsole InteractiveConsole
+	// LogToRingBuffer will write console output to a fixed size ring buffer file.
+	LogToRingBuffer bool
+	// LogToASL will write console output to the Apple System Log.
+	LogToASL bool
+}
+
+// InteractiveConsole is an optional interactive VM console.
+type InteractiveConsole int
+
+const (
+	// NoInteractiveConsole disables the interactive console.
+	NoInteractiveConsole = InteractiveConsole(iota)
+	// StdioInteractiveConsole creates a console on stdio.
+	StdioInteractiveConsole
+	// TTYInteractiveConsole creates a console on a TTY.
+	TTYInteractiveConsole
+)
 
 // New creates a template config structure.
 // - If hyperkit can't be found an error is returned.
@@ -196,11 +223,7 @@ func (h *HyperKit) Start(cmdline string) (chan error, error) {
 	return errCh, nil
 }
 
-// check validates `h`.  It also creates the disks if needed.
-func (h *HyperKit) check() error {
-	log.Debugf("hyperkit: check %#v", h)
-	var err error
-	// Sanity checks on configuration
+func (h *HyperKit) checkLegacyConsole() error {
 	switch h.Console {
 	case ConsoleFile, ConsoleLog:
 		if h.StateDir == "" {
@@ -209,6 +232,48 @@ func (h *HyperKit) check() error {
 	case ConsoleStdio:
 		if !isTerminal(os.Stdout) && h.StateDir == "" {
 			return fmt.Errorf("If ConsoleStdio is set but stdio is not a terminal, StateDir must be specified")
+		}
+	}
+	return nil
+}
+
+func (h *HyperKit) checkSerials() error {
+	stdioConsole := -1
+	for i, serial := range h.Serials {
+		if serial.LogToRingBuffer && h.StateDir == "" {
+			return fmt.Errorf("If VM is to log to a ring buffer, StateDir must be specified")
+		}
+		if serial.InteractiveConsole == StdioInteractiveConsole {
+			if isTerminal(os.Stdout) {
+				return fmt.Errorf("If StdioInteractiveConsole is set, stdio must be a TTY")
+			}
+			if stdioConsole != -1 {
+				return fmt.Errorf("Only one serial port can be nominated as the stdio interactive console")
+			}
+			stdioConsole = i
+		}
+		if serial.InteractiveConsole == TTYInteractiveConsole && h.StateDir == "" {
+			return fmt.Errorf("If TTYInteractiveConsole is set, StateDir must be specified ")
+		}
+		if serial.LogToRingBuffer && h.StateDir == "" {
+			return fmt.Errorf("If LogToRingBuffer is set, StateDir must be specified")
+		}
+	}
+	return nil
+}
+
+// check validates `h`.  It also creates the disks if needed.
+func (h *HyperKit) check() error {
+	log.Debugf("hyperkit: check %#v", h)
+	var err error
+	// Sanity checks on configuration
+	if h.Serials == nil {
+		if err := h.checkLegacyConsole(); err != nil {
+			return err
+		}
+	} else {
+		if err := h.checkSerials(); err != nil {
+			return err
 		}
 	}
 	for _, image := range h.ISOImages {
@@ -365,6 +430,44 @@ func intArrayToString(i []int, sep string) string {
 	return strings.Join(s, sep)
 }
 
+func (h *HyperKit) legacyConsoleArgs() []string {
+	cfg := "com1"
+	if h.Console == ConsoleStdio && isTerminal(os.Stdout) {
+		cfg += fmt.Sprintf(",stdio")
+	} else {
+		cfg += fmt.Sprintf(",autopty=%s/tty", h.StateDir)
+	}
+	if h.Console == ConsoleLog {
+		cfg += fmt.Sprintf(",asl")
+	} else {
+		cfg += fmt.Sprintf(",log=%s/console-ring", h.StateDir)
+	}
+	return []string{"-l", cfg}
+}
+
+func (h *HyperKit) serialArgs() []string {
+	results := []string{}
+	for i, serial := range h.Serials {
+		cfg := fmt.Sprintf("com%d", i+1)
+		switch serial.InteractiveConsole {
+		case NoInteractiveConsole:
+			cfg += ",null"
+		case StdioInteractiveConsole:
+			cfg += fmt.Sprintf(",stdio")
+		case TTYInteractiveConsole:
+			cfg += fmt.Sprintf(",autopty=%s/tty%d", h.StateDir, i+1)
+		}
+		if serial.LogToASL {
+			cfg += fmt.Sprintf(",asl")
+		}
+		if serial.LogToRingBuffer {
+			cfg += fmt.Sprintf(",log=%s/console-ring", h.StateDir)
+		}
+		results = append(results, "-l", cfg)
+	}
+	return results
+}
+
 func (h *HyperKit) buildArgs(cmdline string) {
 	a := []string{"-A", "-u"}
 	if h.StateDir != "" {
@@ -429,19 +532,10 @@ func (h *HyperKit) buildArgs(cmdline string) {
 	}
 
 	// -l: LPC device configuration.
-	{
-		cfg := "com1"
-		if h.Console == ConsoleStdio && isTerminal(os.Stdout) {
-			cfg += fmt.Sprintf(",stdio")
-		} else {
-			cfg += fmt.Sprintf(",autopty=%s/tty", h.StateDir)
-		}
-		if h.Console == ConsoleLog {
-			cfg += fmt.Sprintf(",asl")
-		} else {
-			cfg += fmt.Sprintf(",log=%s/console-ring", h.StateDir)
-		}
-		a = append(a, "-l", cfg)
+	if h.Serials == nil {
+		a = append(a, h.legacyConsoleArgs()...)
+	} else {
+		a = append(a, h.serialArgs()...)
 	}
 
 	if h.Bootrom == "" {
@@ -459,8 +553,8 @@ func (h *HyperKit) buildArgs(cmdline string) {
 }
 
 // openTTY opens the tty files for reading, and returns it.
-func (h *HyperKit) openTTY() *os.File {
-	path := fmt.Sprintf("%s/tty", h.StateDir)
+func (h *HyperKit) openTTY(filename string) *os.File {
+	path := path.Join(h.StateDir, filename)
 	for {
 		if res, err := os.OpenFile(path, os.O_RDONLY, 0); err != nil {
 			log.Infof("hyperkit: openTTY: %v, retrying", err)
@@ -472,6 +566,21 @@ func (h *HyperKit) openTTY() *os.File {
 			return res
 		}
 	}
+}
+
+func (h *HyperKit) findStdioTTY() string {
+	if h.Serials != nil {
+		for i, serial := range h.Serials {
+			if serial.InteractiveConsole == StdioInteractiveConsole {
+				return fmt.Sprintf("tty%d", i)
+			}
+		}
+		return ""
+	}
+	if h.Console == ConsoleStdio {
+		return "tty"
+	}
+	return ""
 }
 
 // execute forges the command to run hyperkit, runs and returns it.
@@ -496,19 +605,21 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 	//
 	// If a logger is specified, use it for stdout/stderr
 	// logging. Otherwise use the default /dev/null.
-	if h.Console == ConsoleStdio {
+	filename := h.findStdioTTY()
+	if filename != "" {
 		if isTerminal(os.Stdout) {
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 		} else {
 			go func() {
-				tty := h.openTTY()
+				tty := h.openTTY(filename)
 				defer tty.Close()
 				io.Copy(os.Stdout, tty)
 			}()
 		}
-	} else if log != nil {
+	}
+	if log != nil {
 		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
