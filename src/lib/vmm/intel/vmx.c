@@ -491,9 +491,12 @@ vmx_init(void)
 		case HV_UNSUPPORTED:
 			/* Don't know if this can happen, report to us */
 			xhyve_abort("hv_vm_create HV_UNSUPPORTED\n");
+		case HV_ERROR:
+			/* An unspecified error happened */
+			xhyve_abort("hv_vm_create HV_ERROR (unspecified error)\n");
 		default:
 			/* Should never happen, report to Apple */
-			xhyve_abort("hv_vm_create unknown error %d\n", error);
+			xhyve_abort("hv_vm_create unknown error %#010x\n", error);
 	}
 
 	/*
