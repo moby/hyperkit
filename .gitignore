@@ -5,4 +5,5 @@ _build
 /test/vmlinuz
 /test/initrd
 /test/initrd.gz
+/test/disk.dmg
 /test/disk.qcow2

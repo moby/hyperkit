@@ -110,6 +110,8 @@ OCAML_PACKS := cstruct cstruct-lwt io-page io-page.unix uri mirage-block \
 	mirage-unix prometheus-app conduit-lwt cohttp-lwt-unix \
 	unix-type-representations
 OCAML_LDLIBS := -L $(OCAML_WHERE) \
+	$(shell ocamlfind query bigstringaf)/bigstringaf.a \
+	$(shell ocamlfind query bigstringaf)/libbigstringaf_stubs.a \
 	$(shell ocamlfind query cstruct)/cstruct.a \
 	$(shell ocamlfind query cstruct)/libcstruct_stubs.a \
 	$(shell ocamlfind query io-page)/io_page.a \

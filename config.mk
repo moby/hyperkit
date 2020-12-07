@@ -45,7 +45,8 @@ CFLAGS_WARN := \
   -Wno-reserved-id-macro \
   -Wno-unknown-warning-option \
   -Wno-unused-macros \
-  -Wno-switch-enum
+  -Wno-switch-enum \
+  -Wno-poison-system-directories
 
 CFLAGS_DIAG := \
   -fmessage-length=152 \
@@ -79,4 +80,5 @@ LDFLAGS := \
   -arch x86_64 \
   -framework Hypervisor \
   -framework vmnet \
+  -Wl,-no_compact_unwind \
   $(LDFLAGS_DBG)

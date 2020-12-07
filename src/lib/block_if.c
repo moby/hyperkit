@@ -138,7 +138,7 @@ static struct blockif_sig_elem *blockif_bse_head;
 
 
 static ssize_t
-preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset)
+_preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 {
 	off_t res;
 
@@ -149,7 +149,7 @@ preadv(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 
 
 static ssize_t
-pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
+_pwritev(int fd, const struct iovec *iov, int iovcnt, off_t offset)
 {
 	off_t res;
 
@@ -181,7 +181,7 @@ block_preadv(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt,
 		HYPERKIT_BLOCK_PREADV(offset, iovec_len(iov, iovcnt));
 
 	if (bc->bc_fd >= 0)
-		ret = preadv(bc->bc_fd, iov, iovcnt, offset);
+		ret = _preadv(bc->bc_fd, iov, iovcnt, offset);
 
 #ifdef HAVE_OCAML_QCOW
 	else if (bc->bc_mbh >= 0)
@@ -205,7 +205,7 @@ block_pwritev(struct blockif_ctxt *bc, const struct iovec *iov, int iovcnt,
 		HYPERKIT_BLOCK_PWRITEV(offset, iovec_len(iov, iovcnt));
 
 	if (bc->bc_fd >= 0)
-		ret = pwritev(bc->bc_fd, iov, iovcnt, offset);
+		ret = _pwritev(bc->bc_fd, iov, iovcnt, offset);
 
 #ifdef HAVE_OCAML_QCOW
 	else if (bc->bc_mbh >= 0)
