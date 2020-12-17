@@ -19,6 +19,7 @@ LD := clang
 STRIP := strip
 DSYM := dsymutil
 DTRACE := dtrace
+CODESIGN := codesign
 
 ENV := \
   LANG=en_US.US-ASCII
