@@ -179,9 +179,11 @@ $(TARGET).sym: $(OBJ)
 	@echo dsym $(notdir $(TARGET).dSYM)
 	$(VERBOSE) $(ENV) $(DSYM) $@ -o $(TARGET).dSYM
 
-$(TARGET): $(TARGET).sym
+$(TARGET): $(TARGET).sym app.entitlements
 	@echo strip $(notdir $@)
 	$(VERBOSE) $(ENV) $(STRIP) $(TARGET).sym -o $@
+	@echo sign $(notdir $@)
+	$(VERBOSE) $(ENV) $(CODESIGN) -s - --entitlements app.entitlements --force $@
 
 clean:
 	@rm -rf build
