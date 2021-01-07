@@ -222,7 +222,7 @@ multiboot_parse_elf(struct multiboot_state *s, struct image *img)
 {
 	struct elf_ehdr *ehdr = img->mapping;
 	struct elf_phdr *phdr;
-	uint32_t low = (uint32_t)-1, high = 0, memsize, addr, entry;
+	uint32_t low = (uint32_t)-1, high = 0, memsize, addr, entry, offset = (uint32_t)-1;
 	int i;
 
 	if (ehdr->e_ident[0] != 0x7f ||
@@ -248,6 +248,8 @@ multiboot_parse_elf(struct multiboot_state *s, struct image *img)
 				entry < phdr[i].p_vaddr + phdr[i].p_filesz)
 			entry = entry - phdr[i].p_vaddr + phdr[i].p_paddr;
 
+		if (phdr[i].p_offset < offset)
+			offset = phdr[i].p_offset;
 		if (addr < low)
 			low = addr;
 		if (addr + memsize > high)
@@ -257,6 +259,7 @@ multiboot_parse_elf(struct multiboot_state *s, struct image *img)
 	if (low == (uint32_t)-1 || high == 0)
 		die("multiboot: failed to parse ELF file\n");
 
+	s->kernel_offset = offset;
 	s->kernel_load_addr = low;
 	s->kernel_size = high - low;
 	s->kernel_entry_addr = entry;
