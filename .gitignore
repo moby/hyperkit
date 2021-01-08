@@ -7,3 +7,4 @@ _build
 /test/initrd.gz
 /test/disk.dmg
 /test/disk.qcow2
+Info.plist

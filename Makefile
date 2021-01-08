@@ -173,9 +173,12 @@ build/%.o: src/%.ml
 	$(VERBOSE) $(ENV) ocamlfind ocamlopt -thread -package "$(OCAML_PACKS)" -c $< -o build/$*.cmx
 	$(VERBOSE) $(ENV) ocamlfind ocamlopt -thread -linkpkg -package "$(OCAML_PACKS)" -output-obj -o $@ build/$*.cmx
 
-$(TARGET).sym: $(OBJ)
+Info.plist: Info.plist.in
+	cat Info.plist.in | sed "s/%VERSION%/$(shell git describe --tags)/" > Info.plist
+
+$(TARGET).sym: $(OBJ) Info.plist
 	@echo ld $(notdir $@)
-	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(LDLIBS) $(OCAML_LDLIBS)
+	$(VERBOSE) $(ENV) $(LD) $(LDFLAGS) -Xlinker $(TARGET).lto.o -o $@ $(OBJ) $(LDLIBS) $(OCAML_LDLIBS) -sectcreate __TEXT __info_plist Info.plist
 	@echo dsym $(notdir $(TARGET).dSYM)
 	$(VERBOSE) $(ENV) $(DSYM) $@ -o $(TARGET).dSYM
 
