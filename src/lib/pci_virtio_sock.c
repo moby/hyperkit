@@ -1121,6 +1121,11 @@ static void pci_vtsock_proc_tx(struct pci_vtsock_softc *sc,
 	size_t pulled;
 
 	iovec_len = vq_getchain(vq, &idx, iov, VTSOCK_MAXSEGS, flags);
+	if (iovec_len < 0) {
+		fprintf(stderr, "TX: failed to get chain at idx %"PRIx16"\n", idx);
+		return;
+	}
+
 	assert(iovec_len <= VTSOCK_MAXSEGS);
 
 	DPRINTF(("TX: chain with %d buffers at idx %"PRIx16"\n",
