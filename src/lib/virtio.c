@@ -559,7 +559,10 @@ vi_pci_read(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		max = vc->vc_cfgsize ? vc->vc_cfgsize : 0x100000000;
 		if ((newoff + ((unsigned) size)) > max)
 			goto bad;
-		error = (*vc->vc_cfgread)(DEV_SOFTC(vs), ((int) newoff), size, &value);
+		if (vc->vc_cfgread != NULL)
+			error = (*vc->vc_cfgread)(DEV_SOFTC(vs), ((int) newoff), size, &value);
+		else
+			error = 0;
 		if (!error)
 			goto done;
 	}
