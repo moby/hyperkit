@@ -559,7 +559,10 @@ vi_pci_read(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		max = vc->vc_cfgsize ? vc->vc_cfgsize : 0x100000000;
 		if ((newoff + ((unsigned) size)) > max)
 			goto bad;
-		error = (*vc->vc_cfgread)(DEV_SOFTC(vs), ((int) newoff), size, &value);
+		if (vc->vc_cfgread != NULL)
+			error = (*vc->vc_cfgread)(DEV_SOFTC(vs), ((int) newoff), size, &value);
+		else
+			error = 0;
 		if (!error)
 			goto done;
 	}
@@ -678,8 +681,11 @@ vi_pci_write(UNUSED int vcpu, struct pci_devinst *pi, int baridx,
 		max = vc->vc_cfgsize ? vc->vc_cfgsize : 0x100000000;
 		if ((newoff + ((unsigned) size)) > max)
 			goto bad;
-		error = (*vc->vc_cfgwrite)(DEV_SOFTC(vs), ((int) newoff), size,
-			((uint32_t) value));
+		if (vc->vc_cfgwrite != NULL)
+			error = (*vc->vc_cfgwrite)(DEV_SOFTC(vs), ((int) newoff), size,
+				((uint32_t) value));
+		else
+			error = 0;
 		if (!error)
 			goto done;
 	}
