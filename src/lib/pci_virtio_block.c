@@ -316,7 +316,7 @@ pci_vtblk_proc(struct pci_vtblk_softc *sc, struct vqueue_info *vq)
 	case VBH_OP_DISCARD:
 		/* We currently limit the discard to one segment in the initial negotiation
 		   so expect exactly one correctly-sized payload descriptor. */
-		assert(iov[1].iov_len = sizeof(struct virtio_blk_discard_write_zeroes));
+		assert(iov[1].iov_len == sizeof(struct virtio_blk_discard_write_zeroes));
 		assert(n == 2);
 		vbdiscard = iov[1].iov_base;
 		io->io_req.br_offset = (off_t) vbdiscard->sector * DEV_BSIZE;
