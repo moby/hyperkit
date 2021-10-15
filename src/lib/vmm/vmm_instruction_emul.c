@@ -1376,7 +1376,7 @@ emulate_bittest(void *vm, int vcpuid, uint64_t gpa, struct vie *vie,
 	 * "Range of Bit Positions Specified by Bit Offset Operands"
 	 */
 	bitmask = vie->opsize * 8 - 1;
-	bitoff = vie->immediate & bitmask;
+	bitoff = (int) (vie->immediate & bitmask);
 
 	/* Copy the bit into the Carry flag in %rflags */
 	if (val & (1UL << bitoff))

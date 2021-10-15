@@ -200,7 +200,7 @@ pit_update_counter(struct vatpit *vatpit, struct channel *c, bool latch)
 
 	delta_ticks = (sbinuptime() - c->now_sbt) / vatpit->freq_sbt;
 
-	lval = c->initial - delta_ticks % c->initial;
+	lval = (uint16_t) (c->initial - delta_ticks % c->initial);
 
 	if (latch) {
 		c->olbyte = 2;
