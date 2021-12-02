@@ -244,7 +244,7 @@ func (h *HyperKit) checkSerials() error {
 			return fmt.Errorf("If VM is to log to a ring buffer, StateDir must be specified")
 		}
 		if serial.InteractiveConsole == StdioInteractiveConsole {
-			if isTerminal(os.Stdout) {
+			if !isTerminal(os.Stdout) {
 				return fmt.Errorf("If StdioInteractiveConsole is set, stdio must be a TTY")
 			}
 			if stdioConsole != -1 {
@@ -618,8 +618,7 @@ func (h *HyperKit) execute() (*exec.Cmd, error) {
 				io.Copy(os.Stdout, tty)
 			}()
 		}
-	}
-	if log != nil {
+	} else if log != nil {
 		log.Debugf("hyperkit: Redirecting stdout/stderr to logger")
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
