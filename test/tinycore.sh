@@ -1,5 +1,9 @@
-#!/bin/sh
+#!/bin/sh -x
 set -e
+
+# debug
+sysctl machdep.cpu
+#ioreg -l
 
 # These are binaries from a mirror of
 #  http://tinycorelinux.net
