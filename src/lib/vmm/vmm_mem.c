@@ -29,14 +29,55 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <Hypervisor/hv.h>
 #include <Hypervisor/hv_vmx.h>
 #include <xhyve/support/misc.h>
 #include <xhyve/vmm/vmm_mem.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
+
+/* According to the mono project
+   https://github.com/mono/mono/commit/a502768b3a24f4251de6a48ba78a27c898968e63
+   using MAP_JIT causes problems with older macOS versions so we should use it
+   on Mojave or later. */
+
+static int mmap_flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT;
+
+#define OSRELEASE "kern.osrelease"
+#define OSRELEASE_MOJAVE 18
+
+static long
+vmm_get_kern_osrelease()
+{
+	char *s;
+	size_t len;
+	long v;
+	if (sysctlbyname(OSRELEASE, NULL, &len, NULL, 0)) {
+		xhyve_abort("vmm_get_kern_osrelease failed to query sysctl kern.osrelease\n");
+	}
+	s = malloc(len);
+	if (!s) {
+		xhyve_abort("vmm_get_kern_osrelease failed to allocate memory for kern.osrelease\n");
+	}
+	if (sysctlbyname(OSRELEASE, s, &len, NULL, 0)){
+		xhyve_abort("vmm_get_kern_osrelease failed to query sysctl kern.osrelease\n");
+	}
+	v = strtol(s, NULL, 10);
+	if ((v == 0) && (errno != 0)) {
+		xhyve_abort("vmm_get_kern_osrelease failed to parse sysctl kern.osrelease value\n");
+	}
+	return v;
+}
 
 int
 vmm_mem_init(void)
 {
+	if (vmm_get_kern_osrelease() < OSRELEASE_MOJAVE) {
+		fprintf(stderr, "Detected macOS older than Mojave, cannot use MAP_JIT\n");
+		mmap_flags &= ~MAP_JIT;
+	}
 	return (0);
 }
 
@@ -46,10 +87,9 @@ vmm_mem_alloc(uint64_t gpa, size_t size)
 {
 	void *object;
 
-	object = valloc(size);
-
-	if (!object) {
-		xhyve_abort("vmm_mem_alloc failed\n");
+	object = mmap(0, size, PROT_READ|PROT_WRITE|PROT_EXEC, mmap_flags, -1, 0);
+	if (object == MAP_FAILED) {
+		xhyve_abort("vmm_mem_alloc failed in mmap\n");
 	}
 
 	if (hv_vm_map(object, gpa, size,
