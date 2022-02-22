@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     macos:
-      xcode: "11.3.1"
+      xcode: "13.2.1"
     environment:
       # OPAM seems to be quite unhappy without $TERM and Circle doesn't seem to set one.
       TERM: vt100
