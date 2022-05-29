@@ -47,7 +47,8 @@ CFLAGS_WARN := \
   -Wno-unknown-warning-option \
   -Wno-unused-macros \
   -Wno-switch-enum \
-  -Wno-poison-system-directories
+  -Wno-poison-system-directories \
+  -Wno-error=unused-but-set-variable
 
 CFLAGS_DIAG := \
   -fmessage-length=152 \
