@@ -148,7 +148,7 @@ TARGET = build/hyperkit
 
 all: $(TARGET) | build
 
-.PHONY: clean all test test-qcow
+.PHONY: clean all test test-qcow test-ept-mmio
 .SUFFIXES:
 
 -include $(DEP)
@@ -203,6 +203,9 @@ test: $(TARGET) test/vmlinuz test/initrd.gz
 
 test-qcow: $(TARGET) test/vmlinuz test/initrd.gz
 	@(cd test && ./retry-infra-failure 5 ./test_linux_qcow.exp)
+
+test-ept-mmio: $(TARGET)
+	@python3 test/ept_mmio.py $(TARGET)
 
 
 ## ----------- ##
