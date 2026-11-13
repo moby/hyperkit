@@ -2093,6 +2093,12 @@ vmx_exit_process(struct vmx *vmx, int vcpu, struct vm_exit *vmexit)
 			vmexit->u.paging.fault_type = ept_fault_type(qual);
 			vmm_stat_incr(vmx->vm, vcpu, VMEXIT_NESTED_FAULT, 1);
 		} else if (ept_emulation_fault(qual)) {
+			/*
+			 * The VM-exit instruction length is not defined for the
+			 * instruction whose memory access caused an EPT violation.
+			 * Let the instruction emulator determine its length.
+			 */
+			vmexit->inst_length = 0;
 			vmexit_inst_emul(vmexit, gpa, vmcs_gla(vcpu), vcpu);
 			vmm_stat_incr(vmx->vm, vcpu, VMEXIT_INST_EMUL, 1);
 		}
